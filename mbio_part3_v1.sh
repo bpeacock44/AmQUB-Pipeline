@@ -296,24 +296,24 @@ mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotu
 cd "${output_dir}"
 
 # Run BLAST script in the background
-#${DIR}/micro_blast_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+${DIR}/micro_blast_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
 
 # Get the process ID of the last background command
-#blast_pid=$!
+blast_pid=$!
 
 # Wait for the process to finish
-#while ps -p $blast_pid > /dev/null; do
-#    sleep 1
-#done
+while ps -p $blast_pid > /dev/null; do
+    sleep 1
+done
 
 # Check the exit status of the BLAST script
-#blast_exit_status=$?
-#if [ $blast_exit_status -eq 0 ]; then
-#    echo "BLAST successfully completed."
-#else
-#    echo "BLAST failed with exit status $blast_exit_status."
-#    exit 1
-#fi
+blast_exit_status=$?
+if [ $blast_exit_status -eq 0 ]; then
+    echo "BLAST successfully completed."
+else
+    echo "BLAST failed with exit status $blast_exit_status."
+    exit 1
+fi
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Determining Likely Taxonomy of OTUs Using Filters"
