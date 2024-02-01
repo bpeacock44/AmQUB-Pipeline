@@ -128,7 +128,7 @@ Working Directory: ${DIR}
 Data ID: ${JB}
 Subset if specified: ${OPTION_O}
 Mismatches if specified: ${mmatchnum}
- - - - - - - - - - - - - - "
+ - -- --- ---- ---- --- -- -"
 
 # make the output directory
 mkdir -vp ${ODIR}
@@ -166,9 +166,9 @@ echo "General information about your data has been saved in ${ODIR}/fastq_info/$
 # This will depend on the length of your reads. 220 is a good STARTAT for 301 bp reads and 140 is good for 151 bp reads.
 
 echo
-echo " - - - - - - - - - - - - - 
+echo " - -- --- ---- ---- --- -- -
 Generating stats about the potential effects trimming and filtering will have on your reads
- - - - - - - - - - - - - - "
+ - -- --- ---- ---- --- -- -"
 
 # Calculate the maximum length of the first 100 reads
 MAX_LENGTH=$(head -n 400 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq | awk '{if(NR%4==2) print length($1)}' | sort -nr | head -n 1)
@@ -188,7 +188,7 @@ usearch -fastq_eestats2 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq -quiet -output "${O
 
 # final message - what is next
 echo
-echo " - - - - - - - - - - - - - 
+echo " - -- --- ---- ---- --- -- -
 Stats ready. Please view and select your trim length accordingly.
 Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt
 
@@ -200,6 +200,6 @@ selected for this run, but you may have others.)
 
 For example, next you might run: 
 part3.sh -d ${DIR} -j "${ODIR}",another_ID,another_ID2 -l <trim length> -o final_output_directory
- - - - - - - - - - - - - - "
+ - -- --- ---- ---- --- -- -"
 
 
