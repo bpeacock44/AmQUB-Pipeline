@@ -24,6 +24,9 @@
 # MAP FILES MUST CONTAIN AT LEAST TWO COLUMNS:  
 # 1) SampleID (with a # before as in #SampleID) - these are the IDs you associate with each sample
 # 2) BarcodeSequence - the barcodes for each sample
+# 3) SampleType - you can use this to filter later on - 
+# e.g. removing controls before data analysis, removing samples that aren't relevant, etc.
+# 4) Any characteristics you want to us later on to run differential analysis or correlation, etc.
 
 # Other metadata can also be included in additional columns as desired. Here is a short example:
 

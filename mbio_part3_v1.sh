@@ -198,7 +198,7 @@ TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 
 #truncate reads at LEN
 for JB in ${JBS[@]}; do
-  usearch -fastx_truncate "${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq" -quiet -trunclen ${LEN} -fastqout "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq"; # &
+  echo usearch -fastx_truncate "${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq" -quiet -trunclen ${LEN} -fastqout "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq"; # &
 done
 
 rm -f "${output_dir}/combined.fq"
@@ -214,14 +214,14 @@ fi
 
 #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
 for JB in ${JBS[@]}; do
-  usearch -threads 1 -fastq_filter "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" -quiet -fastq_maxee 1.0 -fastaout "${DIR}/${JB}_output/${JB}.filtered.fa"
+  echo usearch -threads 1 -fastq_filter "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" -quiet -fastq_maxee 1.0 -fastaout "${DIR}/${JB}_output/${JB}.filtered.fa"
 done
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Pooling Samples and Creating OTUs"
 echo " - -- --- ---- ---- --- -- -"
 
-#sample pooling (https://www.drive5.com/usearch/manual/pool_samples.html)
+#sample pooling (https://www.drive5.com/echo usearch/manual/pool_samples.html)
 rm -f "${output_dir}/filtered.fa"
 if [ ${#JBS[@]} -gt 1 ]; then
   #EITHER combine if you have multiple files
@@ -239,13 +239,13 @@ fi
 #
 # We decided to use only ZOTUS with unoise3
 #find unique sequences
-usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_dir}/uniques.fa" -sizeout -relabel Uniq
+echo usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_dir}/uniques.fa" -sizeout -relabel Uniq
 
 #make a subdirectory for the zotus
 mkdir -vp "${output_dir}/zotus"
 
 #cluster unique sequences into ZOTUS using the UNOISE3 algorithm (default -minsize=8)
-usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/zotus/zotus.fa"
+echo usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/zotus/zotus.fa"
 
 # Convert '>Zotu' to '>Otu' in the file
 sed 's/>Zotu/>Otu/g' "${output_dir}/zotus/zotus.fa" > "${output_dir}/zotus/z.fa"
@@ -263,7 +263,7 @@ echo "Creating Initial OTU Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an OTU table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/zotus/zotus.fa" -otutabout "${output_dir}/zotus/otu_table_00.txt"
+echo usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/zotus/zotus.fa" -otutabout "${output_dir}/zotus/otu_table_00.txt"
 
 cd "${output_dir}"
 #use R to sort OTU table
@@ -388,7 +388,7 @@ touch "${TAXDIR}/Placeholder__k_txid0_NOT_Environmental_Samples.txt"
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
 if [ -z "$FILTERFILE" ]; then
   "${HDIR}/filter_contaminating_reads.py" \
-    -i "${output_dir}/zotus/rep_set/5000.rb0.blastout" \
+    -i "${output_dir}/zotus/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -500,6 +500,7 @@ Rscript "${HDIR}/add_seqs_to_OTU.R" "otu_table_02_add_taxa_norm.txt" "otu_table_
 echo " - -- --- ---- ---- --- -- -"
 echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
+
 
 
 
