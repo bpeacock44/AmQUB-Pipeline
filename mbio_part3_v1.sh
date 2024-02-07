@@ -8,6 +8,7 @@
 # -o: the name of your output directory
 # -b: the path to your blast script file
 # -r: the type of blast run you want to do (local or slurm)
+# -e: email of the user for NCBI purposes
 
 # Optional arguments:
 # -t file will have four tab-delimited columns. Include any taxonomic groups that you want to preferentially keep or reject
@@ -16,10 +17,10 @@
 # -m: number of mismatches, if using (again, this should have been specified from part1)
 
 # Examples:
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out -b /path/to/blast.sh -r slurm -t ${MDIR}/filterfile.txt 
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -b /path/to/blast.sh -r slurm -t ${MDIR}/filterfile.txt -m 1 
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test3_out -b /path/to/blast.sh -r local
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test4_out -b /path/to/blast.sh -r local -m 1 
+# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
+# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
+# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test3_out -b /path/to/blast.sh -e email@email.com -r local
+# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test4_out -b /path/to/blast.sh -e email@email.com -r local -m 1 
 
 ### INPUT ###
 # This script follows part 2, which must be completed first. You will look at your trim stats, 
@@ -76,7 +77,7 @@
 
 # CODE FOLLOWS HERE #
 
-while getopts ":d:j:l:o:b:r:t:m:" opt; do
+while getopts ":d:j:l:o:b:r:e:t:m:" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -99,6 +100,8 @@ while getopts ":d:j:l:o:b:r:t:m:" opt; do
           ;;
       esac
       ;;
+    e) EMAIL="$OPTARG"
+    ;;
     t) FILTERFILE="$OPTARG"
     ;;
     m) mmatchnum="$OPTARG"
@@ -109,8 +112,14 @@ while getopts ":d:j:l:o:b:r:t:m:" opt; do
 done
 
 # Check for mandatory arguments
-if [ -z "$DIR" ] || [ -z "${JBS[*]}" ] || [ -z "$LEN" ] || [ -z "$OUTDIR" ] || [ -z "$blast_file" ] || [ -z "$run_type" ]; then
-    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> -b <blast parameter file> -r <local|slurm> [-t <filtertax_file> -m <mismatch number>]"
+if [ -z "$DIR" ] || [ -z "${JBS[*]}" ] || [ -z "$LEN" ] || [ -z "$OUTDIR" ] || [ -z "$blast_file" ] || [ -z "$EMAIL" ] || [ -z "$run_type" ]; then
+    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> -b <blast parameter file> -r <local|slurm> -e <email@email.com> [-t <filtertax_file> -m <mismatch number>]"
+    exit 1
+fi
+
+# Check if email is in correct format
+if ! [[ $EMAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "Email is not valid."
     exit 1
 fi
 
@@ -384,6 +393,13 @@ rm -rf ${TAXDIR}/taxdmp.zip
 
 touch "${TAXDIR}/Placeholder__k_txid0_NOT_Environmental_Samples.txt"
 
+# find the user's usearch path, which is where the AccnsWithDubiousTaxAssigns.txt file will be stored.
+userpath=$(which usearch)
+userdir=$(dirname "$userpath")
+tax_files_dir="$userdir/mbio_taxa_fz"
+sudo mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
+sudo touch '/sw/custom/mbio_taxa_fz/AccnsWithDubiousTaxAssigns.txt' # TODO: will this be problematic, Mario?
+
 # This section will create the otus2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
 if [ -z "$FILTERFILE" ]; then
@@ -392,6 +408,7 @@ if [ -z "$FILTERFILE" ]; then
     -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+    -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp"
 else
   "${HDIR}/filter_contaminating_reads.py" \
@@ -399,6 +416,7 @@ else
       -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
       -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
       -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -)  \
+      -t "$tax_files_dir" \
       -m "${TAXDIR}/merged.dmp" #-f
 fi
 
@@ -418,6 +436,7 @@ rm -rf "${output_dir}/zotus/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
 ${HDIR}/blast_assign_taxonomy.py -i "${output_dir}/zotus/rep_set/otus2filter.log" \
     --db "${output_dir}/zotus/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
+    -m beth.b.peacock@gmail.com \
     -o "${output_dir}/zotus/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 rm *.xml
 module purge
@@ -438,6 +457,7 @@ echo " - -- --- ---- ---- --- -- -"
     -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+    -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp" #-f
 
 # Rename the generated otus files and move to the rep_set folder
@@ -458,6 +478,7 @@ rm -rf ${output_dir}/zotus/rep_set/assgntax/nf_taxonomyDB.json
 rm -f *.xml
 ${HDIR}/blast_assign_taxonomy.py -i ${output_dir}/zotus/rep_set/nf_otus2filter.log \
   --db ${output_dir}/zotus/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
+  -m beth.b.peacock@gmail.com \
   -o ${output_dir}/zotus/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
 rm *.xml
 module purge
@@ -500,6 +521,22 @@ Rscript "${HDIR}/add_seqs_to_OTU.R" "otu_table_02_add_taxa_norm.txt" "otu_table_
 echo " - -- --- ---- ---- --- -- -"
 echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
+
+# to write
+
+echo "All OTU tables have been generated. A summary file can be found here:" | tee /dev/tty
+echo $summary_file_name | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
+echo "Final Recommendations"  | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
+echo "Sometimes certain OTUs can be primarily associated with your controls (likely a source of contamination,
+which may be from other samples or even from the individual building the library in the first place). Make sure 
+to check your OTU tables for these OTUs - just look at your control columns and see if any of the OTUs are 
+relatively high in them and not present in the regular samples. These OTUs should be removed before further 
+analyses. " | tee /dev/tty
+
+
+
 
 
 

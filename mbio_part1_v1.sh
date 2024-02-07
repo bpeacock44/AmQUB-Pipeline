@@ -70,9 +70,9 @@ if [ -z "$mmatchnum" ]; then
     mmatchnum="0"
 fi
 
-echo " - -- --- ---- ---- --- -- -"
-echo "Checking for input files..."
-echo " - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Checking for input files
+ - -- --- ---- ---- --- -- -"
 
 HDIR=/sw/paul_helper_scripts
 
@@ -97,16 +97,16 @@ output_file="${DIR}/part1_${timestamp}.log"
 exec > "$output_file" 2>&1
 
 # make log file header
-echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 1 of the Microbiome Pipeline. Processing the following arguments:
+echo " - -- --- ---- ---- --- -- -
+Log file for Part 1 of the Microbiome Pipeline. Processing the following arguments:
 Working Directory: ${DIR}
 Data IDs: ${JBS[@]}
-Mismatches if specified: ${mmatchnum}"
-echo " - -- --- ---- ---- --- -- -"
+Mismatches if specified: ${mmatchnum}
+ - -- --- ---- ---- --- -- -"
 echo 
-echo " - -- --- ---- ---- --- -- -"
-echo "Checking barcode collisions..." 
-echo " - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Checking barcode collisions...
+ - -- --- ---- ---- --- -- -"
 
 #1) check_barcode_collisions.pl
 for JB in "${JBS[@]}"; do
@@ -125,9 +125,9 @@ for JB in ${JBS[@]}; do
     _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
 
 echo 
-echo " - -- --- ---- ---- --- -- -"
-echo "Filtering barcode noncollisions..." 
-echo " - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Filtering barcode noncollisions
+ - -- --- ---- ---- --- -- -"
 
 # set option for mismatches based on previously selected mismath value
 case $mmatchnum in
@@ -155,9 +155,9 @@ esac
     $HDIR/filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
 
 echo 
-echo " - -- --- ---- ---- --- -- -"
-echo "Converting mismatches to perfect matches..." 
-echo " - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Converting mismatches to perfect matches 
+ - -- --- ---- ---- --- -- -"
 
     # Convert mismatches to perfect matches and extract barcodes
     $HDIR/fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" 
@@ -172,27 +172,29 @@ done
 conda deactivate
 
 # print number of reads per barcode
-echo
-echo " - -- --- ---- ---- --- -- -"
+echo | tee /dev/tty
+
 for JB in ${JBS[@]}; do
+echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
     _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
     grep tot "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" | awk -v OFS='\t' '{print $6, $2, $3}' | sed '1i sample_ID\tbarcode\tread_count' > "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt" 
 echo "The number of reads per sample that resulted from this script for ${JB} can be found in this file: 
 "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt" 
 
 You should check this file, as it may indicate that you should remove or ignore certain samples downstream.
-Here are the counts:"
-cat "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt"
+Here are the first few lines:"  | tee /dev/tty
+head "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt" | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
+echo | tee /dev/tty
 done
-echo " - -- --- ---- ---- --- -- -"
 
 # final message - what is next
-echo 
-echo " - -- --- ---- ---- --- -- -"
-echo "Part 1 completed. Part 2 will run on each of your data files individually. 
+echo | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -
+Part 1 completed. Part 2 will run on each of your data files individually. 
 You may also specify a new mapping file for -o if you want to run further analyses 
 on a subset of your demultiplexed data.
 
 For example, next you might run: 
-part2.sh -d ${DIR} -j "${JBS[0]}" -o subset1"
-echo "<><><><><><><><><><><><>"
+part2.sh -d ${DIR} -j "${JBS[0]}" (-o if you want a subset)
+ - -- --- ---- ---- --- -- -" | tee /dev/tty

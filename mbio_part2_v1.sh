@@ -153,7 +153,8 @@ usearch -fastx_demux "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" -quiet -index "$
 cp "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq"
 [[ ! -e "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq" ]] && echo "File "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq" was not generated!" && exit 1
 
-echo "General information about your data has been saved in ${ODIR}/fastq_info/${JB2}_A1P1.M${mmatchnum}.txt."
+echo
+echo "General information about your data has been saved in ${ODIR}/fastq_info/${JB2}_A1P1.M${mmatchnum}.txt."  | tee /dev/tty
 
 # At this point, you need to decide if you should truncate the reads. 
 # This will print out some stats showing how many of the reads will remain 
@@ -192,14 +193,14 @@ echo " - -- --- ---- ---- --- -- -
 Stats ready. Please view and select your trim length accordingly.
 Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt
 
-Part 3 will combine as many of your data files as you specify. You will indicate your 
-trim length under -l and an output file for your results under -o.
+Part 3 will combine as many of your data files as you specify. 
+You will indicate your trim length under -l and an output file for your results under -o.
 
--j will be all the samples you want to include by output directory name ("${ODIR}" is the one you 
-selected for this run, but you may have others.)
+-j will be all the samples you want to include by output directory name 
+("${ODIR}" is the one you selected for this run, but you may have others.)
 
 For example, next you might run: 
 part3.sh -d ${DIR} -j "${ODIR}",another_ID,another_ID2 -l <trim length> -o final_output_directory
- - -- --- ---- ---- --- -- -"
+ - -- --- ---- ---- --- -- -" | tee /dev/tty
 
 
