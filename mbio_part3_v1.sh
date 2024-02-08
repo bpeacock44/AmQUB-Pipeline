@@ -11,8 +11,9 @@
 # -e: email of the user for NCBI purposes
 
 # Optional arguments:
-# -t file will have four tab-delimited columns. Include any taxonomic groups that you want to preferentially keep or reject
-# as well as their taxonomic ID. ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
+# -t This is a filter file - it will have four tab-delimited columns. 
+# Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
+# ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
 # and make sure. If you are doing a universal assay, do not include the -t flag.
 # -m: number of mismatches, if using (again, this should have been specified from part1)
 
@@ -33,7 +34,7 @@
 
 
 
-# ########## SLURM BLAST FILE EXAMPLE ########## 
+# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 ##!/bin/bash 
 ##SBATCH -p i128
 ##SBATCH -c 128
@@ -55,7 +56,7 @@
 #MAXTSEQS=$2  
 #EVAL=0.001
 #echo blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-# ########## SLURM BLAST FILE EXAMPLE ########## 
+# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 
 
 
@@ -63,13 +64,13 @@
 
 
 
-# ########## FILTER FILE EXAMPLE ########## 
+# ########## FILTER FILE EXAMPLE (-t) ########## 
 # If I am doing fungal ITS taken from a plant sample, then the file might include:
 # Name    ID    Rank    Action
 # Fungi    4751    k    Keep
 # Viridiplantae    33090    k    Reject
 # This way, I am giving preference to fungal taxonomies and rejecting any plant ones. Note that RANK is LOWERCASE!!
-# ########## FILTER FILE EXAMPLE ########## 
+# ########## FILTER FILE EXAMPLE (-t) ########## 
 
 # <> # TO DO:
 # <> # HDIR FILES SHOULD BE IN PATH
@@ -396,14 +397,15 @@ touch "${TAXDIR}/Placeholder__k_txid0_NOT_Environmental_Samples.txt"
 # find the user's usearch path, which is where the AccnsWithDubiousTaxAssigns.txt file will be stored.
 userpath=$(which usearch)
 userdir=$(dirname "$userpath")
-tax_files_dir="$userdir/mbio_taxa_fz"
+tax_files_dir="${userdir}/mbio_taxa_fz"
 sudo mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
-sudo touch '/sw/custom/mbio_taxa_fz/AccnsWithDubiousTaxAssigns.txt' # TODO: will this be problematic, Mario?
+sudo touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
+sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 
 # This section will create the otus2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
 if [ -z "$FILTERFILE" ]; then
-  "${HDIR}/filter_contaminating_reads.py" \
+  "${HDIR}/filter_contaminating_reads.py.new" \
     -i "${output_dir}/zotus/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -411,7 +413,7 @@ if [ -z "$FILTERFILE" ]; then
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp"
 else
-  "${HDIR}/filter_contaminating_reads.py" \
+  "${HDIR}/filter_contaminating_reads.py.new" \
       -i "${output_dir}/zotus/rep_set/5000.rb0.blastout" \
       -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
       -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
@@ -419,6 +421,60 @@ else
       -t "$tax_files_dir" \
       -m "${TAXDIR}/merged.dmp" #-f
 fi
+
+bad_accns="${output_dir}/bad_accns.txt"
+dubious_accns="${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt"
+
+# Function to check if a number exists in the dubious_accns file
+check_existence() {
+    local number="$1"
+    if grep -q "^$number$" "$dubious_accns"; then
+        return 0 # Number exists in the file
+    else
+        return 1 # Number does not exist in the file
+    fi
+}
+
+# Filter out lines starting with # or empty lines
+filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+
+while IFS= read -r line; do
+    number=$(echo "$line" | cut -f1)
+    
+    if [ -z "$number" ]; then
+        continue
+    fi
+
+    if ! check_existence "$number"; then
+        echo "$number" >> "$dubious_accns" # Append the number if it doesn't exist
+        echo "Adding $number to AccnsWithDubiousTaxAssigns.txt"
+        new_addition=true
+    fi
+done <<< "$filtered_lines"
+
+# If new additions were made, re-run the loop
+if [ "$new_addition" = true ]; then
+    # Run the filter_contaminating_reads.py script
+    if [ -z "$FILTERFILE" ]; then
+        "${HDIR}/filter_contaminating_reads.py.new" \
+            -i "${output_dir}/zotus/rep_set/final.blastout" \
+            -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+            -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+            -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+            -t "$tax_files_dir" \
+            -m "${TAXDIR}/merged.dmp"
+    else
+        "${HDIR}/filter_contaminating_reads.py.new" \
+            -i "${output_dir}/zotus/rep_set/5000.rb0.blastout" \
+            -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
+            -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
+            -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -)  \
+            -t "$tax_files_dir" \
+            -m "${TAXDIR}/merged.dmp" #-f
+    fi
+fi
+
+new_addition=false
 
 # Move the generated otus files to the rep_set folder
 mv ./otus2* "${output_dir}/zotus/rep_set"
@@ -459,6 +515,36 @@ echo " - -- --- ---- ---- --- -- -"
     -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp" #-f
+
+# now we have a new bad_accns file to process:
+# Filter out lines starting with # or empty lines
+filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+
+while IFS= read -r line; do
+    number=$(echo "$line" | cut -f1)
+    
+    if [ -z "$number" ]; then
+        continue
+    fi
+
+    if ! check_existence "$number"; then
+        echo "$number" >> "$dubious_accns" # Append the number if it doesn't exist
+        echo "Adding $number to AccnsWithDubiousTaxAssigns.txt"
+        new_addition=true
+    fi
+done <<< "$filtered_lines"
+
+# If new additions were made, re-run the loop
+if [ "$new_addition" = true ]; then
+    # Run the filter_contaminating_reads.py script
+    "${HDIR}/filter_contaminating_reads.py" \
+        -i "${output_dir}/zotus/rep_set/5000.rb0.blastout" \
+        -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+        -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+        -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
+        -t "$tax_files_dir" \
+        -m "${TAXDIR}/merged.dmp" #-f
+fi
 
 # Rename the generated otus files and move to the rep_set folder
 mv ./otus2filter.log ./nf_otus2filter.log
@@ -523,6 +609,14 @@ echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
 
 # to write
+#Average read count
+#% identity and coverage (length/query length) for both taxonomies
+#Both taxonomies
+#Flag everywhere top 10 has more than 1 family in blast results
+#Add # reads per sample columns (different orientation)
+
+
+
 
 echo "All OTU tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty
