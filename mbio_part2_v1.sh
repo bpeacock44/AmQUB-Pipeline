@@ -193,7 +193,7 @@ echo " - -- --- ---- ---- --- -- -
 Stats ready. Please view and select your trim length accordingly.
 Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt
 
-Part 3 will combine as many of your data files as you specify. 
+Part 3 will combine as many of your data files as you specify into a single OTU table. 
 You will indicate your trim length under -l and an output file for your results under -o.
 
 -j will be all the samples you want to include by output directory name 
