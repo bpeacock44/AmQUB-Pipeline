@@ -306,7 +306,7 @@ mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotu
 cd "${output_dir}"
 
 # Run BLAST script in the background
-${DIR}/micro_blast_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+${HDIR}/micro_blast_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
 
 # Get the process ID of the last background command
 blast_pid=$!
