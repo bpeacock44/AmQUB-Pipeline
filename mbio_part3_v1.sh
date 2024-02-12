@@ -590,7 +590,9 @@ biomAddObservations ${OTBL}.biom otu_table_02_add_taxa.biom rep_set/assgntax/seq
 OTBL=otu_table_02_add_taxa
 summarize_taxa.py -i ${OTBL}.biom -L 2,6,7;
 
+export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
+module load py-numpy
 
 for F in otu_table_02_add_taxa*.biom; do
   FNAME=$(echo "$F" | sed 's/otu_table_02_add_taxa//')
@@ -614,9 +616,6 @@ echo " - -- --- ---- ---- --- -- -"
 #Both taxonomies
 #Flag everywhere top 10 has more than 1 family in blast results
 #Add # reads per sample columns (different orientation)
-
-
-
 
 echo "All OTU tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty
