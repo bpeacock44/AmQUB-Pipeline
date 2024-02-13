@@ -585,6 +585,7 @@ echo " - -- --- ---- ---- --- -- -"
 source ${HDIR}/qiime_shell_helper_functions.sh
 count_taxa_levels ${output_dir}/zotus/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt > ${output_dir}/zotus/rep_set/assgntax/nf_taxa_levels.txt
 
+echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Adding Taxa and Sequences to OTU Tables"
 echo " - -- --- ---- ---- --- -- -"
@@ -599,10 +600,6 @@ biomAddObservations ${OTBL}.biom otu_table_02_add_taxa.biom rep_set/assgntax/seq
 OTBL=otu_table_02_add_taxa
 summarize_taxa.py -i ${OTBL}.biom -L 2,6,7;
 
-export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
-module load r
-module load py-numpy
-
 for F in otu_table_02_add_taxa*.biom; do
   FNAME=$(echo "$F" | sed 's/otu_table_02_add_taxa//')
   ID=$(echo "$FNAME" | sed 's/.biom//')
@@ -610,6 +607,9 @@ for F in otu_table_02_add_taxa*.biom; do
   biom2txt $F "otu_table_02_add_taxa${ID}.txt"
   biom2txt "otu_table_02_add_taxa_norm${FNAME}" "otu_table_02_add_taxa_norm${ID}.txt"
 done
+
+export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
+module load r
 
 # add seqs to L8 (regular)
 Rscript "${HDIR}/add_seqs_to_OTU.R" "otu_table_02_add_taxa.txt" "otu_table_03_add_seqs.txt"
