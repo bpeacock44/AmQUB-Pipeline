@@ -155,15 +155,6 @@ for ((i=0; i<${#JBS[@]}; i++)); do
   JBS[$i]=${JBS[$i]%%_output}
 done
 
-echo $JBS
-echo $DIR
-echo $LEN
-echo $OUTDIR
-echo $blast_file
-echo $EMAIL
-echo $FILTERFILE
-echo $mmatchnum
-
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
