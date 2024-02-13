@@ -155,6 +155,15 @@ for ((i=0; i<${#JBS[@]}; i++)); do
   JBS[$i]=${JBS[$i]%%_output}
 done
 
+echo $JBS
+echo $DIR
+echo $LEN
+echo $OUTDIR
+echo $blast_file
+echo $EMAIL
+echo $FILTERFILE
+echo $mmatchnum
+
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
@@ -289,7 +298,7 @@ source "${HDIR}/qiime_shell_helper_functions.sh"
 #convert to biom
 OTBL=otu_table_01
 txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
-biomsummarize "${output_dir}/zotus/${OTBL}.biom" "${output_dir}/zotus/${OTBL}.biom.sum"
+txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
 
 cd "${output_dir}/zotus"
 #add counts to otu table
