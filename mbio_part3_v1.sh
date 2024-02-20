@@ -40,22 +40,22 @@
 ##SBATCH -c 128
 ## any other parameters or modules needed
 #module load blast-plus
-#
+
 ##<>#<>#<>#<>#<>
 ## YOU MUST SET THESE:
 ##<>#<>#<>#<>#<>
 #DATABASE_PATH=/sw/dbs/blast_db_download/nt
 #NUMTHREADS=128
-#
+
 ##<>#<>#<>#<>#<>
 ## GENERALLY DON'T CHANGE THESE:
 ##<>#<>#<>#<>#<>
-#OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle"
+#OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
 #TASK=blastn
 #INFASTA=$1
 #MAXTSEQS=$2  
 #EVAL=0.001
-#echo blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
 # ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 
 
@@ -612,8 +612,30 @@ echo " - -- --- ---- ---- --- -- -"
 
 # to write
 #Average read count
+
+in R
+
+file_path <- "otu_table_03_add_seqs_norm.txt"
+# Read in the file, skipping the first line and specifying '#' as a comment character
+df <- read.table(file_path, sep = "\t", comment.char = "",header = TRUE)
+colnames(df)[1] <- "OTU_ID"
+head(df)[1:4]
+# Read in alt tax files
+file_path2 <- "rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt"
+tax_df <- read.table(file_path2, sep = "\t", comment.char = "",header = TRUE)
+head(tax_df)[1:4]
+colnames(tax_df)[1] <- "OTU_ID"
+# Merge alt tax in
+df2 <- merge(df,tax_df[1:2],by="OTU_ID",all.x=TRUE)
+# Calculate the mean of each row excluding the excluded columns
+excluded_columns <- c("OTU_ID", "taxonomy.x", "sequence", "taxonomy.y")
+df2$avg_abun <- rowMeans(df2[, !names(df2) %in% excluded_columns], na.rm = TRUE)
+num <- length(df2)
+
+df3 <- df2[c(1,(num-3):num,2:(num-4))]
+
 #% identity and coverage (length/query length) for both taxonomies
-#Both taxonomies
+
 #Flag everywhere top 10 has more than 1 family in blast results
 #Add # reads per sample columns (different orientation)
 
