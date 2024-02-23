@@ -280,7 +280,7 @@ cd "${output_dir}"
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
 Rscript "${HDIR}/processing_otu.R"
-
+module purge
 source /sw/miniconda3/bin/activate qiime1
 
 #source for bash helper functions
