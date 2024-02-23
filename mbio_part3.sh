@@ -196,6 +196,8 @@ OTBL=otu_table_01
 txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
 txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
 
+export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
+module load r
 cd "${output_dir}/zotus"
 #add counts to otu table
 Rscript "${HDIR}/add_counts_to_fasta_seqs.R" 
