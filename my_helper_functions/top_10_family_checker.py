@@ -1,4 +1,9 @@
-## module load py-biopython
+# Usage: python ${HDIR}/top_10_family_checker.py <blastout.file>
+
+# This checks the first 10 blast results for each OTU that can return a family in it's taxonomic info
+# and checks if the families in that top 10 group are identical or not. If they are not, the Otu is written
+# to a new file called "top_10_family_checker_out.txt." This information may be helpeful in assessing
+# the taxonomic assignment's quality.
 
 from collections import defaultdict
 from Bio import Entrez

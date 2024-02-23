@@ -306,7 +306,7 @@ mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotu
 cd "${output_dir}"
 
 # Run BLAST script in the background
-${HDIR}/micro_blast_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+${HDIR}/micro_blast_script.sh "${output_dir}" "${blast_file}" ${run_type} &
 
 # Get the process ID of the last background command
 blast_pid=$!
@@ -549,7 +549,7 @@ fi
 # Rename the generated otus files and move to the rep_set folder
 mv ./otus2filter.log ./nf_otus2filter.log
 mv ./otus2summary.txt ./nf_otus2summary.txt
-mv ./otus2reject.txt ./nf_otus2reject.txtqq
+mv ./otus2reject.txt ./nf_otus2reject.txt
 mv ./otus2keep.txt ./nf_otus2keep.txt
 mv ./nf_* ${output_dir}/zotus/rep_set
 
@@ -610,34 +610,11 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
 
-# to write
-#Average read count
-
-in R
-
-file_path <- "otu_table_03_add_seqs_norm.txt"
-# Read in the file, skipping the first line and specifying '#' as a comment character
-df <- read.table(file_path, sep = "\t", comment.char = "",header = TRUE)
-colnames(df)[1] <- "OTU_ID"
-head(df)[1:4]
-# Read in alt tax files
-file_path2 <- "rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt"
-tax_df <- read.table(file_path2, sep = "\t", comment.char = "",header = TRUE)
-head(tax_df)[1:4]
-colnames(tax_df)[1] <- "OTU_ID"
-# Merge alt tax in
-df2 <- merge(df,tax_df[1:2],by="OTU_ID",all.x=TRUE)
-# Calculate the mean of each row excluding the excluded columns
-excluded_columns <- c("OTU_ID", "taxonomy.x", "sequence", "taxonomy.y")
-df2$avg_abun <- rowMeans(df2[, !names(df2) %in% excluded_columns], na.rm = TRUE)
-num <- length(df2)
-
-df3 <- df2[c(1,(num-3):num,2:(num-4))]
-
-#% identity and coverage (length/query length) for both taxonomies
-
-#Flag everywhere top 10 has more than 1 family in blast results
-#Add # reads per sample columns (different orientation)
+module load py-biopython
+# get "top 10 contain multiple families" OTUs
+python ${HDIR}/top_10_family_checker.py final.blastout
+# generate final summary file
+Rscript ${HDIR}/final_summary_table_maker.R
 
 echo "All OTU tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty
