@@ -140,6 +140,7 @@ if [ -z "$FILTERFILE" ]; then
 fi
 
 output_dir="${DIR}/${OUTDIR}"
+TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
@@ -172,7 +173,7 @@ Email of user: ${EMAIL}
 Filterfile if specified: ${FILTERFILE}
 Mismatches if specified: ${mmatchnum}
  - -- --- ---- ---- --- -- -"
-
+echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Running BLAST on OTUs"
 echo " - -- --- ---- ---- --- -- -"
