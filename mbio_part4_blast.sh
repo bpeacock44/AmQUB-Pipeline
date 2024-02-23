@@ -16,10 +16,10 @@
 # -m: number of mismatches, if using (again, this should have been specified from part1)
 
 # Examples:
-# ./mbio_part3.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
-# ./mbio_part3.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
-# ./mbio_part3.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -r local
-# ./mbio_part3.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -m 1 
+# ./mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
+# ./mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
+# ./mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -r local
+# ./mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -m 1 
 
 ### INPUT ###
 # This script follows part 3, which must be completed first. 
@@ -139,19 +139,20 @@ if [ -z "$FILTERFILE" ]; then
     esac
 fi
 
+output_dir="${DIR}/${OUTDIR}"
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 HDIR=/sw/paul_helper_scripts
 
-if [ ! -e "${DIR}/${OUTDIR}/zotus/seqs_chimera_filtered_otus.fasta" ]; then
-    echo "${DIR}/${OUTDIR}/zotus/seqs_chimera_filtered_otus.fasta not found!"
+if [ ! -e "${output_dir}/zotus/rep_set/seqs_chimera_filtered_otus.fasta" ]; then
+    echo "${output_dir}/zotus/rep_set/seqs_chimera_filtered_otus.fasta not found!"
     exit 1
 fi
 
-if [ ! -e "${DIR}/${OUTDIR}/zotus/otu_table_01.biom" ]; then
-    echo "${DIR}/${OUTDIR}/zotus/otu_table_01.biom not found!"
+if [ ! -e "${output_dir}/zotus/otu_table_01.biom" ]; then
+    echo "${output_dir}/zotus/otu_table_01.biom not found!"
     exit 1
 fi
 
@@ -176,8 +177,6 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Running BLAST on OTUs"
 echo " - -- --- ---- ---- --- -- -"
 
-mkdir -vp "${output_dir}/zotus/rep_set"
-mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotus/rep_set"
 cd "${output_dir}"
 
 # Run BLAST script in the background

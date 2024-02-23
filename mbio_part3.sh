@@ -201,7 +201,9 @@ cd "${output_dir}/zotus"
 Rscript "${HDIR}/add_counts_to_fasta_seqs.R" 
 cd "${output_dir}"
 
-echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
+mkdir -vp "${output_dir}/zotus/rep_set"
+mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotus/rep_set"
+
 echo "It's time to assign taxonomy! You will either do this by BLAST-ing your sequences against a 
 local BLAST database or by using Qiime2 to classify them." | tee /dev/tty
 
