@@ -12,8 +12,9 @@
 # -t This is a filter file - it will have four tab-delimited columns. 
 # Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
 # ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
-# and make sure. If you are doing a universal assay, do not include the -t flag.
+# and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
 # -m: number of mismatches, if using (again, this should have been specified from part1)
+# -u: universal assay - causes final OTU tables to be split into taxonomic groups prior to normalizing
 
 # Examples:
 # ./mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
@@ -71,7 +72,9 @@
 
 # CODE FOLLOWS HERE #
 
-while getopts ":d:o:b:r:e:t:m:" opt; do
+split_otu_table=false
+
+while getopts ":d:o:b:r:e:t:m:u:" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -96,6 +99,8 @@ while getopts ":d:o:b:r:e:t:m:" opt; do
     ;;
     m) mmatchnum="$OPTARG"
     ;;    
+    u) split_otu_table=true
+    ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
   esac
@@ -465,13 +470,34 @@ biomAddObservations ${OTBL}.biom otu_table_02_add_taxa.biom rep_set/assgntax/seq
 # create three additional taxonomic levels of OTU tables
 OTBL=otu_table_02_add_taxa
 summarize_taxa.py -i ${OTBL}.biom -L 2,6,7;
+to_process=($(find . -maxdepth 1 -type f -name 'otu_table_02_add_taxa*.biom'))
 
-for F in otu_table_02_add_taxa*.biom; do
-  FNAME=$(echo "$F" | sed 's/otu_table_02_add_taxa//')
-  ID=$(echo "$FNAME" | sed 's/.biom//')
-  $HDIR/biom_table_math_ops.py -i ${F} -o "otu_table_02_add_taxa_norm${FNAME}" --normalize2unity
-  biom2txt $F "otu_table_02_add_taxa${ID}.txt"
-  biom2txt "otu_table_02_add_taxa_norm${FNAME}" "otu_table_02_add_taxa_norm${ID}.txt"
+for F in "${to_process[@]}"; do
+    FNAME=$(echo "$F" | sed 's|^./otu_table_02_add_taxa||')
+    ID=$(echo "$FNAME" | sed 's/.biom//')
+    biom2txt $F "otu_table_02_add_taxa${ID}.txt"
+    if [[ $split_otu_table ]]; then
+        KDOMS=(k__Archaea k__Bacteria k__Eukaryota)
+        for K in "${KDOMS[@]}"; do
+            grep -P "(#|$K)" "otu_table_02_add_taxa${ID}.txt" > "otu_table_02_add_taxa${ID}.${K}.txt"
+            OTBL="otu_table_02_add_taxa${ID}.${K}"
+            if ! grep -q "$K" "${OTBL}.txt"; then
+                rm "${OTBL}.txt"
+            else
+                if [[ "${OTBL}.txt" == *"_L"* ]]; then
+                    txt2biom_notax "${OTBL}.txt" "${OTBL}.biom"
+                    ${HDIR}/biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
+                    biom2txt_notax "${OTBL}_norm.biom" "${OTBL}_norm.txt"
+                else 
+                    txt2biom "${OTBL}.txt" "${OTBL}.biom"
+                    ${HDIR}/biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
+                    biom2txt "${OTBL}_norm.biom" "${OTBL}_norm.txt"
+                fi
+            fi
+        done
+    fi
+    ${HDIR}/biom_table_math_ops.py -i ${F} -o "otu_table_02_add_taxa${ID}_norm.biom" --normalize2unity
+    biom2txt "otu_table_02_add_taxa${ID}_norm.biom" "otu_table_02_add_taxa${ID}_norm.txt"
 done
 
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
@@ -480,6 +506,12 @@ module load r
 # add seqs to L8 (regular)
 Rscript "${HDIR}/add_seqs_to_OTU.R" "otu_table_02_add_taxa.txt" "otu_table_03_add_seqs.txt"
 Rscript "${HDIR}/add_seqs_to_OTU.R" "otu_table_02_add_taxa_norm.txt" "otu_table_03_add_seqs_norm.txt"
+
+to_process2=($(find . -maxdepth 1 -type f -name '*taxa.k*txt'))
+for F in ${to_process2[@]}; do
+    FNAME=$(echo "$F" | sed 's|^./otu_table_02_add_taxa||')
+    Rscript "${HDIR}/add_seqs_to_OTU.R" ${F} "otu_table_03_add_seqs${FNAME}"
+done
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Creating Summary File"

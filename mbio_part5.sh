@@ -22,9 +22,6 @@ filter_samples_from_otu_table.py -i otu_table_02_add_taxa.biom -o otu_table_02_a
 filter_samples_from_otu_table.py -i otu_table_02_add_taxa_norm.biom -o otu_table_02_add_taxa_norm.nc.biom -m merged_map.txt --valid_states "SampleType:SAMPLE"
 
 
-
-
-
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
 # These first two are diversity analyses, and I have left them outside of a typical script in case you want to
 # play around with the parameters (the type of analysis, etc.)
@@ -40,7 +37,7 @@ cd ..
 
 ##### ##### ##### ##### ##### 
 # ALPHA DIVERSITY (normalization happens internally)
-# TO BE WRITTEN
+# TO BE WRITTEN once we know qiime2 will or won't be included in singularity.
 
 
 
@@ -64,3 +61,19 @@ ${HDIR}/otu_diff_abun_wrapper.sh Tissue stem_whole stem_scrapings
 # ${HDIR}/otu_diff_abun_wrapper.sh <column of measurments to correlate against>
 
 ${HDIR}/otu_pearson_corr_wrapper.sh Rating
+
+##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
+# This last script will generate an excel file that can be used as input to the program prism. 
+
+
+# format James wants:
+#		Microbe 1	Microbe 2	Microbe 3
+#Treatment Group 1	42.03	17.61	1.52
+#Treatment Group 2	14.66	17.90	4.09
+#Treatment Group 3	17.28	16.85	2.
+
+#Lump treatment groups together (based on same column as edgeR) - maybe user lists treatments they want included.
+#Transpose
+#Determine top 20 taxa across all (number may change)
+#Combine other taxa to "other" category or remove
+#Change taxa names so they just contain the rank
