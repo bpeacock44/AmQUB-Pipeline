@@ -155,7 +155,7 @@ usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_di
 mkdir -vp "${output_dir}/asvs"
 
 #cluster unique sequences into asvs using the UNOISE3 algorithm (default -minsize=8)
-usearch -unoise3 "${output_dir}/uniques.fa" -quiet -asvs "${output_dir}/asvs/asvs.fa"
+usearch -unoise3 "${output_dir}/uniques.fa" -quiet -otus "${output_dir}/asvs/asvs.fa"
 
 # Convert '>Zotu' to '>Asv' in the file
 sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
