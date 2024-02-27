@@ -22,5 +22,5 @@ col="$3"
 treatments="$4"
 num="$5"
 
-Rscript ASV_prism_summary.R $file $map $col $treatments $num
+Rscript asv_prism_summary.R $file $map $col $treatments $num
 
