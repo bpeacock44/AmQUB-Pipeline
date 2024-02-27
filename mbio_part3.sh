@@ -65,7 +65,7 @@ done
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
-HDIR=/sw/paul_helper_scripts
+HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/paul_helper_functions
 
 # show your fastq files and map
 for JB in "${JBS[@]}"; do
@@ -133,7 +133,7 @@ for JB in ${JBS[@]}; do
 done
 echo
 echo " - -- --- ---- ---- --- -- -"
-echo "Pooling Samples and Creating OTUs"
+echo "Pooling Samples and Creating ASVs"
 echo " - -- --- ---- ---- --- -- -"
 
 #sample pooling (https://www.drive5.com/usearch/manual/pool_samples.html)
@@ -148,43 +148,38 @@ else
   ln -s "${DIR}/${JB}_output/${JB}.filtered.fa" "${output_dir}/filtered.fa"
 fi
 
-#"The data requirements of cluster_otus and unoise3 are the same: the input should be a set of unique sequences which have
-# been trimmed and quality filtered. It is therefore easy to generate both 97% OTUs and ZOTUs in the same pipeline, and
-# I therefore suggest building an OTU table using both strategies." - Robert Edgar
-#
-# We decided to use only ZOTUS with unoise3
 #find unique sequences
 usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_dir}/uniques.fa" -sizeout -relabel Uniq
 
-#make a subdirectory for the zotus
-mkdir -vp "${output_dir}/zotus"
+#make a subdirectory for the asvs
+mkdir -vp "${output_dir}/asvs"
 
-#cluster unique sequences into ZOTUS using the UNOISE3 algorithm (default -minsize=8)
-usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/zotus/zotus.fa"
+#cluster unique sequences into asvs using the UNOISE3 algorithm (default -minsize=8)
+usearch -unoise3 "${output_dir}/uniques.fa" -quiet -asvs "${output_dir}/asvs/asvs.fa"
 
-# Convert '>Zotu' to '>Otu' in the file
-sed 's/>Zotu/>Otu/g' "${output_dir}/zotus/zotus.fa" > "${output_dir}/zotus/z.fa"
+# Convert '>Zotu' to '>Asv' in the file
+sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
 
 # Check if the replacement was successful before overwriting
-if grep -q '>Otu' "${output_dir}/zotus/z.fa"; then
-    # Overwrite the original file if '>Otu' is found
-    mv -v "${output_dir}/zotus/z.fa" "${output_dir}/zotus/zotus.fa"
+if grep -q '>Asv' "${output_dir}/asvs/z.fa"; then
+    # Overwrite the original file if '>Asv' is found
+    mv -v "${output_dir}/asvs/z.fa" "${output_dir}/asvs/asvs.fa"
 else
     echo "Header replacement failed. Original file not overwritten."
 fi
 echo
 echo " - -- --- ---- ---- --- -- -"
-echo "Creating Initial OTU Table"
+echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
-#create an OTU table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/zotus/zotus.fa" -otutabout "${output_dir}/zotus/otu_table_00.txt"
+#create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
+usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 
 cd "${output_dir}"
-#use R to sort OTU table
+#use R to sort ASV table
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
-Rscript "${HDIR}/processing_otu.R"
+Rscript "${HDIR}/processing_ASV.R"
 module purge
 source /sw/miniconda3/bin/activate qiime1
 
@@ -192,19 +187,19 @@ source /sw/miniconda3/bin/activate qiime1
 source "${HDIR}/qiime_shell_helper_functions.sh"
 
 #convert to biom
-OTBL=otu_table_01
-txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
-txt2biom_notax "${output_dir}/zotus/${OTBL}.txt" "${output_dir}/zotus/${OTBL}.biom"
+OTBL=asv_table_01
+txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
+txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
 
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
-cd "${output_dir}/zotus"
-#add counts to otu table
+cd "${output_dir}/asvs"
+#add counts to ASV file
 Rscript "${HDIR}/add_counts_to_fasta_seqs.R" 
 cd "${output_dir}"
 
-mkdir -vp "${output_dir}/zotus/rep_set"
-mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotus/rep_set"
+mkdir -vp "${output_dir}/asvs/rep_set"
+mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "It's time to assign taxonomy! You will either do this by BLAST-ing your sequences against a 

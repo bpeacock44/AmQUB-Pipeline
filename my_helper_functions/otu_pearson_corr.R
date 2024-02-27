@@ -3,7 +3,7 @@ library(dplyr)
 
 # Check if there are enough command-line arguments
 if (length(commandArgs(trailingOnly = TRUE)) < 3) {
-  stop("Usage: Rscript otu_pearson_corr.R <file_path> <map_file> <rating_column>")
+  stop("Usage: Rscript ASV_pearson_corr.R <file_path> <map_file> <rating_column>")
 }
 
 # Get command-line arguments
@@ -11,10 +11,10 @@ file_path <- commandArgs(trailingOnly = TRUE)[1]
 map_file <- commandArgs(trailingOnly = TRUE)[2]
 rating_column <- commandArgs(trailingOnly = TRUE)[3]
 
-# read in data file and store OTU names
+# read in data file and store ASV names
 df <- read.table(file_path, header = TRUE, sep = "\t", comment.char = "~", skip = 1)
-otu_ids <- df$"X.OTU.ID"
-df <- within(df, { "X.OTU.ID" <- NULL; "taxonomy" <- NULL })
+ASV_ids <- df$"X.ASV.ID"
+df <- within(df, { "X.ASV.ID" <- NULL; "taxonomy" <- NULL })
 
 # Read map file using readr functions
 map <- read_tsv(map_file, comment = "~") %>%
@@ -38,8 +38,8 @@ results <- lapply(df4[, 3:ncol(df4)], function(col) {
 
 # Combine results into a data frame
 corres_data <- do.call(rbind, results)
-final <- cbind(otu_ids,corres_data,avg_values)
-colnames(final) <- c("OTU","cor_coef","p_value","FDR","avg_count")
+final <- cbind(ASV_ids,corres_data,avg_values)
+colnames(final) <- c("ASV","cor_coef","p_value","FDR","avg_count")
 
-final <- final %>% arrange(OTU)
+final <- final %>% arrange(ASV)
 write.table(final, file = "correlation_results.txt", sep = "\t", quote = FALSE, row.names = FALSE)

@@ -68,17 +68,17 @@ function biom2txt {
         if [[ $(grep -c "${RGX}taxonomy" $1) -gt 0 ]]; then
             #taxonomy was found
             echo "Meta-data header [taxonomy] found in biom. Saving with meta-data"
-            biom convert -i "$1" -o "$2" --table-type="OTU table" --to-tsv --header-key "taxonomy";
+            biom convert -i "$1" -o "$2" --table-type="ASV table" --to-tsv --header-key "taxonomy";
         else
             #taxonomy was not found, so we won't try to include it (or we'll get a hanging 'taxonomy' header)
             echo "Meta-data header [taxonomy] was not found in biom. Saving without meta-data"
-            biom convert -i "$1" -o "$2" --table-type="OTU table" --to-tsv;
+            biom convert -i "$1" -o "$2" --table-type="ASV table" --to-tsv;
         fi
     else #$1, $2 and $3 ARE defined
         #check if $3 is in $1
         if [[ $(grep -c "${RGX}$_K_" $1) -gt 0 ]]; then
             echo "Meta-data header [$_K_] found in biom. Saving with meta-data"
-            biom convert -i "$1" -o "$2" --table-type="OTU table" --to-tsv --header-key "$_K_";
+            biom convert -i "$1" -o "$2" --table-type="ASV table" --to-tsv --header-key "$_K_";
         else
             #notify but DO NOT save if user-defined $3 was NOT found (unlike case of meta-data default header, "taxonomy")
             echo -e "Meta-data header [$_K_] NOT FOUND in biom.\nFile [$2] NOT saved"'!';
@@ -109,7 +109,7 @@ function biom2txt_notax {
         echo "Input error: file [$1] does not exist"'!';
         kill -INT $$
     fi
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-tsv;
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-tsv;
     perl -ne 's/\.0\b//g; print;' < "$2" > "${2}a"
     mv -f "${2}a" "${2}"
     if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
@@ -118,24 +118,24 @@ function biom2txt_notax {
 function txt2biom {
     _K_="$3";#valid choices: [taxonomy|naive|sc_separated]
     if [ -z "$_K_" ]; then _K_='taxonomy'; else echo "setting header-key=$_K_"; fi
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-hdf5 --process-obs-metadata "$_K_";
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-hdf5 --process-obs-metadata "$_K_";
     if [ -e "$2" ]; then echo "Saved [$2] [header-key=$_K_]"; else echo "File [$2] not saved"'!'" [header-key=$_K_]"; fi
     unset _K_;
 }
 
 function txt2biom_notax {
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-hdf5;
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-hdf5;
     if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
 }
 function txt2JSONbiom_notax {
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-json;
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-json;
     if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
 }
 
 function txt2JSONbiom {
     _K_="$3";#valid choices: [taxonomy|naive|sc_separated]
     if [ -z "$_K_" ]; then _K_='taxonomy'; else echo "setting header-key=$_K_"; fi
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-json --process-obs-metadata "$_K_";
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-json --process-obs-metadata "$_K_";
     if [ -e "$2" ]; then echo "Saved [$2] [header-key=$_K_]"; else echo "File [$2] not saved"'!'" [header-key=$_K_]"; fi
     unset _K_;
 }
@@ -146,12 +146,12 @@ function biom2json {
         echo "Usage: biom2json <table.biom> <table.json>";
         kill -INT $$
     fi
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-json;
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-json;
     if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
 }
 
 function json2biom {
-    biom convert -i "$1" -o "$2" --table-type="OTU table" --to-hdf5;
+    biom convert -i "$1" -o "$2" --table-type="ASV table" --to-hdf5;
     if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
 }
 
@@ -164,13 +164,12 @@ function biomAddObservations {
     #if $1, $2 or $3 are NOT defined...
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
         echo "Usage: biomAddObservations <in.biom> <out.biom> <meta-data-file>";
-        echo "(Note that you must add headers to the meta data file if there are none. Eg., '#OTU ID<tab>taxonomy<tab>confidence')"
+        echo "(Note that you must add headers to the meta data file if there are none. Eg., '#ASV ID<tab>taxonomy<tab>confidence')"
     else
         biom add-metadata -i "$1" -o "$2" --observation-metadata-fp "$3" --sc-separated taxonomy
         if [ -e "$2" ]; then echo "Saved [$2]"; else echo "File [$2] not saved"'!'; fi
     fi
 }
-
 
 #######################################
 # Function for beta_diversity cleanup #

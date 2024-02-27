@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-This script takes a biom-formatted OTU table and multiplies or divides all values by 
-a single user-defined value, or adjusts each OTU separately by importing a file
-containing the amount of adjustment desired for each OTU.
+This script takes a biom-formatted ASV table and multiplies or divides all values by 
+a single user-defined value, or adjusts each ASV separately by importing a file
+containing the amount of adjustment desired for each ASV.
 
 Note: Addition and subtraction are not currently supported
 """
@@ -17,12 +17,12 @@ from qiime.util import make_option, write_biom_table, parse_command_line_paramet
 
 
 SCRIPT_INFO = {}
-SCRIPT_INFO['brief_description'] = 'Perform multiplication, division or normalization on an OTU table in biom format'
+SCRIPT_INFO['brief_description'] = 'Perform multiplication, division or normalization on an ASV table in biom format'
 SCRIPT_INFO['script_description'] = """biom_table_math_ops.py
 
-This script can perform three types of adjustments on the values of a biom-formatted OTU table:
-1) Multiply (-m) or divide (-d) all values of all OTUs by a SINGLE, user-supplied value.
-2) Divide all values of each OTU by a LIST of user-supplied values: one for each OTU.
+This script can perform three types of adjustments on the values of a biom-formatted ASV table:
+1) Multiply (-m) or divide (-d) all values of all ASVs by a SINGLE, user-supplied value.
+2) Divide all values of each ASV by a LIST of user-supplied values: one for each ASV.
 3) Normalize the table to unity (columns/samples will sum to 1).
 
 Notes:
@@ -32,7 +32,7 @@ Notes:
   without saving an output file. This allows one to quickly determine the MPSD for a biom file 
   without creating a new file (though the MPSD is also displayed after creating a new biom file).
 - To perform adjustments of type 2), an additional input file is required that contains a list of
-  OTU names and their corresponding adjustment values. This input file can be created with the
+  ASV names and their corresponding adjustment values. This input file can be created with the
   [rrna_copy_adjustments.py] script.
 - Note that the MPSD is typically less than the minimum sum of all sample sums *if the table has 
   fractional values*. It is calculated by using the same math functions employed in certain QIIME 
@@ -41,9 +41,9 @@ Notes:
   fractional values. Using a value <= to the MPSD will ensure that no samples are discarded. See 
   the '--depth' option in QIIME's [multiple_rarefactions_even_depth.py] script for more info. It
   is also worth noting that before performing multiple rarefactions, or a single subsampling, one 
-  should multiply the OTU table by a large constant (eg., 100 or 1000) so that when QIIME truncates
+  should multiply the ASV table by a large constant (eg., 100 or 1000) so that when QIIME truncates
   fractions it will only be a small portion of each value. Then, after rarefaction/subsampling, 
-  undo the multiplication by dividing the resulting OTU table by the amount used for multiplication.
+  undo the multiplication by dividing the resulting ASV table by the amount used for multiplication.
 
 Related scripts:
   convert_RDP_taxa_to_gg_format.py
@@ -53,21 +53,21 @@ Related scripts:
 
 SCRIPT_INFO['required_options'] = [
     make_option('-i', '--input_fp', type="existing_filepath",
-                help='The input biom OTU table filepath. Used only with --multiply_by option '),
+                help='The input biom ASV table filepath. Used only with --multiply_by option '),
 ]
 SCRIPT_INFO['optional_options'] = [
     make_option('-o', '--output_fp', type="new_filepath", help='Path to store result file'),
     make_option('-m', '--multiply_by', type='float',
-                help='Multiply OTU table values by this amount. Note: intended ' +
-                'for use on a single OTU table, prior to rarefactions, to overcome rounding ' +
+                help='Multiply ASV table values by this amount. Note: intended ' +
+                'for use on a single ASV table, prior to rarefactions, to overcome rounding ' +
                 'errors introduced by [multiple_rarefactions_even_depth.py] if operating on ' +
-                'an input OTU table containing decimal values'),
+                'an input ASV table containing decimal values'),
     make_option('-d', '--divide_by', type='float',
-                help='Divide OTU table values by this amount. Typical use is to "undo" the ' +
+                help='Divide ASV table values by this amount. Typical use is to "undo" the ' +
                 'effect of a previous --multiply_by operation.'),
     make_option('-l', '--list_fp', type="new_filepath", help='Path to file containing a LIST' +
-                'of user-supplied values, one for each OTU, with the format: <OTU><tab><value>'),
-    make_option('-n', '--normalize2unity', action='store_true', help='Normalize the OTU table ' +
+                'of user-supplied values, one for each ASV, with the format: <ASV><tab><value>'),
+    make_option('-n', '--normalize2unity', action='store_true', help='Normalize the ASV table ' +
                 'to unity. Each column will sum to 1.0'),
     make_option('-f', '--force', action='store_true',
                 dest='force', help='Force overwrite of existing output file' +
@@ -77,7 +77,7 @@ SCRIPT_INFO['version'] = __version__
 
 
 
-def load_otu_and_cnadjust_values(input_fp):
+def load_asv_and_cnadjust_values(input_fp):
     """Loads the output file of the [rrna_copy_adjustments.py] script"""
     d = {}
     with open(input_fp, 'r') as input_file:
@@ -117,13 +117,13 @@ def main():
     #notify user of what will be done
     print ("Loading ["+opts.input_fp+"]")
     if opts.list_fp != None:
-        print ("Dividing OTU table values by the values in: ["+opts.list_fp+"]")
+        print ("Dividing ASV table values by the values in: ["+opts.list_fp+"]")
     elif opts.output_fp != None and opts.multiply_by != None:
-        print ("Multiplying OTU table values by: ["+str(opts.multiply_by)+"]")
+        print ("Multiplying ASV table values by: ["+str(opts.multiply_by)+"]")
     elif opts.output_fp != None and opts.divide_by != None:
-        print ("Dividing OTU table values by: ["+str(opts.divide_by)+"]")
+        print ("Dividing ASV table values by: ["+str(opts.divide_by)+"]")
     elif opts.output_fp != None and opts.normalize2unity != None:
-        print ("Normalizing OTU table to unity")
+        print ("Normalizing ASV table to unity")
     elif opts.output_fp == None:
         pass
     else:
@@ -134,7 +134,7 @@ def main():
     #load the biom table
     currBiom = load_table(os.path.abspath(opts.input_fp))
 
-    #get the observations (otu ids)
+    #get the observations (asv ids)
     observ_ids = currBiom.ids(axis='observation')
     
     #get the sample ids
@@ -146,25 +146,25 @@ def main():
     #get the count data
     data = currBiom.matrix_data
     
-    #TODO: check that ALL OTUs IN THE OTU TABLE ARE IN THE ADJUSTMENTS FILE
-    # (Note that the reverse is not necessary - ie., it's okay if we're operating on a smaller/subset OTU table)
+    #TODO: check that ALL ASVs IN THE ASV TABLE ARE IN THE ADJUSTMENTS FILE
+    # (Note that the reverse is not necessary - ie., it's okay if we're operating on a smaller/subset ASV table)
     if opts.list_fp:
         #load the copy-number adjustments file
-        cn_adjustment = load_otu_and_cnadjust_values(opts.list_fp)
+        cn_adjustment = load_asv_and_cnadjust_values(opts.list_fp)
         
         #initialize a matrix to hold copy-number adjusted values
         cnadjusted = np.zeros(data.shape, dtype=np.float64)
         
-        #perform the specified copy-number adjustment on each OTU
-        for otu_id in cn_adjustment:
-            if currBiom.exists(otu_id, axis="observation"):
-                idx = currBiom.index(otu_id, 'observation')
-                row_vals = currBiom.data(otu_id, axis='observation', dense=True)
+        #perform the specified copy-number adjustment on each ASV
+        for asv_id in cn_adjustment:
+            if currBiom.exists(asv_id, axis="observation"):
+                idx = currBiom.index(asv_id, 'observation')
+                row_vals = currBiom.data(asv_id, axis='observation', dense=True)
                 #we'll assume that we always want to divide by the cn_adjustment value...
-                cnadjusted[idx,:] = row_vals / cn_adjustment[otu_id]
+                cnadjusted[idx,:] = row_vals / cn_adjustment[asv_id]
             else:
-                print ("*** Error *** OTU ID '"+otu_id+"' could not be found in ["+opts.input_fp+"]")
-                print ("(The adjustments file contains an OTU not found in the OTU table)")
+                print ("*** Error *** ASV ID '"+asv_id+"' could not be found in ["+opts.input_fp+"]")
+                print ("(The adjustments file contains an ASV not found in the ASV table)")
                 sys.exit(0)
         
         #put cnadjusted values into the original variable
@@ -194,11 +194,11 @@ def main():
     else:
         #perform selected mathematical operation
         if opts.multiply_by:
-            #multiply OTU table by MULTIPLY_BY (note that the type remains float64)
+            #multiply ASV table by MULTIPLY_BY (note that the type remains float64)
             data = np.rint(data * opts.multiply_by)
             
         elif opts.divide_by:
-            #divide OTU table by DIVIDE_BY
+            #divide ASV table by DIVIDE_BY
             data /= opts.divide_by
             
     #calculate the maximum possible subsampling depth that can be used by [multiple_rarefactions_even_depth.py]
@@ -208,9 +208,9 @@ def main():
     
     #create a new biom table with the modified data, but using the original observation/sample IDs/observ_metadata
     if type(observ_metadata) == 'NoneType':
-        newBiom = Table(data, observ_ids, sample_ids, table_id='OTU Table')
+        newBiom = Table(data, observ_ids, sample_ids, table_id='ASV Table')
     else:
-        newBiom = Table(data, observ_ids, sample_ids, observ_metadata, table_id='OTU Table')
+        newBiom = Table(data, observ_ids, sample_ids, observ_metadata, table_id='ASV Table')
     
     
     #delete any existing output file (or we'll get an error when trying to overwrite the existing biom file)
@@ -239,7 +239,7 @@ def main():
     #if table is not saved, remind user that max_sampling_depth will change if saved with a different math op later
     math_op_performed = (opts.multiply_by != None or opts.divide_by != None)
     if math_op_performed and opts.output_fp == None:
-        print ("(** NOTE ** This number ASSUMES YOU WILL SAVE and use an otu_table ",
+        print ("(** NOTE ** This number ASSUMES YOU WILL SAVE and use an asv_table ",
                "using the SAME multiplication or division value as given here)")
 
 

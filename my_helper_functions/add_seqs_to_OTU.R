@@ -2,7 +2,7 @@
 
 # Check if command line arguments are provided
 if (length(commandArgs(trailingOnly = TRUE)) != 2) {
-  stop("Usage: add_seqs_to_OTU_v2.R <input_text_otu_table> <output_text_otu_table>")
+  stop("Usage: add_seqs_to_ASV_v2.R <input_text_ASV_table> <output_text_ASV_table>")
 }
 
 # Get command line arguments
@@ -12,6 +12,6 @@ outfa_fp <- commandArgs(trailingOnly = TRUE)[2]
 # Load necessary functions
 source('/sw/paul_helper_scripts/pipeline_helper_functions.R')
 
-# Add sequences to otu table
-add_sequences_to_otu_table(otbl_fp, "rep_set/seqs_chimera_filtered_otus.fasta", outfa_fp)
+# Add sequences to ASV table
+add_sequences_to_ASV_table(otbl_fp, "rep_set/seqs_chimera_filtered_ASVs.fasta", outfa_fp)
 

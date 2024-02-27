@@ -25,11 +25,11 @@ loadQIIMEmap <- function(fp) {
     return(map)
 }
 
-loadQIIMEotutable <- function(fp) {
-#loads a QIIME-happy text otu table file
+loadQIIMEasvtable <- function(fp) {
+#loads a QIIME-happy text asv table file
     skip <- find_last_header_line(fp) - 1
     tbl <- read.table(file=fp, skip=skip, sep="\t", header=TRUE, fill=TRUE, comment.char="", stringsAsFactors=FALSE)
-    colnames(tbl)[1] <- "#OTU ID"
+    colnames(tbl)[1] <- "#ASV ID"
     rownames(tbl) <- tbl[[1]]
     return(tbl)
 }
@@ -63,7 +63,7 @@ seq_imp_fct <- function(fileloc) {
     return(fa2)
 }
 
-sortQIIMEotutable <- function(tbl, sortby="row", normalize_sort=FALSE) {
+sortQIIMEasvtable <- function(tbl, sortby="row", normalize_sort=FALSE) {
 #returns tbl sorted descending by rowSums or ascending by colSums
     #determine which columns have only numbers
     if(typeof(sortby) != "character") {
@@ -72,7 +72,7 @@ sortQIIMEotutable <- function(tbl, sortby="row", normalize_sort=FALSE) {
     column_classes <- unlist(lapply(tbl,class))
     numcols <- which(column_classes == "integer" | column_classes == "numeric")
     if (length(numcols) == 0) {
-        stop("No 'integer' or 'numeric' columns found in otu table! Cannot sort!")
+        stop("No 'integer' or 'numeric' columns found in ASV table! Cannot sort!")
     }
     if(sortby=="row") {
         if(normalize_sort == TRUE) {
@@ -95,7 +95,7 @@ sortQIIMEotutable <- function(tbl, sortby="row", normalize_sort=FALSE) {
     }
 }
 
-normalize_otutable <- function(tbl) {
+normalize_asvtable <- function(tbl) {
     original_class <- class(tbl)
     #ensure we have a dataframe so sapply works properly
     tbl <- as.data.frame(tbl)
@@ -103,7 +103,7 @@ normalize_otutable <- function(tbl) {
     column_classes <- sapply(tbl,class)
     numcols <- which(column_classes == "integer" | column_classes == "numeric")
     if (length(numcols) == 0) {
-        stop("No 'integer' or 'numeric' columns found in otu table! Cannot normalize!")
+        stop("No 'integer' or 'numeric' columns found in ASV table! Cannot normalize!")
     }
     nc <- tbl[,numcols]
     nc <- t(t(nc)/colSums(nc))
@@ -119,8 +119,8 @@ add_counts_to_fasta_sequences <- function(otbl_fp=NULL, fasta_fp=NULL, out_fp=NU
     if(is.null(otbl_fp) | is.null(fasta_fp) | is.null(out_fp)) {
         stop("Usage is:\nadd_counts_to_fasta_sequences(otbl_fp, fasta_fp, out_fp)")
     }
-    #load otu table
-    tbl<-loadQIIMEotutable(otbl_fp)
+    #load asv table
+    tbl<-loadQIIMEasvtable(otbl_fp)
     #load fasta sequences
     fastaSeqs<-seq_imp_fct(fasta_fp)
     dim(fastaSeqs)
@@ -133,7 +133,7 @@ add_counts_to_fasta_sequences <- function(otbl_fp=NULL, fasta_fp=NULL, out_fp=NU
     fS<-fastaSeqs[rownames(tbl2),]
     #get rowSums
     rs<-rowSums(tbl2)
-    #make otu names with abundances
+    #make asv names with abundances
     rn<-paste0(">",names(rs)," ",rs)
     #check if rownames agree
     if(! all(names(rs)==rownames(fS)) ) {
@@ -142,12 +142,12 @@ add_counts_to_fasta_sequences <- function(otbl_fp=NULL, fasta_fp=NULL, out_fp=NU
     #replace sequence names
     fS[,1]<-rn
     #join/save
-    OTU_seq <- unlist(c(rbind(fS[,1],fS[,2])))
-    write.table(OTU_seq, file=out_fp, sep="", row.names=FALSE, col.names=FALSE, quote=FALSE)
+    ASV_seq <- unlist(c(rbind(fS[,1],fS[,2])))
+    write.table(ASV_seq, file=out_fp, sep="", row.names=FALSE, col.names=FALSE, quote=FALSE)
 }
 
-add_sequences_to_otu_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
-    usage <- "Usage: add_sequences_to_otu_table(<tablefp>, <fastafp>, <outfp>)"
+add_sequences_to_asv_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
+    usage <- "Usage: add_sequences_to_asv_table(<tablefp>, <fastafp>, <outfp>)"
     if(is.null(tblfp) | is.null(fastafp) | is.null(outfp)) {
         stop(usage)
     }
@@ -165,8 +165,8 @@ add_sequences_to_otu_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
         cat(usage,"\n")
         stop(errmessg)
     }
-    #load otu table
-    tbl <- loadQIIMEotutable(tblfp)
+    #load asv table
+    tbl <- loadQIIMEasvtable(tblfp)
     #load fasta sequences
     fastaSeqs <- seq_imp_fct(fastafp)
     #put sequences in the same order
@@ -178,7 +178,7 @@ add_sequences_to_otu_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
     #replace sequence names (that may contain abundances)
     fS[,1] <- rownames(fS)
     #join/save
-    OTU_seq <- unlist(c(rbind(paste0(">",fS[,1],"#",fS[,2]))))
-    tbl2 <- cbind(tbl, sequence=OTU_seq)
+    ASV_seq <- unlist(c(rbind(paste0(">",fS[,1],"#",fS[,2]))))
+    tbl2 <- cbind(tbl, sequence=ASV_seq)
     write.table(tbl2, file=outfp, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 }

@@ -1,6 +1,6 @@
-#This script loads an OTU table, sorts columns and rows, then saves the result
+#This script loads an ASV table, sorts columns and rows, then saves the result
 #Usage:
-# Rscript sort_otu_table.R
+# Rscript sort_asv_table.R
 
 source('/sw/paul_helper_scripts/pipeline_helper_functions.R')
 
@@ -9,10 +9,10 @@ library("optparse")
 args <- commandArgs(trailingOnly=TRUE)
 
 parser <- OptionParser()
-parser <- add_option(parser, c("-i", "--input_otbl"), type="character", default="otu_table_00.txt",
-        help="Input OTU table filepath [required].")
-parser <- add_option(parser, c("-o", "--output_otbl"), type="character", default="otu_table_01.txt",
-        help="Output OTU table filepath [required].")
+parser <- add_option(parser, c("-i", "--input_atbl"), type="character", default="asv_table_00.txt",
+        help="Input ASV table filepath [required].")
+parser <- add_option(parser, c("-o", "--output_atbl"), type="character", default="asv_table_01.txt",
+        help="Output ASV table filepath [required].")
 parser <- add_option(parser, c("-f", "--force_overwrite"), action="store_true", default=FALSE,
         help="Force overwrite of output file [optional].")
 
@@ -20,26 +20,26 @@ opts <- parse_args(parser, args=args)
 
 
 #options sanity check
-if(!file.exists(opts$input_otbl)){
-  stop(paste0('Cannot find [',opts$input_otbl,']\n'))
+if(!file.exists(opts$input_atbl)){
+  stop(paste0('Cannot find [',opts$input_atbl,']\n'))
 }
 #prevent accidental overwrite
-if(file.exists(opts$output_otbl) & !opts$force_overwrite) {
-    stop(paste0('** Warning! ** Output file [',opts$output_otbl,'] exists! (Use "-f" to overwrite)'))
+if(file.exists(opts$output_atbl) & !opts$force_overwrite) {
+    stop(paste0('** Warning! ** Output file [',opts$output_atbl,'] exists! (Use "-f" to overwrite)'))
 }
 
-#load otu table
-cat(paste0('Loading [',opts$input_otbl,']\n'))
-tbl <- loadQIIMEotutable(opts$input_otbl)
+#load asv table
+cat(paste0('Loading [',opts$input_atbl,']\n'))
+tbl <- loadQIIMEasvtable(opts$input_atbl)
 
 cat('Sorting...\n')
 
 #sort columns alphabetically
-tbl <- sortQIIMEotutable(tbl, sortby="col", normalize_sort=FALSE)
+tbl <- sortQIIMEasvtable(tbl, sortby="col", normalize_sort=FALSE)
 
 #sort rows descending by rowSums
-tbl <- sortQIIMEotutable(tbl, sortby="row", normalize_sort=FALSE)
+tbl <- sortQIIMEasvtable(tbl, sortby="row", normalize_sort=FALSE)
 
 #save
-cat('Saving [',opts$output_otbl,']\n')
-write.table(tbl, file=opts$output_otbl, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+cat('Saving [',opts$output_atbl,']\n')
+write.table(tbl, file=opts$output_atbl, sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)

@@ -18,7 +18,7 @@ singletKaccns = {}
 
 def usage():
     x="""
-Create lists of non-contaminating (target) and contaminating (non-target) OTUs by parsing local BLAST results of your sequences against the nt database
+Create lists of non-contaminating (target) and contaminating (non-target) ASVs by parsing local BLAST results of your sequences against the nt database
 
 Usage: perl $0 [OPTIONS]
 
@@ -34,10 +34,10 @@ Usage: perl $0 [OPTIONS]
                           merge.dmp can be downloaded from: ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
    -p <prefix>         # Prefix for output files. Useful for version designations if trying multiple filtering variations (eg., 'v1', etc.)
    -n <integer>        # Stop processing BLAST output after n hits. Useful for debugging
-   -x <regex>          # Report results by groups found in OTU names with Regular Expression <regex>
+   -x <regex>          # Report results by groups found in ASV names with Regular Expression <regex>
                           Special use cases only. Eg.,  Velvet or PFOR2 contigs that have modified fasta names containing SampleIDs
                           The regex should find the SampleID and contig lengths. Eg: 'denovoA10contig.14_0_149'=~/denovo(\w\d+)\S+_(\d+)/
-   -N                  # Reject all OTUs with [N]o BLAST hits. See related option -d. (Default: Keep)
+   -N                  # Reject all ASVs with [N]o BLAST hits. See related option -d. (Default: Keep)
    -f                  # Force overwrite of output files (including log)
    -v                  # Print version and exit
    -h                  # This help
@@ -62,15 +62,15 @@ IMPORTANT: Before using this script you must download/create information from NC
     -e Bacteria__k_txid2_AND_Environmental_Samples.txt,Archaea__k_txid2157_AND_Environmental_Samples.txt \\
     -r Mouse__f_txid10066_NOT_Environmental_Samples.txt
     -t ~/path/to/directory
-   The script will output 4 files: [otus2keep.txt], [otus2reject.txt], [otus2withNohits.txt] and [otus2filter.log]
+   The script will output 4 files: [ASVs2keep.txt], [ASVs2reject.txt], [ASVs2withNohits.txt] and [ASVs2filter.log]
 6) Use QIIME filtering scripts to remove/keep the contaminating/non-contaminating reads from your files. Example command:
-    filter_otus_from_otu_table.py -i original_otu_table.biom -o filtered_otu_table.biom --otu_ids_to_exclude_fp otus2reject.txt
+    filter_otus_from_otu_table.py -i original_asv_table.biom -o filtered_asv_table.biom --otu_ids_to_exclude_fp ASVs2reject.txt
 
 ** IMPORTANT: Providing a new <merge.dmp> file SHOULD BE CONSIDERED MANDATORY if the taxIDs files are newer than the BLAST db **
    LIKEWISE, ensure that the downloaded taxIDs ARE NOT OLDER than the BLAST db
    NCBI's taxonomy is not curated. To prevent sequences with dubiously assigned taxonomy from confounding your filtering results, add
     their ACCN.ver IDs to a file named [AccnsWithDubiousTaxAssigns.txt] in the same directory as the TaxonID files
-   Lastly, note that OTUs with blast hits to the PhiX taxonID (10847) are automatically rejected
+   Lastly, note that ASVs with blast hits to the PhiX taxonID (10847) are automatically rejected
 """
     print(x)
 #
@@ -143,10 +143,10 @@ class ParseBlastout(object):
 class blastHit:
     '''A blastHit object contains all relevant information from
        a blast hit in a condensed, sorted, and accessible way'''
-    def __init__(self, otu, size, hitlines, usersTaxIDs):
+    def __init__(self, asv, size, hitlines, usersTaxIDs):
         #bitscore, pident, taxid
         #determine: count of bitscore/taxid pairs
-        self.otu = otu
+        self.asv = asv
         self.size = size
         self.num_hits = len(hitlines)
         
@@ -271,8 +271,8 @@ class blastHit:
     def final_des(self):
         return(self.final_des)
         
-    def otu(self):
-        return(self.otu)
+    def asv(self):
+        return(self.asv)
     def size(self):
         return(self.size)
     def num_hits(self):
@@ -339,35 +339,35 @@ def get_top_bitscore_counts_per_taxid(lol):
 def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     '''Parse the list returned from the ParseBlastout iterator'''
     #TODO: replace multiple try/except blocks... pre-determine type elsewhere and send appropriate function with each call?
-    #Query line (blasthit[0]) format examples:                                   #  otu ... size
-    # Query: Otu1 1343563                                                        # Otu1 ... 1343563
+    #Query line (blasthit[0]) format examples:                                   #  asv ... size
+    # Query: Asv1 1343563                                                        # Asv1 ... 1343563
     # Query: NB501124:253:HFJFVBGXB:1:11101:11597:1050 1:N:0:CACCGG;size=726951; # NB501124:253:HFJFVBGXB:1:11101:11597:1050 1:N:0:CACCGG; ... 726951
     # Query: TRINITY_DN393_c0_g1_i1 len=27077 path=[27055:0-27076]               # TRINITY_DN393_c0_g1_i1 ... 27077
     # Query: NODE_1_length_19883_cov_76.107931_g0_i0                             # NODE_1_length_19883_cov_76.107931_g0_i0 ... 19883
     failed = False
     try:
-        #format 1 (usearch OTU + abundance)
-        (otu, size) = blasthit[0][9:].split(' ')
+        #format 1 (usearch ASV + abundance)
+        (asv, size) = blasthit[0][9:].split(' ')
     except:
         try:
             #format 2 (usearch-dereplicated fastq)
-            (otu, size) = blasthit[0][9:].split('size=')
+            (asv, size) = blasthit[0][9:].split('size=')
         except:
             try:
                 #format 3 (trinity contig)
                 bhit = re.sub(r' path=.+', '', blasthit[0][9:])
-                (otu, size) = bhit.split(' len=')
+                (asv, size) = bhit.split(' len=')
             except:
                 try:
                     #format 4 (Spades contig)
-                    otu = blasthit[0][9:]
-                    tmp = re.sub(r'_cov_.+', '', otu)
+                    asv = blasthit[0][9:]
+                    tmp = re.sub(r'_cov_.+', '', asv)
                     size = re.sub(r'NODE_\d+_length_', '', tmp)
                 except:
                     failed = True
                     
     if failed:
-        print("Error: Could not find an 'otu' and/or 'size' in this line:", file=sys.stderr)
+        print("Error: Could not find an 'asv' and/or 'size' in this line:", file=sys.stderr)
         print(blasthit[0], file=sys.stderr)
         print("(From func: parse_blast_hit)", file=sys.stderr)
         sys.exit(0)
@@ -383,7 +383,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     values = []
     lol = [] # lines of lines. temp var
     
-    #Otu1_633460 [EU]->[K]
+    #Asv1_633460 [EU]->[K]
     #  E[(450|100.000|77133|144) (450|100.000|194843|1) (450|100.000|348578|1)
     
     #delete comment lines
@@ -418,7 +418,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
         #append [bitscore, index] to bitscores
         bitscores.append( [bitscore, idx] )
         
-        #get rid of OTU/seq name element
+        #get rid of ASV/seq name element
         hitvals = hitvals[1:]
         #store just what we want
         lol.append([accnver, pident, evalue, bitscore, staxids, stitle, qcovs])
@@ -435,12 +435,12 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     
     if(0):
         if len(lol) > 1:
-            print("OTU", otu)
+            print("ASV", asv)
             print("size", size)
             print('\n'.join(str(' '.join(str(x) for x in v)) for v in lol))
             sys.exit(0)
             
-    return (otu, size, lol)
+    return (asv, size, lol)
 #
 
 
@@ -467,7 +467,7 @@ def get_Fields(opts):
 def parse_options(argv):
     #create an ArgumentParser object
     parser = argparse.ArgumentParser(
-        description="Create lists of non-contaminating (target) and contaminating (non-target) OTUs by parsing local BLAST results of your sequences against the nt database.")
+        description="Create lists of non-contaminating (target) and contaminating (non-target) ASVs by parsing local BLAST results of your sequences against the nt database.")
     
     #add arguments
     requiredArg = parser.add_argument_group('required arguments')
@@ -479,7 +479,7 @@ def parse_options(argv):
     requiredArg.add_argument("-t", "--taxassndir", help="The directory that AccnsWithDubiousTaxAssigns.txt is or will be created in. Usually where USEARCH is located.")
     
     #parser.add_argument("-o", "--output_dir", help="The directory to save output files. Default: current directory")
-    parser.add_argument("-p", "--prefix", help="Prefix to use for [otus2keep.txt] and [otus2filter.log]. Eg., 'CLas.CACCGG'")
+    parser.add_argument("-p", "--prefix", help="Prefix to use for [ASVs2keep.txt] and [ASVs2filter.log]. Eg., 'CLas.CACCGG'")
     parser.add_argument("-n", "--num_hits", help="Number of hits to process (to terminate early)")
     parser.add_argument("-f", "--force_overwrite", help="Force overwrite of output files (including log).",
                         action='store_true')
@@ -641,7 +641,7 @@ def getIndexOf(opts, headrIDX):
 
 
 def keep_or_reject_judgement1(bh, scrdes):
-    '''Use info from the blast hits to decide whether an OTU/sequence should be [K]ept or [R]ejected'''
+    '''Use info from the blast hits to decide whether an ASV/sequence should be [K]ept or [R]ejected'''
     
     #concatenate whatever E/K/R/U/N groups that were found in this blast hit - the "initial designation"
     init_des = ''.join(bh.init_des)
@@ -734,8 +734,8 @@ def keep_or_reject_judgement1(bh, scrdes):
         elif highestbitK == highestbitR and totalhighestbitcountK <= totalhighestbitcountR and len(txidsK) <= len(txidsR): ## <- experimental... but we think better
             final_des = "R"
             choice = [2, len(txidsK), len(txidsR), totalhighestbitcountK, totalhighestbitcountR, "|", numberOfHighestBitScoresK, numberOfHighestBitScoresR, singletRaccns]
-            #Otu32751_26 [EKRU]->[R] #<- very interesting... check w/james
-            #Otu54198_14 [EKRU]->[R] #<- also interesting... check that the highest pidents are being kept/not overwritten with lower ones
+            #Asv32751_26 [EKRU]->[R] #<- very interesting... check w/james
+            #Asv54198_14 [EKRU]->[R] #<- also interesting... check that the highest pidents are being kept/not overwritten with lower ones
             
         elif highestbitK == highestbitU and totalhighestbitcountK <= totalhighestbitcountU: ##
             final_des = "R"
@@ -816,8 +816,8 @@ def keep_or_reject_judgement1(bh, scrdes):
 
 
 def print_to_log(bh, logfh):
-    #print OTU name, size and initial designation
-    logfh.write('_'.join([bh.otu, bh.size]) + ' ['+''.join(bh.init_des)+']->' + '['+bh.final_des+']\n')
+    #print ASV name, size and initial designation
+    logfh.write('_'.join([bh.asv, bh.size]) + ' ['+''.join(bh.init_des)+']->' + '['+bh.final_des+']\n')
     
     #print results
     logfh.write('  E[')
@@ -860,7 +860,7 @@ def tabulate_results_summary(bh, des_summary):
     #tabulate results summary
     init_des = ''.join(bh.init_des)
     final_des = ''.join(bh.final_des)
-    des_summary[init_des][final_des]['OTUs'] += 1
+    des_summary[init_des][final_des]['ASVs'] += 1
     des_summary[init_des][final_des]['Reads'] += int(bh.size)
 #
 
@@ -869,38 +869,38 @@ def save_designation_summary(outf4, des_summary):
     with open(outf4, "w") as sumfh:
         d = json.loads(json.dumps(des_summary))
         initial_designators = sorted(d.keys())
-        sumfh.write(('{:^7}|{:^8}|{:^12}|{:^10}|{:^10}'.format("Dsgntr","OTUs","Reads","Rd/OTU","newDsgntr")))
+        sumfh.write(('{:^7}|{:^8}|{:^12}|{:^10}|{:^10}'.format("Dsgntr","ASVs","Reads","Rd/ASV","newDsgntr")))
         sumfh.write("\n")
-        tot_num_otusK = 0
-        tot_num_otusR = 0
-        tot_num_otus = 0
+        tot_num_asvsK = 0
+        tot_num_asvsR = 0
+        tot_num_asvs = 0
         tot_num_readsK = 0
         tot_num_readsR = 0
         tot_num_reads = 0
         for init_des in initial_designators:
             finaldes = sorted(d[init_des].keys())
             for final_des in finaldes:
-                num_otus  = d[init_des][final_des]['OTUs']
+                num_asvs  = d[init_des][final_des]['ASVs']
                 num_reads = d[init_des][final_des]['Reads']
-                reads_per_otu = int(round(num_reads / num_otus))
-                sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format(init_des, num_otus, num_reads, reads_per_otu, final_des)))
+                reads_per_asv = int(round(num_reads / num_asvs))
+                sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format(init_des, num_asvs, num_reads, reads_per_asv, final_des)))
                 sumfh.write("\n")
                 #calc totals
-                tot_num_otus  += num_otus
+                tot_num_asvs  += num_asvs
                 tot_num_reads += num_reads
                 #calc totals by final designation
                 if final_des == 'K':
-                    tot_num_otusK  += num_otus
+                    tot_num_asvsK  += num_asvs
                     tot_num_readsK += num_reads
                 else:
-                    tot_num_otusR  += num_otus
+                    tot_num_asvsR  += num_asvs
                     tot_num_readsR += num_reads
         #
-        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("TotalK:", tot_num_otusK, tot_num_readsK, "", "K")))
+        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("TotalK:", tot_num_asvsK, tot_num_readsK, "", "K")))
         sumfh.write("\n")
-        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("TotalR:", tot_num_otusR, tot_num_readsR, "", "R")))
+        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("TotalR:", tot_num_asvsR, tot_num_readsR, "", "R")))
         sumfh.write("\n")
-        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("Total:", tot_num_otus, tot_num_reads, "", "K+R")))
+        sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format("Total:", tot_num_asvs, tot_num_reads, "", "K+R")))
         sumfh.write("\n")
         
 #
@@ -968,10 +968,10 @@ def main(argv):
     parser = ParseBlastout(opts.input_fp)
     
     #prep output filenames
-    outf1 = "otus2filter.log"
-    outf2 = "otus2keep.txt"
-    outf3 = "otus2reject.txt"
-    outf4 = "otus2summary.txt"
+    outf1 = "ASVs2filter.log"
+    outf2 = "ASVs2keep.txt"
+    outf3 = "ASVs2reject.txt"
+    outf4 = "ASVs2summary.txt"
     outf5 = "bad_accns.txt"
     if opts.prefix:
         if opts.prefix[-1] != ".":
@@ -985,24 +985,24 @@ def main(argv):
     #open output files
     with open(outf1, "w") as logfh, open(outf2, "w") as kfh, open(outf3, "w") as rfh:
         
-        #initialize a dict to check whether we encounter the same OTU more than once
-        otus = {}
+        #initialize a dict to check whether we encounter the same ASV more than once
+        asvs = {}
         #parse the blastout file
         num_hits = 0
         for blasthit in parser:
             #parse the blasthit object
-            (otu, size, hitlines) = parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns)
+            (asv, size, hitlines) = parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns)
             
-            if otu in otus:
-                #we've got a concatenated blastout file with re-blasted OTUs
+            if asv in asvs:
+                #we've got a concatenated blastout file with re-blasted ASVs
                 #TODO add/use this info instead of skipping?
                 # unecessary IF we put the deeper/better blasts at the top. if not, we're tossing good info
                 # but for now, we'll skip
                 continue
-            otus[otu] = 1
+            asvs[asv] = 1
             
             #create a blastHit object
-            bh = blastHit(otu, size, hitlines, usersTaxIDs_d)
+            bh = blastHit(asv, size, hitlines, usersTaxIDs_d)
             
             #make classification decision
             keep_or_reject_judgement1(bh, scrdes)
@@ -1012,9 +1012,9 @@ def main(argv):
             
             #save keeper/reject IDs to file
             if bh.final_des == "K":
-                kfh.write(otu + "\n")
+                kfh.write(asv + "\n")
             elif bh.final_des == "R":
-                rfh.write(otu + "\n")
+                rfh.write(asv + "\n")
                 
             #print results to log as we go
             print_to_log(bh, logfh)

@@ -5,7 +5,7 @@ use warnings;
 # Check for correct number of arguments
 die "Usage: $0 my.blastout output_file.txt
 
-This script loads a BLAST output file and reports which OTUs still 'need' reblasting.
+This script loads a BLAST output file and reports which ASVs still 'need' reblasting.
 " unless @ARGV == 2;
 
 # Initialize variables

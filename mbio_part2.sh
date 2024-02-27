@@ -69,7 +69,7 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 
-HDIR=/sw/paul_helper_scripts
+HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/paul_helper_functions
 
 # show your fastq files 
 if [ ! -e "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" ]; then
@@ -193,7 +193,7 @@ echo " - -- --- ---- ---- --- -- -
 Stats ready. Please view and select your trim length accordingly.
 Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt
 
-Part 3 will combine as many of your data files as you specify into a single OTU table. 
+Part 3 will combine as many of your data files as you specify into a single ASV table. 
 You will indicate your trim length under -l and an output file for your results under -o.
 
 -j will be all the samples you want to include by output directory name 

@@ -4,15 +4,15 @@
 """
 blast_assign_taxonomy.py
 
-Loads an [otus2filter.log] file created by [filter_contaminating_reads.py] and assigns taxonomy to the OTUs/query sequences
+Loads an [ASVs2filter.log] file created by [filter_contaminating_reads.py] and assigns taxonomy to the ASVs/query sequences
 
 Usage:
-    blast_assign_taxonomy.py -i <file> --db <file> -m <email@email.com> [-o <file>] [-K <int>] [-E <int>] [--add_sizes] [--assign_all] [--regex <regex>] [--otu <otu>]
+    blast_assign_taxonomy.py -i <file> --db <file> -m <email@email.com> [-o <file>] [-K <int>] [-E <int>] [--add_sizes] [--assign_all] [--regex <regex>] [--asv <asv>]
     blast_assign_taxonomy.py --version
     blast_assign_taxonomy.py -h
 
 Arguments:
-    -i <file>     filepath to otus2filter.log
+    -i <file>     filepath to ASVs2filter.log
     --db <file>   filepath to json taxonomy database (eg: path-to/taxonomyDB.json)
     -m <email>    user's email for NCBI reporting
 
@@ -20,15 +20,15 @@ Options:
     -o <file>        output filepath (if not defined, prints to STDOUT)
     -K <int>         minimum acceptable bitscore for Keeper hits [default: 0]
     -E <int>         minimum acceptable bitscore for Environmental hits [default: 0]
-    --assign_all     assign taxonomy even to Rejected OTUs (including PhiX) [default: False]
-    --add_sizes      add OTU sizes to output [default: False]
-    --regex <regex>  use a custom regular expression to detect an "Otu" line [default: ^Otu]
+    --assign_all     assign taxonomy even to Rejected ASVs (including PhiX) [default: False]
+    --add_sizes      add ASV sizes to output [default: False]
+    --regex <regex>  use a custom regular expression to detect an "Asv" line [default: ^Asv]
     --version        version
-    --otu <otu>      debugging info
+    --asv <asv>      debugging info
     -h               this help
 
 Related scripts:
-1) filter_contaminating_reads.py (creates the [otus2filter.log] file)
+1) filter_contaminating_reads.py (creates the [ASVs2filter.log] file)
 """
 
 
@@ -45,10 +45,10 @@ import re
 import os
 
 
-class OTU:
-    '''Holds all blastn hits to a single otu found in an [otus2filter.log] file'''
-    def __init__(self, otu, size, designation, predesignation):
-        self.id = str(otu)
+class ASV:
+    '''Holds all blastn hits to a single asv found in an [ASVs2filter.log] file'''
+    def __init__(self, asv, size, designation, predesignation):
+        self.id = str(asv)
         self.size = int(size)
         self.designation = designation       # K or R
         self.predesignation = predesignation # EKU, N, etc.
@@ -167,9 +167,9 @@ def get_starting_line(opts):
     return (starting_line)
 
 
-def parse_otus2filter_log(opts):
+def parse_ASVs2filter_log(opts):
     ''' '''
-    otu_list = []
+    asv_list = []
     # stopAt = 5000 ###
 
     starting_line = get_starting_line(opts)
@@ -181,41 +181,41 @@ def parse_otus2filter_log(opts):
             next(infile)
 
         #-- real data processing starts here --#
-        nOTUs = 0
-        finishedOTU = False
+        nASVs = 0
+        finishedASV = False
         for line in infile:
             line = line.rstrip()
             if re.search(opts['--regex'], line) is not None:
-                # Otu96762_2 [EKU]->[K]
-                #create a new otuObj
-                otuline = re.split(" ", line)                 # ['Otu96762_2', '[EKU]->[K]']
-                otu,size = re.split("_", otuline[0])          # ['Otu96762_2', '2']
-                designations = (re.split("->", otuline[1]))   # ['[EKU]', '[K]']
+                # Asv96762_2 [EKU]->[K]
+                #create a new asvObj
+                asvline = re.split(" ", line)                 # ['Asv96762_2', '[EKU]->[K]']
+                asv,size = re.split("_", asvline[0])          # ['Asv96762_2', '2']
+                designations = (re.split("->", asvline[1]))   # ['[EKU]', '[K]']
                 predesignation = designations[0][1:-1]        # 'EKU'
                 designation = designations[1][1:-1]           # 'K'
-                otuObj = OTU(otu,size,designation,predesignation)
+                asvObj = ASV(asv,size,designation,predesignation)
                 continue
             elif re.search(r"^\S+size=", line) is not None:
                 # F001_1027355;size=8;_0 [EKU]->[K]
-                #create a new otuObj
-                otuline = re.split(" ", line)                 # ['F001_100692;size=100;_0', '[EK]->[K]']
-                otu,size = re.split(";_", otuline[0])         # ['F001_1027355;size=8', '0']
-                otu = otu+";"
-                designations = (re.split("->", otuline[1]))   # ['[EK]', '[K]']
+                #create a new asvObj
+                asvline = re.split(" ", line)                 # ['F001_100692;size=100;_0', '[EK]->[K]']
+                asv,size = re.split(";_", asvline[0])         # ['F001_1027355;size=8', '0']
+                asv = asv+";"
+                designations = (re.split("->", asvline[1]))   # ['[EK]', '[K]']
                 predesignation = designations[0][1:-1]        # 'EK'
                 designation = designations[1][1:-1]           # 'K'
-                otuObj = OTU(otu,size,designation,predesignation)
+                asvObj = ASV(asv,size,designation,predesignation)
                 continue
             if re.search("^TRINITY", line) is not None:
                 #TRINITY_DN393_c0_g1_i1_27077 [KU]->[K]
-                #create a new otuObj
-                otuline = re.sub(r'_(\d+)', r'__\1', line)    #  'TRINITY_DN393_c0_g1_i1__27077 [KU]->[K]'
-                otuline = re.split(" ", otuline)              # ['TRINITY_DN393_c0_g1_i1__27077', '[KU]->[K]']
-                otu,size = re.split("__", otuline[0])         # ['TRINITY_DN393_c0_g1_i1', '27077']
-                designations = (re.split("->", otuline[1]))   # ['[KU]', '[K]']
+                #create a new asvObj
+                asvline = re.sub(r'_(\d+)', r'__\1', line)    #  'TRINITY_DN393_c0_g1_i1__27077 [KU]->[K]'
+                asvline = re.split(" ", asvline)              # ['TRINITY_DN393_c0_g1_i1__27077', '[KU]->[K]']
+                asv,size = re.split("__", asvline[0])         # ['TRINITY_DN393_c0_g1_i1', '27077']
+                designations = (re.split("->", asvline[1]))   # ['[KU]', '[K]']
                 predesignation = designations[0][1:-1]        # 'KU'
                 designation = designations[1][1:-1]           # 'K'
-                otuObj = OTU(otu,size,designation,predesignation)
+                asvObj = ASV(asv,size,designation,predesignation)
                 continue
             elif re.search(r"  E\[", line) is not None:
                 hitType = "E"
@@ -225,28 +225,28 @@ def parse_otus2filter_log(opts):
                 hitType = "R"
             elif re.search(r"  U\[", line) is not None:
                 hitType = "U"
-                finishedOTU = True
+                finishedASV = True
             else:
                 continue
 
-            #get line ready to add to otuObj
+            #get line ready to add to asvObj
             line = line[4:]
             line = re.sub(r'[()\[\]]', '', line)
             hitList = re.split(" ", line)
 
-            #add hitType and hitList to otuObj
+            #add hitType and hitList to asvObj
             if len(line) > 0 and hitType is not None:
-                otuObj.add_blast_hits(hitType, hitList)
+                asvObj.add_blast_hits(hitType, hitList)
                 hitType = None
 
-            if finishedOTU:
-                otu_list.append(otuObj)
-                nOTUs = nOTUs + 1
-                finishedOTU = False
-                # if nOTUs >= stopAt:
+            if finishedASV:
+                asv_list.append(asvObj)
+                nASVs = nASVs + 1
+                finishedASV = False
+                # if nASVs >= stopAt:
                     # break
 
-        return otu_list
+        return asv_list
 #
 
 def parse_xml_file(taxa_xml_file):
@@ -454,25 +454,25 @@ def get_localDB_taxonomy(opts):
     return old_taxid_dict
 #
 
-def get_otus2filter_taxonIDs_list(opts, otu_list):
+def get_ASVs2filter_taxonIDs_list(opts, asv_list):
     #@Returns list[taxonIDs]
     taxIDs = []
-    for otu in otu_list:
+    for asv in asv_list:
         #we'll always want "Keeper" taxIDs
-        if otu.designation == "K":
-            if otu.get_best_hit_taxIDs("K") is not None:
-                taxIDs += otu.get_best_hit_taxIDs("K")
-            if otu.get_best_hit_taxIDs("E") is not None:
-                taxIDs += otu.get_best_hit_taxIDs("E")
+        if asv.designation == "K":
+            if asv.get_best_hit_taxIDs("K") is not None:
+                taxIDs += asv.get_best_hit_taxIDs("K")
+            if asv.get_best_hit_taxIDs("E") is not None:
+                taxIDs += asv.get_best_hit_taxIDs("E")
 
         #and sometimes we'll want all taxIDs
         if opts["--assign_all"]:
             #we may assign from R, RU, EKRU, ... predesignations
-            if otu.get_best_hit_taxIDs("R") is not None:
-                taxIDs += otu.get_best_hit_taxIDs("R")
+            if asv.get_best_hit_taxIDs("R") is not None:
+                taxIDs += asv.get_best_hit_taxIDs("R")
             #ensure we include "Undesignated" taxa
-            if "U" in otu.predesignation:
-                taxIDs += otu.get_best_hit_taxIDs("U")
+            if "U" in asv.predesignation:
+                taxIDs += asv.get_best_hit_taxIDs("U")
 
     taxIDs_dict = {}
     for taxID in taxIDs:
@@ -580,21 +580,21 @@ def taxID_is_integer(x):
         return True
 
 #a control function to get taxonomies from all sources
-def get_taxonomy(opts, otu_list):
+def get_taxonomy(opts, asv_list):
     #@Returns dict[taxonIDs]=taxonomic_lineages
 
     localDB_taxonomy_dict = get_localDB_taxonomy(opts)
-    otus2filter_taxonIDs_list = get_otus2filter_taxonIDs_list(opts, otu_list)
+    ASVs2filter_taxonIDs_list = get_ASVs2filter_taxonIDs_list(opts, asv_list)
 
-    #determine which of the otus2filter_taxonIDs are new
-    new_taxonIDs_list = list(set(otus2filter_taxonIDs_list) - set(localDB_taxonomy_dict.keys()))
+    #determine which of the ASVs2filter_taxonIDs are new
+    new_taxonIDs_list = list(set(ASVs2filter_taxonIDs_list) - set(localDB_taxonomy_dict.keys()))
 
     #ensure all taxIDs are okay (are integers)
     new_taxonIDs_list[:] = [x for x in new_taxonIDs_list if taxID_is_integer(x)]
 
     if opts["debug"]:
         print(": len(localDB_taxonomy_dict):",len(localDB_taxonomy_dict), file=sys.stderr)
-        print(": len(otus2filter_taxonIDs_list):",len(otus2filter_taxonIDs_list), file=sys.stderr)
+        print(": len(ASVs2filter_taxonIDs_list):",len(ASVs2filter_taxonIDs_list), file=sys.stderr)
         print(": len(new_taxonIDs_list):",len(new_taxonIDs_list), file=sys.stderr)
 
     #update localDB_taxonomy_dict with any new taxa
@@ -623,7 +623,7 @@ def get_taxonomy(opts, otu_list):
     return localDB_taxonomy_dict
 #
 
-def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
+def devel__print_blast_hit_summaries(opts, asv_list, taxonomy_dict):
     ignored_taxonomy_dict = {}
     ignored_taxonomy_dict['77133'] = 1
     ignored_taxonomy_dict['378812'] = 1
@@ -632,31 +632,31 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
     Kbits = {}
     Kbits2 = {}
     #add info to Kbits dict
-    for otu in otu_list:
-        #print(otu.id+"_"+str(otu.size), otu.designation)
-        if otu.designation == "K":
-            otu_name = otu.id+"_"+str(otu.size)
-            if otu.get_best_hit_taxIDs("K") is not None:
-                best_hit_bitscoreK = otu.get_best_hit_bitscore("K")
+    for asv in asv_list:
+        #print(asv.id+"_"+str(asv.size), asv.designation)
+        if asv.designation == "K":
+            asv_name = asv.id+"_"+str(asv.size)
+            if asv.get_best_hit_taxIDs("K") is not None:
+                best_hit_bitscoreK = asv.get_best_hit_bitscore("K")
                 #print("  Kbit["+str(best_hit_bitscoreK)+"]")
                 #make a list of top taxonomies
                 tmptaxa = []
                 tmptaxa2 = []
-                for txid in otu.get_best_hit_taxIDs("K"):
+                for txid in asv.get_best_hit_taxIDs("K"):
                     if txid not in ignored_taxonomy_dict:
                         #print("   "+txid+"\t"+taxonomy_dict[txid])
                         tmptaxa.append([str(txid)+"\t"+taxonomy_dict[txid]])
                         tmptaxa2.append(taxonomy_dict[txid].split(";"))
                         # tmptaxa2.append(taxonomy_dict[txid])
 
-                #if there are >= N taxonomies for this otu
+                #if there are >= N taxonomies for this asv
                 if len(tmptaxa2) >= 2:
                     #add it tmptaxa to Kbits
                     if best_hit_bitscoreK not in Kbits:
                         Kbits[best_hit_bitscoreK] = {}
                         Kbits2[best_hit_bitscoreK] = {}
-                    Kbits[best_hit_bitscoreK][otu_name] = tmptaxa
-                    Kbits2[best_hit_bitscoreK][otu_name] = tmptaxa2
+                    Kbits[best_hit_bitscoreK][asv_name] = tmptaxa
+                    Kbits2[best_hit_bitscoreK][asv_name] = tmptaxa2
     #
     if 0:
         #prints taxonomy in Kbits
@@ -665,9 +665,9 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
         bitscoresK.sort(key=lambda x: float(x), reverse=True)
         for best_hit_bitscoreK in bitscoresK:
             print("Kbit["+str(best_hit_bitscoreK)+"]")
-            for otu_name in Kbits[best_hit_bitscoreK]:
-                print("  ["+str(otu_name)+"]")
-                for taxa in Kbits[best_hit_bitscoreK][otu_name]:
+            for asv_name in Kbits[best_hit_bitscoreK]:
+                print("  ["+str(asv_name)+"]")
+                for taxa in Kbits[best_hit_bitscoreK][asv_name]:
                     print("    ",''.join(taxa))
             print()
     else:
@@ -677,12 +677,12 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
         for best_hit_bitscoreK in bitscoresK:
             lowComTaxaLev = {}
             print("Kbit["+str(best_hit_bitscoreK)+"]")
-            for otu_name in Kbits2[best_hit_bitscoreK]:
-                # print("  ["+str(otu_name)+"]")
-                # for taxa in Kbits2[best_hit_bitscoreK][otu_name]:
+            for asv_name in Kbits2[best_hit_bitscoreK]:
+                # print("  ["+str(asv_name)+"]")
+                # for taxa in Kbits2[best_hit_bitscoreK][asv_name]:
                     # print("    ",' '.join(taxa))
-                taxonomies_list = Kbits2[best_hit_bitscoreK][otu_name]
-                lowest_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, otu)
+                taxonomies_list = Kbits2[best_hit_bitscoreK][asv_name]
+                lowest_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, asv)
                 lentxa = len(lowest_taxa)
                 if lentxa not in lowComTaxaLev:
                     lowComTaxaLev[lentxa] = 1
@@ -697,7 +697,7 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
             print()
 #
 
-# def get_lowest_common_taxonomy(opts, taxonomies_list, otu):
+# def get_lowest_common_taxonomy(opts, taxonomies_list, asv):
 # #Note: does not currently exclude "unassigned_..." taxonomies, which can be problematic
 # #TODO try to remove assignments with 'unassigned_' in them (unless that's all we have)?
     # if len(taxonomies_list) == 0:
@@ -734,9 +734,9 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
             # if i == j and (re.search("__unclassified", i) is None and re.search("__unclassified", i) is None) ]
 
     # ###pdb
-    # if otu.id == "Otu701":
+    # if asv.id == "Asv701":
         # lct = lowest_common_taxa
-        # print("otu.id =", otu.id)
+        # print("asv.id =", asv.id)
     # ###pdb
     # ##no common taxonomic level was found! try to find a majority consensus##
     # if len(lowest_common_taxa) == 0:
@@ -782,18 +782,18 @@ def devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict):
                         # lowest_common_taxa = [maxTaxakey]
                     # else:
                         # lowest_common_taxa = ";".split(maxTaxakey)
-                    # # print("halting at", otu.id)
+                    # # print("halting at", asv.id)
                     # # pdb.set_trace()
                 # break
 
-    # # if(otu.id == opts["--otu"]):
+    # # if(asv.id == opts["--asv"]):
         # # print("halting")
         # # pdb.set_trace()
 
     # return lowest_common_taxa
 # #
 
-def get_lowest_common_taxonomy2(opts, taxonomies_list, otu):
+def get_lowest_common_taxonomy2(opts, taxonomies_list, asv):
 #Note: does not currently exclude "unassigned_..." taxonomies, which can be problematic
 #TODO try to remove assignments with 'unassigned_' in them (unless that's all we have)?
     if len(taxonomies_list) == 0:
@@ -929,91 +929,91 @@ def get_consensus_taxonomy(opts, taxonomies_list):
         return get_lowest_common_taxonomy2(opts, taxonomies_list)
 #
 
-def assigntax2all(opts, otu, taxonomy_dict):
+def assigntax2all(opts, asv, taxonomy_dict):
 
-    #assign taxonomy to all OTUs, even host/contaminants/PhiX that we would normally remove
+    #assign taxonomy to all ASVs, even host/contaminants/PhiX that we would normally remove
     best_hit_bitscore = "NA"
     best_hit_pident = "NA"
     best_hit_qcov = "NA"
     taxonomies_list = []
     # isPhiX = False
-    # if otu.id == "Otu7":
+    # if asv.id == "Asv7":
         # pdb.set_trace() ###pdb
 
     #assign taxonomy to the "Keepers", which have at least one K or E hits (or N)
-    if otu.designation == "K":
-        if otu.get_best_hit_taxIDs("K") is not None:
-            best_hit_bitscore = otu.get_best_hit_bitscore("K")
-            best_hit_pident = otu.get_best_hit_pident("K")
-            best_hit_qcov = otu.get_best_hit_qcov("K")
+    if asv.designation == "K":
+        if asv.get_best_hit_taxIDs("K") is not None:
+            best_hit_bitscore = asv.get_best_hit_bitscore("K")
+            best_hit_pident = asv.get_best_hit_pident("K")
+            best_hit_qcov = asv.get_best_hit_qcov("K")
             #make a list of top taxonomies
-            for txid in otu.get_best_hit_taxIDs("K"):
+            for txid in asv.get_best_hit_taxIDs("K"):
                 if txid in taxonomy_dict:
                     taxonomies_list.append(taxonomy_dict[txid].split(";"))
                 else:
                     print("K txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
 
-        elif otu.get_best_hit_taxIDs("E") is not None:
-            best_hit_bitscore = otu.get_best_hit_bitscore("E")
-            best_hit_pident = otu.get_best_hit_pident("E")
-            best_hit_qcov = otu.get_best_hit_qcov("E")
+        elif asv.get_best_hit_taxIDs("E") is not None:
+            best_hit_bitscore = asv.get_best_hit_bitscore("E")
+            best_hit_pident = asv.get_best_hit_pident("E")
+            best_hit_qcov = asv.get_best_hit_qcov("E")
             #make a list of top taxonomies
             #taxonomies_list = []
-            for txid in otu.get_best_hit_taxIDs("E"):
+            for txid in asv.get_best_hit_taxIDs("E"):
                 if txid in taxonomy_dict:
                     taxonomies_list.append(taxonomy_dict[txid].split(";"))
                 else:
                     print("E txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
 
-    #assign taxonomy to the "Rejected" OTUs
-    elif otu.designation == "R":
-        if otu.get_best_hit_taxIDs("R") is not None:
-            best_hit_bitscore = otu.get_best_hit_bitscore("R")
-            best_hit_pident = otu.get_best_hit_pident("R")
-            best_hit_qcov = otu.get_best_hit_qcov("R")
+    #assign taxonomy to the "Rejected" ASVs
+    elif asv.designation == "R":
+        if asv.get_best_hit_taxIDs("R") is not None:
+            best_hit_bitscore = asv.get_best_hit_bitscore("R")
+            best_hit_pident = asv.get_best_hit_pident("R")
+            best_hit_qcov = asv.get_best_hit_qcov("R")
             # #deal with PhiX
-            # if '10847' in otu.get_best_hit_taxIDs("R"):
+            # if '10847' in asv.get_best_hit_taxIDs("R"):
                 # #then we must assume this IS PhiX (other non-virus hits probably have PhiX contamination)
                 # #because cramming other Kingdoms together results in "Unassigned"
                 # #TODO: investigate/fix cases where best hits are also to bacteria and other viruses besides PhiX (these currently get "Unassigned")
                 # taxonomies_list.append(taxonomy_dict['10847'].split(";"))
             # else:
                 # #make a list of top taxonomies
-                # for txid in otu.get_best_hit_taxIDs("R"):
+                # for txid in asv.get_best_hit_taxIDs("R"):
                     # if txid in taxonomy_dict:
                         # taxonomies_list.append(taxonomy_dict[txid].split(";"))
                     # else:
                         # print("R txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
             #make a list of top taxonomies
-            for txid in otu.get_best_hit_taxIDs("R"):
+            for txid in asv.get_best_hit_taxIDs("R"):
                 if txid in taxonomy_dict:
                     taxonomies_list.append(taxonomy_dict[txid].split(";"))
                 else:
                     print("R txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
 
         #only assign from "Undesignated" when it's the only choice
-        elif "U" in otu.predesignation:
-            best_hit_bitscore = otu.get_best_hit_bitscore("U")
-            best_hit_pident = otu.get_best_hit_pident("U")
-            best_hit_qcov = otu.get_best_hit_qcov("U")
+        elif "U" in asv.predesignation:
+            best_hit_bitscore = asv.get_best_hit_bitscore("U")
+            best_hit_pident = asv.get_best_hit_pident("U")
+            best_hit_qcov = asv.get_best_hit_qcov("U")
             #make a list of top taxonomies
-            for txid in otu.get_best_hit_taxIDs("U"):
+            for txid in asv.get_best_hit_taxIDs("U"):
                 if txid in taxonomy_dict:
                     taxonomies_list.append(taxonomy_dict[txid].split(";"))
                 else:
                     print("U txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
 
-    #lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, otu)
-    lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, otu)
+    #lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, asv)
+    lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, asv)
     #adjusted_common_taxa = lowest_common_taxa
 
     #if all else fails... eg: 'N[(||NoTaxID|) ]'
     if len(lowest_common_taxa) == 0:
         lowest_common_taxa = ['k__Unassigned']
 
-    taxonomy = otu.id+"\t"+';'.join(lowest_common_taxa)+"\t"+str(best_hit_bitscore)+"\t"+str(best_hit_pident)+"\t"+str(best_hit_qcov)
+    taxonomy = asv.id+"\t"+';'.join(lowest_common_taxa)+"\t"+str(best_hit_bitscore)+"\t"+str(best_hit_pident)+"\t"+str(best_hit_qcov)
     if opts["--add_sizes"]:
-        taxonomy = taxonomy+"\t"+str(otu.size)
+        taxonomy = taxonomy+"\t"+str(asv.size)
 
     # if isPhiX:
         # taxonomy = None
@@ -1021,32 +1021,32 @@ def assigntax2all(opts, otu, taxonomy_dict):
     return taxonomy
 #
 
-def assigntax2keepers(opts, otu, taxonomy_dict):
+def assigntax2keepers(opts, asv, taxonomy_dict):
     print("Warning: do you really want to use assigntax2keepers?")
     sys.exit(0)
     #we'll assign taxonomy to the "Keepers" only, which have at least one K or E hits (or N)
     best_hit_bitscore = "NA"
     taxonomies_list = []
-    if otu.designation == "K":
+    if asv.designation == "K":
         lowest_common_taxa = []
-        if otu.get_best_hit_taxIDs("K") is not None:
-            best_hit_bitscore = otu.get_best_hit_bitscore("K")
+        if asv.get_best_hit_taxIDs("K") is not None:
+            best_hit_bitscore = asv.get_best_hit_bitscore("K")
             #make a list of top taxonomies
-            for txid in otu.get_best_hit_taxIDs("K"):
+            for txid in asv.get_best_hit_taxIDs("K"):
                 taxonomies_list.append(taxonomy_dict[txid].split(";"))
             # lowest_common_taxa = get_consensus_taxonomy(opts, taxonomies_list)
-            # lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, otu)
-            lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, otu)
+            # lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, asv)
+            lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, asv)
 
-        elif otu.get_best_hit_taxIDs("E") is not None: # and len(lowest_common_taxa) == 0:
-            best_hit_bitscore = otu.get_best_hit_bitscore("E")
+        elif asv.get_best_hit_taxIDs("E") is not None: # and len(lowest_common_taxa) == 0:
+            best_hit_bitscore = asv.get_best_hit_bitscore("E")
             #make a list of top taxonomies
             #taxonomies_list = []
-            for txid in otu.get_best_hit_taxIDs("E"):
+            for txid in asv.get_best_hit_taxIDs("E"):
                 taxonomies_list.append(taxonomy_dict[txid].split(";"))
             # lowest_common_taxa = get_consensus_taxonomy(opts, taxonomies_list)
-            # lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, otu)
-            lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, otu)
+            # lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, asv)
+            lowest_common_taxa = get_lowest_common_taxonomy2(opts, taxonomies_list, asv)
 
         adjusted_common_taxa = lowest_common_taxa ## needed only because we commented out: # if len(lowest_common_taxa) > 0:
 
@@ -1054,9 +1054,9 @@ def assigntax2keepers(opts, otu, taxonomy_dict):
         if len(adjusted_common_taxa) == 0:
             adjusted_common_taxa = ['Unassigned']
 
-        taxonomy = otu.id+"\t"+';'.join(adjusted_common_taxa)+"\t"+str(best_hit_bitscore)
+        taxonomy = asv.id+"\t"+';'.join(adjusted_common_taxa)+"\t"+str(best_hit_bitscore)
         if opts["--add_sizes"]:
-            taxonomy = taxonomy+"\t"+str(otu.size)
+            taxonomy = taxonomy+"\t"+str(asv.size)
 
     else:
         taxonomy = None
@@ -1064,7 +1064,7 @@ def assigntax2keepers(opts, otu, taxonomy_dict):
     return taxonomy
 #
 
-def assign_taxonomy(opts, otu_list, taxonomy_dict):
+def assign_taxonomy(opts, asv_list, taxonomy_dict):
     '''
 #Assignment Rules:
 1 k <=86.1
@@ -1079,16 +1079,16 @@ def assign_taxonomy(opts, otu_list, taxonomy_dict):
     ###
 
     assigned_taxonomy = []
-    for otu in otu_list:
-        # otuid = otu.id
-        # if otuid == "Otu299": ###debuging###
+    for asv in asv_list:
+        # asvid = asv.id
+        # if asvid == "Asv299": ###debuging###
             # pass
         if opts["--assign_all"]:
             #we'll assign taxonomy to everything - "Keepers" or "Rejected"
-            taxonomy = assigntax2all(opts, otu, taxonomy_dict)
+            taxonomy = assigntax2all(opts, asv, taxonomy_dict)
         else:
             #we'll assign taxonomy to the "Keepers" only, which have at least one K or E hits (or optionally N)
-            taxonomy = assigntax2keepers(opts, otu, taxonomy_dict)
+            taxonomy = assigntax2keepers(opts, asv, taxonomy_dict)
 
         if taxonomy is not None:
             assigned_taxonomy.append([taxonomy])
@@ -1105,45 +1105,45 @@ def main(args):
     ###
     if 1:
         if opts["debug"]:
-            print(":parse_otus2filter_log", file=sys.stderr)
+            print(":parse_ASVs2filter_log", file=sys.stderr)
 
-        otu_list = parse_otus2filter_log(opts)
+        asv_list = parse_ASVs2filter_log(opts)
 
         if opts["debug"]:
-            print(":otu_list.sort", file=sys.stderr)
-        otu_list.sort(key=lambda x: x.size, reverse=True)
+            print(":asv_list.sort", file=sys.stderr)
+        asv_list.sort(key=lambda x: x.size, reverse=True)
 
-        ### debug: save otu_list
+        ### debug: save asv_list
         if 0:
-            with open('otu_list.pickle', 'w') as f:
-                print(":pickle.dump(otu_list.pickle)", file=sys.stderr)
-                pickle.dump(otu_list, f)
+            with open('asv_list.pickle', 'w') as f:
+                print(":pickle.dump(asv_list.pickle)", file=sys.stderr)
+                pickle.dump(asv_list, f)
                 sys.exit(0)
         ###
 
     else:
-        with open('otu_list.pickle') as f:
-            print(":pickle.load(otu_list.pickle)", file=sys.stderr)
-            otu_list = pickle.load(f)
+        with open('asv_list.pickle') as f:
+            print(":pickle.load(asv_list.pickle)", file=sys.stderr)
+            asv_list = pickle.load(f)
     ###
 
     if opts["debug"]:
-        print(":get_taxonomy(opts, otu_list)", file=sys.stderr)
+        print(":get_taxonomy(opts, asv_list)", file=sys.stderr)
 
     #get taxIDs from a local taxonomy DB and any newly-downloaded ones
-    taxonomy_dict = get_taxonomy(opts, otu_list)
+    taxonomy_dict = get_taxonomy(opts, asv_list)
 
-    # devel__print_blast_hit_summaries(opts, otu_list, taxonomy_dict)
+    # devel__print_blast_hit_summaries(opts, asv_list, taxonomy_dict)
 
     if opts["debug"]:
-        print(":assign_taxonomy(opts, otu_list, taxonomy_dict)", file=sys.stderr)
+        print(":assign_taxonomy(opts, asv_list, taxonomy_dict)", file=sys.stderr)
 
-    assigned_taxonomy = assign_taxonomy(opts, otu_list, taxonomy_dict)
+    assigned_taxonomy = assign_taxonomy(opts, asv_list, taxonomy_dict)
 
     if opts["--add_sizes"]:
-        header = "#OTUID\ttaxonomy\tbitscore\tper_id\tper_qcov\tsize"
+        header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov\tsize"
     else:
-        header = "#OTUID\ttaxonomy\tbitscore\tper_id\tper_qcov"
+        header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov"
 
     if opts["-o"]:
         with open(opts["-o"], 'w') as outfile:
