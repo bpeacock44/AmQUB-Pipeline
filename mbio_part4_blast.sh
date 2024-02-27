@@ -64,6 +64,8 @@
 # Fungi    4751    k    Keep
 # Viridiplantae    33090    k    Reject
 # This way, I am giving preference to fungal taxonomies and rejecting any plant ones. Note that RANK is LOWERCASE!!
+# Also, rank doesn't particularly matter - it just keeps the file naming convention clean. (So for example, even though 
+# bacteria is listed as a superkingdom on NCBI, I just put "k" because it's my personal preference and the retrieval still works.)
 # ########## FILTER FILE EXAMPLE (-t) ########## 
 
 # <> # TO DO:
@@ -164,7 +166,7 @@ fi
 
 # initiate log
 timestamp="$(date +"%Y%m%d_%H:%M:%S")"
-output_file="${DIR}/part3_${timestamp}.log"
+output_file="${DIR}/part4_${timestamp}.log"
 exec > "$output_file" 2>&1
 
 # log header

@@ -205,7 +205,8 @@ cd "${output_dir}"
 
 mkdir -vp "${output_dir}/zotus/rep_set"
 mv -v "${output_dir}/zotus/seqs_chimera_filtered_otus.fasta" "${output_dir}/zotus/rep_set"
-
+echo
+echo " - -- --- ---- ---- --- -- -"
 echo "It's time to assign taxonomy! You will either do this by BLAST-ing your sequences against a 
 local BLAST database or by using Qiime2 to classify them." | tee /dev/tty
 
