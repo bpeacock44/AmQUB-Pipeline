@@ -178,14 +178,20 @@ exec > "$output_file" 2>&1
 # log header
 echo " - -- --- ---- ---- --- -- -"
 echo "Log file for Part 2 of the Microbiome Pipeline. Processing the following arguments:
-Working Directory: ${DIR}
-Output Directory: ${OUTDIR}
-Blast Run File: ${blast_file}
-Type of Blast: ${run_type}
+Working directory: ${DIR}
+Output directory: ${OUTDIR}
+Blast run file: ${blast_file}
+Type of blast: ${run_type}
 Email of user: ${EMAIL}
 Filterfile if specified: ${FILTERFILE}
-Mismatches if specified: ${mmatchnum}
- - -- --- ---- ---- --- -- -"
+Mismatches if specified: ${mmatchnum}"
+if [ "$skip_blast" = true ]; then
+    echo "BLAST was skipped."
+fi
+if [ "$split_otu_table" = true ]; then
+    echo "Final OTU tables will be split into three domains of life since this is universal assay data."
+fi
+echo " - -- --- ---- ---- --- -- -"
 
 if [ "$skip_blast" = false ]; then
     echo
