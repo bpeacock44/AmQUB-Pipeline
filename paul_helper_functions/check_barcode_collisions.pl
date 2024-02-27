@@ -142,7 +142,6 @@ open SINGS, ">", $$opt{o} or die "[$!]\n";
 $,=" ";
 
 print "Checking for usable and unusable barcodes and saving results: ";
-print SINGS "# $0 @argv\t[Version: $VERSION]\n";
 print SINGS "# $mapBCcount mapfile barcodes\n";
 print SINGS "# Mapbc\tCount\t[SampleID]/\n";
 print SINGS "# FQbc\tCount\tmmPos\n";
