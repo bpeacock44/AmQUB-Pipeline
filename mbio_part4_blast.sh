@@ -15,6 +15,7 @@
 # and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
 # -m: number of mismatches, if using (again, this should have been specified from part1)
 # -u: universal assay - causes final OTU tables to be split into taxonomic groups prior to normalizing
+# -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc.
 
 # Examples:
 # ./mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
@@ -75,6 +76,7 @@
 # CODE FOLLOWS HERE #
 
 split_otu_table=false
+skip_blast=false
 
 while getopts ":d:o:b:r:e:t:m:u:" opt; do
   case $opt in
@@ -103,10 +105,14 @@ while getopts ":d:o:b:r:e:t:m:u:" opt; do
     ;;    
     u) split_otu_table=true
     ;;
+    s) skip_blast=true
+    ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
   esac
 done
+
+shift $((OPTIND -1))
 
 # Check for mandatory arguments
 if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$blast_file" ] || [ -z "$EMAIL" ] || [ -z "$run_type" ]; then
@@ -180,32 +186,38 @@ Email of user: ${EMAIL}
 Filterfile if specified: ${FILTERFILE}
 Mismatches if specified: ${mmatchnum}
  - -- --- ---- ---- --- -- -"
-echo
-echo " - -- --- ---- ---- --- -- -"
-echo "Running BLAST on OTUs"
-echo " - -- --- ---- ---- --- -- -"
 
-cd "${output_dir}"
-
-# Run BLAST script in the background
-${HDIR}/micro_blast_script.sh "${output_dir}" "${blast_file}" ${run_type} &
-
-# Get the process ID of the last background command
-blast_pid=$!
-
-# Wait for the process to finish
-while ps -p $blast_pid > /dev/null; do
-    sleep 1
-done
-
-# Check the exit status of the BLAST script
-blast_exit_status=$?
-if [ $blast_exit_status -eq 0 ]; then
-    echo "BLAST successfully completed."
+if [ "$skip_blast" = false ]; then
+    echo
+    echo " - -- --- ---- ---- --- -- -"
+    echo "Running BLAST on OTUs"
+    echo " - -- --- ---- ---- --- -- -"
+    
+    cd "${output_dir}"
+    
+    # Run BLAST script in the background
+    ${HDIR}/micro_blast_script.sh "${output_dir}" "${blast_file}" ${run_type} &
+    
+    # Get the process ID of the last background command
+    blast_pid=$!
+    
+    # Wait for the process to finish
+    while ps -p $blast_pid > /dev/null; do
+        sleep 1
+    done
+    
+    # Check the exit status of the BLAST script
+    blast_exit_status=$?
+    if [ $blast_exit_status -eq 0 ]; then
+        echo "BLAST successfully completed."
+    else
+        echo "BLAST failed with exit status $blast_exit_status."
+        exit 1
+    fi
 else
-    echo "BLAST failed with exit status $blast_exit_status."
-    exit 1
+    echo "Skipping BLAST as per user instructions."
 fi
+
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Determining Likely Taxonomy of OTUs Using Filters"
