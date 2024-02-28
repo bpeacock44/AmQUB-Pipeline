@@ -11,8 +11,8 @@
 # -m: number of mismatches, if using (again, this should have been specified from part1)
 
 # Examples:
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out
-# ./mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -m 1
+# mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out
+# mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -m 1
 
 ### INPUT ###
 # This script follows part 2, which must be completed first. You will look at your trim stats, 
@@ -24,7 +24,6 @@
 # When this code is run, a new directory named as you indicated will be created for analysis output. 
 
 # <> # TO DO:
-# <> # HDIR FILES SHOULD BE IN PATH
 # <> # conda qiime1 activation??
 
 # CODE FOLLOWS HERE #
@@ -78,7 +77,6 @@ done
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # show your fastq files and map
 for JB in "${JBS[@]}"; do
@@ -217,7 +215,7 @@ module purge
 source /sw/miniconda3/bin/activate qiime1
 
 #source for bash helper functions
-source "${HDIR}/qiime_shell_helper_functions.sh"
+source "qiime_shell_helper_functions.sh"
 
 #convert to biom
 OTBL=asv_table_01
@@ -230,7 +228,7 @@ module load r
 otblfp="asv_table_01.txt"
 fastafp="asvs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
+Rscript -e "source('pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
 
 mkdir -vp "${output_dir}/asvs/rep_set"
 mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"

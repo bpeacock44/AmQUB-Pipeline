@@ -13,15 +13,14 @@
 # Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
 # ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
 # and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
-# -m: number of mismatches, if using (again, this should have been specified from part1)
 # -u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 # -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc.
 
 # Examples:
-# ./mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
-# ./mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
-# ./mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -r local
-# ./mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -m 1 
+# mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
+# mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
+# mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -r local -s
+# mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -u
 
 ### INPUT ###
 # This script follows part 3, which must be completed first. 
@@ -70,12 +69,21 @@
 # ########## FILTER FILE EXAMPLE (-t) ########## 
 
 # <> # TO DO:
-# <> # HDIR FILES SHOULD BE IN PATH
 # <> # conda qiime1 activation??
 
 # CODE FOLLOWS HERE #
 
 set -e
+
+# Custom error handler function
+error_handler() {
+    local line_number=$1
+    local error_message=$2
+    echo "Error on line $line_number: $error_message"
+}
+
+# Trap errors and call the error handler
+trap 'error_handler ${BASH_LINENO[0]} "$BASH_COMMAND"' ERR
 
 # ARGUMENTS
 split_asv_table=false
@@ -103,8 +111,6 @@ while getopts ":d:o:b:r:e:t:m:u:" opt; do
     e) EMAIL="$OPTARG"
     ;;
     t) FILTERFILE="$OPTARG"
-    ;;
-    m) mmatchnum="$OPTARG"
     ;;    
     u) split_asv_table=true
     ;;
@@ -127,11 +133,6 @@ fi
 if ! [[ $EMAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     echo "Email is not valid."
     exit 1
-fi
-
-# Check if mmatchnum is not defined or is set to an empty string, set it to "0"
-if [ -z "${mmatchnum+x}" ] || [ -z "$mmatchnum" ]; then
-    mmatchnum="0"
 fi
 
 # Check if the -t option is not provided
@@ -161,7 +162,6 @@ TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 if [ ! -e "${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" ]; then
     echo "${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta not found!"
@@ -186,8 +186,7 @@ Output directory: ${OUTDIR}
 Blast run file: ${blast_file}
 Type of blast: ${run_type}
 Email of user: ${EMAIL}
-Filterfile if specified: ${FILTERFILE}
-Mismatches if specified: ${mmatchnum}"
+Filterfile if specified: ${FILTERFILE}"
 if [ "$skip_blast" = true ]; then
     echo "BLAST was skipped."
 fi
@@ -205,7 +204,7 @@ if [ "$skip_blast" = false ]; then
     cd "${output_dir}"
     
     # Run BLAST script in the background
-    ${HDIR}/micro_blast_script.sh "${output_dir}" "${blast_file}" ${run_type} &
+    blast_iterator.sh "${output_dir}" "${blast_file}" ${run_type} &
     
     # Get the process ID of the last background command
     blast_pid=$!
@@ -308,7 +307,7 @@ sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will th
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
 if [ -z "$FILTERFILE" ]; then
-  "${HDIR}/blast_taxa_categorizer.py" \
+  blast_taxa_categorizer.py \
     -i "${output_dir}/asvs/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -316,7 +315,7 @@ if [ -z "$FILTERFILE" ]; then
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp"
 else
-  "${HDIR}/blast_taxa_categorizer.py" \
+  blast_taxa_categorizer.py \
       -i "${output_dir}/asvs/rep_set/final.blastout" \
       -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
       -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
@@ -359,7 +358,7 @@ done <<< "$filtered_lines"
 if [ "$new_addition" = true ]; then
     # Run the blast_taxa_categorizer.py script
     if [ -z "$FILTERFILE" ]; then
-        "${HDIR}/blast_taxa_categorizer.py" \
+        blast_taxa_categorizer.py \
             -i "${output_dir}/asvs/rep_set/final.blastout" \
             -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
             -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -367,7 +366,7 @@ if [ "$new_addition" = true ]; then
             -t "$tax_files_dir" \
             -m "${TAXDIR}/merged.dmp"
     else
-        "${HDIR}/blast_taxa_categorizer.py" \
+        blast_taxa_categorizer.py \
             -i "${output_dir}/asvs/rep_set/final.blastout" \
             -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
             -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
@@ -393,7 +392,7 @@ echo "Assigning Taxonomy With Filters"
 echo " - -- --- ---- ---- --- -- -"
 rm -rf "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
-${HDIR}/blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
+blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     --db "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
     -m beth.b.peacock@gmail.com \
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
@@ -405,13 +404,13 @@ echo "Printing Taxa Levels With Filters"
 echo " - -- --- ---- ---- --- -- -"
 # count taxa levels
 source /sw/miniconda3/bin/activate qiime2
-source ${HDIR}/qiime_shell_helper_functions.sh
+source qiime_shell_helper_functions.sh
 count_taxa_levels ${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt > ${output_dir}/asvs/rep_set/assgntax/taxa_levels.txt
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Determining Likely Taxonomy of ASVs Without Filters"
 echo " - -- --- ---- ---- --- -- -"
-"${HDIR}/blast_taxa_categorizer.py" \
+blast_taxa_categorizer.py \
     -i "${output_dir}/asvs/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -440,7 +439,7 @@ done <<< "$filtered_lines"
 # If new additions were made, re-run the loop
 if [ "$new_addition" = true ]; then
     # Run the blast_taxa_categorizer.py script
-    "${HDIR}/blast_taxa_categorizer.py" \
+    blast_taxa_categorizer.py \
         -i "${output_dir}/asvs/rep_set/final.blastout" \
         -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
         -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -465,7 +464,7 @@ echo "Assigning Taxonomy Without Filters"
 echo " - -- --- ---- ---- --- -- -"
 rm -rf ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json
 rm -f *.xml
-${HDIR}/blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
+blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   --db ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
   -m beth.b.peacock@gmail.com \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
@@ -476,7 +475,7 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Printing Taxa Levels Without Filters"
 echo " - -- --- ---- ---- --- -- -"
 # count taxa levels
-source ${HDIR}/qiime_shell_helper_functions.sh
+source qiime_shell_helper_functions.sh
 count_taxa_levels ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt > ${output_dir}/asvs/rep_set/assgntax/nf_taxa_levels.txt
 
 echo
@@ -509,17 +508,17 @@ for F in "${to_process[@]}"; do
             else
                 if [[ "${OTBL}.txt" == *"_L"* ]]; then
                     txt2biom_notax "${OTBL}.txt" "${OTBL}.biom"
-                    ${HDIR}/biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
+                    biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
                     biom2txt_notax "${OTBL}_norm.biom" "${OTBL}_norm.txt"
                 else 
                     txt2biom "${OTBL}.txt" "${OTBL}.biom"
-                    ${HDIR}/biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
+                    biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
                     biom2txt "${OTBL}_norm.biom" "${OTBL}_norm.txt"
                 fi
             fi
         done
     fi
-    ${HDIR}/biom_table_math_ops.py -i ${F} -o "asv_table_02_add_taxa${ID}_norm.biom" --normalize2unity
+    biom_table_math_ops.py -i ${F} -o "asv_table_02_add_taxa${ID}_norm.biom" --normalize2unity
     biom2txt "asv_table_02_add_taxa${ID}_norm.biom" "asv_table_02_add_taxa${ID}_norm.txt"
 done
 
@@ -530,12 +529,12 @@ module load r
 otblfp="asv_table_02_add_taxa.txt"
 outfp="asv_table_03_add_seqs.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+Rscript -e "source('pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
 otblfp="asv_table_02_add_taxa_norm.txt"
 outfp="asv_table_03_add_seqs_norm.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+Rscript -e "source('pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
 to_process2=($(find . -maxdepth 1 -type f -name '*taxa.k*txt'))
 
@@ -543,7 +542,7 @@ for F in ${to_process2[@]}; do
     FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp=${F}
     outfp="asv_table_03_add_seqs${FNAME}"
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+    Rscript -e "source('pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 done
 
 echo " - -- --- ---- ---- --- -- -"
@@ -552,9 +551,9 @@ echo " - -- --- ---- ---- --- -- -"
 
 module load py-biopython
 # get "top 10 contain multiple families" ASVs
-python ${HDIR}/top_ten_family_checker.py final.blastout
+python top_ten_family_checker.py final.blastout
 # generate final summary file
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_10_family_checker_out.txt')"
+Rscript -e "source('pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_10_family_checker_out.txt')"
 
 echo "All ASV tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty

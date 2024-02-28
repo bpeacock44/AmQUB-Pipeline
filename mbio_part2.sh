@@ -14,10 +14,10 @@
 # placed in the same ID folder as the other files are in.
 
 # Examples:
-# ./mbio_part2.sh -d /path/to/dir -j JB141 
-# ./mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 
-# ./mbio_part2.sh -d /path/to/dir -j JB141 -m 1
-# ./mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 -m 1
+# mbio_part2.sh -d /path/to/dir -j JB141 
+# mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 
+# mbio_part2.sh -d /path/to/dir -j JB141 -m 1
+# mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 -m 1
 
 ### INPUT ###
 # This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) has been run through part 1, 
@@ -33,9 +33,6 @@
 # When this code is run, a new directory will be created for your output named either with the unique identifier
 #       for your subset, if given (e.g. JB141_Nickels01_output), or it will be named after your regular ID if no unique map 
 #       was provided (e.g. JB141_output) 
-
-# <> # TO DO:
-# <> # HDIR FILES SHOULD BE IN PATH
 
 # CODE FOLLOWS HERE #
 
@@ -71,8 +68,6 @@ fi
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
-
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # show your fastq files 
 if [ ! -e "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" ]; then

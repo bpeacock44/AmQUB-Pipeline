@@ -9,8 +9,8 @@
 # -m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
 
 # Examples:
-# ./mbio_part1.sh -d /path/to/dir -j JB141,JB143 
-# ./mbio_part1.sh -d /path/to/dir -j JB141,JB143 -m 1
+# mbio_part1.sh -d /path/to/dir -j JB141,JB143 
+# mbio_part1.sh -d /path/to/dir -j JB141,JB143 -m 1
 
 ### INPUT ###
 # Each folder needs to contain a fastq file named by ID followed by "_L1P1.fq" and an appropriately 
@@ -40,7 +40,6 @@
 
 
 # <> # TO DO:
-# <> # HDIR FILES SHOULD BE IN PATH
 # <> # conda qiime1 activation??
 
 # CODE FOLLOWS HERE #
@@ -75,8 +74,6 @@ fi
 echo " - -- --- ---- ---- --- -- -
 Checking for input files
  - -- --- ---- ---- --- -- -"
-
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # show your fastq files and map
 for JB in "${JBS[@]}"; do
@@ -116,7 +113,7 @@ for JB in "${JBS[@]}"; do
     echo "$JB [${_BC_}]"
 
     # Check for barcode collisions
-    $HDIR/check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" 
+    check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" 
 done
 
 # must be in qiime1 env for the next one.
@@ -154,7 +151,7 @@ case $mmatchnum in
 esac
 
     # Filter barcode non-collisions
-    $HDIR/filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
+    filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
 
 echo 
 echo " - -- --- ---- ---- --- -- -
@@ -162,8 +159,8 @@ Converting mismatches to perfect matches
  - -- --- ---- ---- --- -- -"
 
     # Convert mismatches to perfect matches and extract barcodes
-    $HDIR/fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" 
-    $HDIR/extract_barcodes.go -f "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" 
+    fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" 
+    extract_barcodes.go -f "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" 
 
     # Check if files are present
     [[ -e "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" ]] && echo "File ${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq was generated." || (echo "Error: File ${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq was not generated!" && exit 1)

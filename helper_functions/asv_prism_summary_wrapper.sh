@@ -4,7 +4,7 @@
 # Input will be the column followed by a comma-delimited list of treatments you want to include.
 # Also put the number of taxa you want in the final output. (i.e. The number that would be included in a bar plot.)
 # e.g. if I have a column "tissue" with various types of tissues in it, I might run this script like this:
-# ./ASV_prism_summary_wrapper.sh tissue stem_whole,leaf_scrapings,leaf_whole 20
+# ./asv_prism_summary_wrapper.sh tissue stem_whole,leaf_scrapings,leaf_whole 20
 # Note that spelling and capitalization must be the same!
 
 set -e
@@ -24,5 +24,14 @@ col="$3"
 treatments="$4"
 num="$5"
 
+echo
+echo " - -- --- ---- ---- --- -- -"
+echo "Running correlation analysis"
+echo " - -- --- ---- ---- --- -- -"
+
 Rscript asv_prism_summary.R $file $map $col $treatments $num
 
+echo
+echo " - -- --- ---- ---- --- -- -"
+echo "prism_input_file.csv has been successfully generated."
+echo " - -- --- ---- ---- --- -- -"

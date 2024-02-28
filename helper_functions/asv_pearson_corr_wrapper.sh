@@ -21,47 +21,51 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Checking arguments and samples"
 echo " - -- --- ---- ---- --- -- -"
 # Check if all required arguments are provided
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <corr column>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <asv_table> <mapping_file> <corr column>"
     exit 1
 fi
 
 # Assign command line arguments to variables
-col="$1"
+asv="$1"
+map="$2"
+col="$3"
+txtv="${asv%.biom}.txt"
 
 # Warn about missing samples
-biom2txt asv_table_02_add_taxa_norm.nc.biom asv_table_02_add_taxa_norm.nc.txt
-file1="asv_table_02_add_taxa_norm.nc.txt"
-file2="merged_map.txt"
+if [ ! -e "$txtv" ]; then
+    # Run biom2txt only if $txtv doesn't already exist
+    biom2txt "$asv" "$txtv"
+fi
 
-# Extract the second row of file1
-second_row=$(awk 'NR==2' "$file1")
+# Extract the second row of txtv
+second_row=$(awk 'NR==2' "$txtv")
 
-# Compare each element of the second row with the first column of file2
+# Compare each element of the second row with the first column of map
 IFS=$'\t' read -r -a elements <<< "$second_row"
 for element in "${elements[@]}"; do
     if [[ -n $element && $element != "#ASV ID" && $element != "taxonomy" ]]; then
-        grep -q "^$element$" <(awk 'NR > 1 {print $1}' "$file2")
+        grep -q "^$element$" <(awk 'NR > 1 {print $1}' "$map")
         if [[ $? -eq 1 ]]; then
-            echo "${element} is present in ${file1} but not in ${file2}. This means it will not be included in the analyis." 
+            echo "${element} is present in ${txtv} but not in ${map}. This means it will not be included in the analyis." 
         fi
     fi
 done
-# Compare each element of the first column of file2 with the elements of the second row of file1
+# Compare each element of the first column of map with the elements of the second row of txtv
 while read -r element; do
     if [[ -n $element ]]; then
         grep -q "$element" <(echo "$second_row" | tr '\t' '\n')
         if [[ $? -eq 1 ]]; then
-            echo "${element} is present in ${file2} but not in ${file1}. This means it will not be included in the analyis."
+            echo "${element} is present in ${map} but not in ${txtv}. This means it will not be included in the analyis."
         fi
     fi
-done < <(tail -n +2 "$file2" | awk '{print $1}')
+done < <(tail -n +2 "$map" | awk '{print $1}')
 
 echo
 echo " - -- --- ---- ---- --- -- -"
-echo "Running Correlation Analysis"
+echo "Running correlation analysis"
 echo " - -- --- ---- ---- --- -- -"
-Rscript asv_pearson_corr.R asv_table_02_add_taxa_norm.nc.txt merged_map.txt $col
+Rscript asv_pearson_corr.R $txtv $map $col
 
 echo
 echo " - -- --- ---- ---- --- -- -"
