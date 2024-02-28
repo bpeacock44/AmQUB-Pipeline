@@ -65,7 +65,7 @@ alpha_diversity.py -m ${A_MET} -i nc.${reg_asv_table} -o adivs.nc.${reg_asv_tabl
 These next three require you to indicate which column of metadata in your mapping file you want to use to analyze the data. They must appear in the command exactly as they do in the mapping file, which must be called "merged_map.txt." (Capitalization, white space, etc.)
 ### DIFFERENTIAL ABUNDANCE (use raw counts)
 Run as: 
-${HDIR}/asv_diff_abun_wrapper.sh <ASV table path> <mapping file> <column of factors> <factor1> <factor2>
+${HDIR}/asv_diff_abun_wrapper.sh [ASV table path] [mapping file] [column of factors] [factor1] [factor2]
 - column of factors - column containing traits you want to compare
 - factor1 and factor2 - the two traits you want to compare
 ```sh
@@ -74,7 +74,7 @@ ${HDIR}/asv_diff_abun_wrapper.sh ${norm_asv_table} ${mapping_file} tissue stem_w
 
 ## CORRELATION (use normalized counts)
 Run as: 
-${HDIR}/asv_diff_abun_wrapper.sh <ASV table path> <mapping file> <column of measurements to correlate against>
+${HDIR}/asv_diff_abun_wrapper.sh [ASV table path] [mapping file] [column of measurements to correlate against]
 ```sh
 ${HDIR}/asv_pearson_corr_wrapper.sh ${norm_asv_table} ${mapping_file} rating
 ```
@@ -83,7 +83,7 @@ ${HDIR}/asv_pearson_corr_wrapper.sh ${norm_asv_table} ${mapping_file} rating
 This last script will generate a csv file that can be used as input to the program prism. 
 
 Run as: 
-${HDIR}/asv_prism_summary_wrapper.sh <ASV table path> <mapping file> <column name> <comma-delimited treatment list> <number of taxa desired in final output>
+${HDIR}/asv_prism_summary_wrapper.sh [ASV table path] [mapping file] [column name] [comma-delimited treatment list] [number of taxa desired in final output]
 - column name - the name of the column the treatments you want to splits samples by is located
 - comma-delimited treatment list - a list of the treatments you want included in the summary
 - number of taxa desired - the number of most abundant taxa you'd like in the summary (i.e. how many different groups will appear in your stacked bar plot)
