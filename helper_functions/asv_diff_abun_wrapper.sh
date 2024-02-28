@@ -6,12 +6,14 @@
 # ./diff_test.sh Tissue stems leaves
 # Note that spelling and capitalization must be the same!
 
+set -e
+
 echo " - -- --- ---- ---- --- -- -"
 echo "Loading Qiime1 and helper functions"
 echo " - -- --- ---- ---- --- -- -"
 source /sw/anaconda3/etc/profile.d/conda.sh
 conda activate qiime1
-source ~/paul_helper_scripts/qiime_shell_helper_functions.sh
+source ~/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/qiime_shell_helper_functions.sh
 module load r
 
 # LD_LIBRARY_PATH modification

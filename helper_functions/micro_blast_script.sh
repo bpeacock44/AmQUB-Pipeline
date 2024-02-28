@@ -1,5 +1,16 @@
 #!/bin/bash 
-HDIR=/sw/paul_helper_scripts
+
+# This script will run BLAST with 5000 max seqs and then check to see if the results are satisfcatory to determine LCA
+# for all ASVs that are greater than 1% the size of the largest ASV. 
+# In this context, that means that the results reach a point where the bitscore begins to go down so you know you've 
+# collected all the highest bitscore results available. If you have not reached this point, BLAST will run again with 
+# 30000 max seqs for those ASVs only. 
+# If LCA still cannot be determined, then the script will proceed regardless of whether the results are satisfactory
+# and all BLAST results will be used.
+
+set -e
+
+HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # Set strict mode
 set -euo pipefail
@@ -106,6 +117,7 @@ while criteria_met; do
 	${HDIR}/reblast_check.pl ${bout} ${outfile}
     echo $bout 
     echo $outfile
+
 	# Get the number of reads contributing to the biggest ASV
 	total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta)
     echo "Determining which ASVs are worth blasting."

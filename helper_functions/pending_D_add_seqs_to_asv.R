@@ -10,7 +10,7 @@ otbl_fp <- commandArgs(trailingOnly = TRUE)[1]
 outfa_fp <- commandArgs(trailingOnly = TRUE)[2]
 
 # Load necessary functions
-source('/sw/paul_helper_scripts/pipeline_helper_functions.R')
+source('/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/pipeline_helper_functions.R')
 
 # Add sequences to ASV table
 add_sequences_to_ASV_table(otbl_fp, "rep_set/seqs_chimera_filtered_ASVs.fasta", outfa_fp)

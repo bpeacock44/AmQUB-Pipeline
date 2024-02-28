@@ -76,7 +76,7 @@ echo " - -- --- ---- ---- --- -- -
 Checking for input files
  - -- --- ---- ---- --- -- -"
 
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/paul_helper_functions
+HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # show your fastq files and map
 for JB in "${JBS[@]}"; do

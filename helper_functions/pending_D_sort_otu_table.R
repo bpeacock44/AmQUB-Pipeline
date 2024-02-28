@@ -2,7 +2,7 @@
 #Usage:
 # Rscript sort_asv_table.R
 
-source('/sw/paul_helper_scripts/pipeline_helper_functions.R')
+source('/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/pipeline_helper_functions.R')
 
 library("optparse")
 

@@ -7,6 +7,8 @@
 # ./ASV_prism_summary_wrapper.sh tissue stem_whole,leaf_scrapings,leaf_whole 20
 # Note that spelling and capitalization must be the same!
 
+set -e
+
 module load r
 
 # Check if all required arguments are provided

@@ -161,7 +161,7 @@ TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/paul_helper_functions
+HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 if [ ! -e "${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" ]; then
     echo "${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta not found!"
@@ -526,14 +526,24 @@ done
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
 
-# add seqs to L8 (regular)
-Rscript "${HDIR}/add_seqs_to_asv.R" "asv_table_02_add_taxa.txt" "asv_table_03_add_seqs.txt"
-Rscript "${HDIR}/add_seqs_to_asv.R" "asv_table_02_add_taxa_norm.txt" "asv_table_03_add_seqs_norm.txt"
+# add seqs to L8 
+otblfp="asv_table_02_add_taxa.txt"
+outfp="asv_table_03_add_seqs.txt"
+
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+
+otblfp="asv_table_02_add_taxa_norm.txt"
+outfp="asv_table_03_add_seqs_norm.txt"
+
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
 to_process2=($(find . -maxdepth 1 -type f -name '*taxa.k*txt'))
+
 for F in ${to_process2[@]}; do
     FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
-    Rscript "${HDIR}/add_seqs_to_asv.R" ${F} "asv_table_03_add_seqs${FNAME}"
+    otblfp=${F}
+    outfp="asv_table_03_add_seqs${FNAME}"
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 done
 
 echo " - -- --- ---- ---- --- -- -"
@@ -544,7 +554,7 @@ module load py-biopython
 # get "top 10 contain multiple families" ASVs
 python ${HDIR}/top_10_family_checker.py final.blastout
 # generate final summary file
-Rscript ${HDIR}/final_summary_table_maker.R
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_10_family_checker_out.txt')"
 
 echo "All ASV tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty
