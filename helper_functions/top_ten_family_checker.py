@@ -1,8 +1,8 @@
-# Usage: python ${HDIR}/top_10_family_checker.py <blastout.file>
+# Usage: python ${HDIR}/top_ten_family_checker.py <blastout.file>
 
 # This checks the first 10 blast results for each ASV that can return a family in it's taxonomic info
 # and checks if the families in that top 10 group are identical or not. If they are not, the ASV is written
-# to a new file called "top_10_family_checker_out.txt." This information may be helpeful in assessing
+# to a new file called "top_ten_family_checker_out.txt." This information may be helpeful in assessing
 # the taxonomic assignment's quality.
 
 from collections import defaultdict
@@ -88,7 +88,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process BLAST output file.')
     parser.add_argument('blastout_file', type=str, help='Path to BLAST output file')
     args = parser.parse_args()
-    output_file = "top_10_family_checker_out.txt"
+    output_file = "top_ten_family_checker_out.txt"
 
     blast_output_file = args.blastout_file
     selected_identifiers = []
