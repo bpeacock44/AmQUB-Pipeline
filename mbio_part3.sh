@@ -177,14 +177,12 @@ echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
 usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
+sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
-cd "${output_dir}"
 #use R to sort ASV table
+cd "${output_dir}/asvs"
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
-
-# Set the working directory
-cd "asvs"
 
 # Run Rscript with inline R commands
 Rscript -e '{
@@ -192,13 +190,13 @@ Rscript -e '{
     source("/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/pipeline_helper_functions.R")
 
     # Load the ASV table
-    tbl <- loadQIIMEotutable("asv_table_00.txt")
+    tbl <- loadQIIMEasvtable("asv_table_00.txt")
 
     # Sort columns alphabetically
-    tbl <- sortQIIMEotutable(tbl, sortby="col", normalize_sort=FALSE)
+    tbl <- sortQIIMEasvtable(tbl, sortby="col", normalize_sort=FALSE)
 
     # Sort rows descending by rowSums
-    tbl <- sortQIIMEotutable(tbl, sortby="row", normalize_sort=FALSE)
+    tbl <- sortQIIMEasvtable(tbl, sortby="row", normalize_sort=FALSE)
 
     # Save the table to a new file
     write.table(tbl, file="asv_table_01.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
@@ -218,15 +216,12 @@ txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom
 
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
-cd "${output_dir}/asvs"
 
 #add counts to ASV file
 otblfp="ASV_table_01.txt"
 fastafp="ASVs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
-
-cd "${output_dir}"
 
 mkdir -vp "${output_dir}/asvs/rep_set"
 mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"
