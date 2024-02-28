@@ -31,6 +31,16 @@
 
 set -e
 
+# Custom error handler function
+error_handler() {
+    local line_number=$1
+    local error_message=$2
+    echo "Error on line $line_number: $error_message"
+}
+
+# Trap errors and call the error handler
+trap 'error_handler ${BASH_LINENO[0]} "$BASH_COMMAND"' ERR
+
 # ARGUMENTS
 while getopts ":d:j:l:o:m:" opt; do
   case $opt in
@@ -212,13 +222,12 @@ source "${HDIR}/qiime_shell_helper_functions.sh"
 #convert to biom
 OTBL=asv_table_01
 txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
-txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
 
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
 
 #add counts to ASV file
-otblfp="ASV_table_01.txt"
+otblfp="asv_table_01.txt"
 fastafp="ASVs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
