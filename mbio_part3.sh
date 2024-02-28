@@ -29,6 +29,9 @@
 
 # CODE FOLLOWS HERE #
 
+set -e
+
+# ARGUMENTS
 while getopts ":d:j:l:o:m:" opt; do
   case $opt in
     d) DIR="$OPTARG"

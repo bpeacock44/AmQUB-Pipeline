@@ -75,6 +75,9 @@
 
 # CODE FOLLOWS HERE #
 
+set -e
+
+# ARGUMENTS
 split_asv_table=false
 skip_blast=false
 

@@ -45,6 +45,8 @@
 
 # CODE FOLLOWS HERE #
 
+set -e
+
 # ARGUMENTS
 while getopts ":d:j:m:" opt; do
   case $opt in

@@ -1,5 +1,3 @@
-#mbio_part4_v1.sh
-
 # These functions are available for some rudimentary analyses on the generated ASV tables.
 # To run them, you will need a merged mapping file containing all the samples in your ASV table.
 # You can create this by concatenating sample rows from all the mapping files you want to process. 
@@ -53,14 +51,14 @@ cd ..
 # Run as: 
 # ${HDIR}/ASV_diff_abun_wrapper.sh <column of factors> <factor1> <factor2>
 
-${HDIR}/ASV_diff_abun_wrapper.sh Tissue stem_whole stem_scrapings
+${HDIR}/asv_diff_abun_wrapper.sh Tissue stem_whole stem_scrapings
 
 ##### ##### ##### ##### ##### 
 # CORRELATION (pre-normalized file required in txt format: "asv_table_02_add_taxa_norm.nc.txt")
 # Run as: 
 # ${HDIR}/ASV_diff_abun_wrapper.sh <column of measurments to correlate against>
 
-${HDIR}/ASV_pearson_corr_wrapper.sh Rating
+${HDIR}/asv_pearson_corr_wrapper.sh Rating
 
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### 
 # TAXA PRISM TABLE SUMMARY MAKER: (pre-normalized file required in txt format: "asv_table_02_add_taxa_norm.nc.txt")
