@@ -27,6 +27,8 @@ Run the following to remove everything from your regular and normalized ASV tabl
 filter_samples_from_OTU_table.py -i ${reg_asv_table} -o nc.${reg_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
 filter_samples_from_OTU_table.py -i ${norm_asv_table} -o nc.${norm_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
 ```
+
+
 ## DIVERSITY ANALYSES
 ### BETA DIVERSITY (use raw counts)
 First, create a metric parameter file.
@@ -57,6 +59,7 @@ Now run the analysis.
 # Now run the rest of this code without making changes. 
 alpha_diversity.py -m ${A_MET} -i nc.${reg_asv_table} -o adivs.nc.${reg_asv_table}.txt
 ```
+
 
 ## OTHER ANALYSES
 These next three require you to indicate which column of metadata in your mapping file you want to use to analyze the data. They must appear in the command exactly as they do in the mapping file, which must be called "merged_map.txt." (Capitalization, white space, etc.)
