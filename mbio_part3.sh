@@ -228,7 +228,7 @@ module load r
 
 #add counts to ASV file
 otblfp="asv_table_01.txt"
-fastafp="ASVs.fa"
+fastafp="asvs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
 
