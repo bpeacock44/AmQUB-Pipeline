@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./ASV_diff_abun_wrapper.sh <column> <factor 1> <factor 2>
+# Usage: ./asv_diff_abun_wrapper.sh <column> <factor 1> <factor 2>
 # Choose a column in your mapping file (the merged version from all your data) that contains factors you want to compare.
 # e.g. if I have a column "Tissue" and I want to compare "stems" to "leaves" in that column, I will run this script like this:
 # ./diff_test.sh Tissue stems leaves
@@ -73,9 +73,9 @@ if awk -F'\t' -v dc="$diff_col" 'NR==1{for(i=1;i<=NF;i++) if($i==dc) {dc_flag=1}
         echo "Running differential_abundance.py"
         differential_abundance.py -i asv_table_02_add_taxa.nc.biom -o diff_ASVs.txt -m merged_map.txt -a DESeq2_nbinom -c "$diff_col" -x "$var_a" -y "$var_b" -d
 
-        # Run Rscript ASV_diff.R
+        # Run Rscript asv_diff.R
         echo "Adding average normalized counts to the output."
-        Rscript ASV_diff.R diff_ASVs.txt merged_map.txt asv_table_02_add_taxa_norm.nc.txt "$diff_col" "$var_a" "$var_b"
+        Rscript asv_diff.R diff_ASVs.txt merged_map.txt asv_table_02_add_taxa_norm.nc.txt "$diff_col" "$var_a" "$var_b"
     else
         echo "Error: One or both of the specified factors do not exist in $diff_col column of merged_map.txt."
         exit 1

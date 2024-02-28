@@ -524,13 +524,13 @@ export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascad
 module load r
 
 # add seqs to L8 (regular)
-Rscript "${HDIR}/add_seqs_to_ASV.R" "asv_table_02_add_taxa.txt" "asv_table_03_add_seqs.txt"
-Rscript "${HDIR}/add_seqs_to_ASV.R" "asv_table_02_add_taxa_norm.txt" "asv_table_03_add_seqs_norm.txt"
+Rscript "${HDIR}/add_seqs_to_asv.R" "asv_table_02_add_taxa.txt" "asv_table_03_add_seqs.txt"
+Rscript "${HDIR}/add_seqs_to_asv.R" "asv_table_02_add_taxa_norm.txt" "asv_table_03_add_seqs_norm.txt"
 
 to_process2=($(find . -maxdepth 1 -type f -name '*taxa.k*txt'))
 for F in ${to_process2[@]}; do
     FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
-    Rscript "${HDIR}/add_seqs_to_ASV.R" ${F} "asv_table_03_add_seqs${FNAME}"
+    Rscript "${HDIR}/add_seqs_to_asv.R" ${F} "asv_table_03_add_seqs${FNAME}"
 done
 
 echo " - -- --- ---- ---- --- -- -"

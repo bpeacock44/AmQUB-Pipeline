@@ -179,7 +179,7 @@ cd "${output_dir}"
 #use R to sort ASV table
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
-Rscript "${HDIR}/processing_ASV.R"
+Rscript "${HDIR}/processing_asv.R"
 module purge
 source /sw/miniconda3/bin/activate qiime1
 

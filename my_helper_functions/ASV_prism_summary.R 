@@ -3,7 +3,7 @@ library(dplyr)
 
 # Check if there are enough command-line arguments
 if (length(commandArgs(trailingOnly = TRUE)) < 4) {
-  stop("Usage: Rscript ASV_prism_summary.R <file_path> <map_file> <rating_column> <treatments> <number_of_taxa_desired>")
+  stop("Usage: Rscript asv_prism_summary.R <file_path> <map_file> <rating_column> <treatments> <number_of_taxa_desired>")
 }
 
 # Get command line arguments

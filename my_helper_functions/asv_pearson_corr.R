@@ -3,7 +3,7 @@ library(dplyr)
 
 # Check if there are enough command-line arguments
 if (length(commandArgs(trailingOnly = TRUE)) < 3) {
-  stop("Usage: Rscript ASV_pearson_corr.R <file_path> <map_file> <rating_column>")
+  stop("Usage: Rscript asv_pearson_corr.R <file_path> <map_file> <rating_column>")
 }
 
 # Get command-line arguments

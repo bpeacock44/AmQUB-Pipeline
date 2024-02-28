@@ -6,7 +6,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 # Check if the correct number of arguments is provided
 if (length(args) != 6) {
-  stop("Usage: Rscript ASV_diff.R diff_path map_path ASV_path column_of_interest, var_a, var_b")
+  stop("Usage: Rscript asv_diff.R diff_path map_path ASV_path column_of_interest, var_a, var_b")
 }
 
 # Assign arguments to variables

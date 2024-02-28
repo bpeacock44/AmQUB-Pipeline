@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./ASV_pearson_corr_wrapper.sh <column>
+# Usage: ./asv_pearson_corr_wrapper.sh <column>
 # Choose a column in your mapping file (the merged version from all your data) that contains numbers you want to correlate your ASVs by.
 # e.g. if I have a column "Rating" with disease ratings in it, I will run this script like this:
 # ./diff_test.sh Rating
@@ -59,7 +59,7 @@ echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Running Correlation Analysis"
 echo " - -- --- ---- ---- --- -- -"
-Rscript ASV_pearson_corr.R asv_table_02_add_taxa_norm.nc.txt merged_map.txt $col
+Rscript asv_pearson_corr.R asv_table_02_add_taxa_norm.nc.txt merged_map.txt $col
 
 echo
 echo " - -- --- ---- ---- --- -- -"
