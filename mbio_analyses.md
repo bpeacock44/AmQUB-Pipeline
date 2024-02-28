@@ -66,14 +66,14 @@ ${HDIR}/asv_diff_abun_wrapper.sh <ASV table path> <mapping file> <column of fact
 - column of factors - column containing traits you want to compare
 - factor1 and factor2 - the two traits you want to compare
 ```sh
-${HDIR}/asv_diff_abun_wrapper.sh ${norm_asv_table} ${mapping_file} Tissue stem_whole stem_scrapings
+${HDIR}/asv_diff_abun_wrapper.sh ${norm_asv_table} ${mapping_file} tissue stem_whole stem_scrapings
 ```
 
 ## CORRELATION (use normalized counts)
 Run as: 
 ${HDIR}/asv_diff_abun_wrapper.sh <ASV table path> <mapping file> <column of measurements to correlate against>
 ```sh
-${HDIR}/asv_pearson_corr_wrapper.sh ${norm_asv_table} ${mapping_file} Rating
+${HDIR}/asv_pearson_corr_wrapper.sh ${norm_asv_table} ${mapping_file} rating
 ```
 
 ## TAXA PRISM TABLE SUMMARY MAKER: (use normalized counts)
