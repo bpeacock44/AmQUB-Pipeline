@@ -4,7 +4,7 @@
 """
 blast_assign_taxonomy.py
 
-Loads an [ASVs2filter.log] file created by [filter_contaminating_reads.py] and assigns taxonomy to the ASVs/query sequences
+Loads an [ASVs2filter.log] file created by [blast_taxa_categorizer.py] and assigns taxonomy to the ASVs/query sequences
 
 Usage:
     blast_assign_taxonomy.py -i <file> --db <file> -m <email@email.com> [-o <file>] [-K <int>] [-E <int>] [--add_sizes] [--assign_all] [--regex <regex>] [--asv <asv>]
@@ -28,7 +28,7 @@ Options:
     -h               this help
 
 Related scripts:
-1) filter_contaminating_reads.py (creates the [ASVs2filter.log] file)
+1) blast_taxa_categorizer.py (creates the [ASVs2filter.log] file)
 """
 
 

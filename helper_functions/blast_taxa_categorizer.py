@@ -57,7 +57,7 @@ IMPORTANT: Before using this script you must download/create information from NC
     IMPORTANT: In order to find taxonIDs (staxids), blastn MUST have access to the files 'taxdb.btd' and 'taxdb.bti'. These files comprise
                NCBI's taxonID database, and they must be located in the same directory as your local NCBI nt database files
 5) Run this script. Example command:
-    filter_contaminating_reads_by_NCBI_blasts.pl -i repseqs.fna.blastout \\
+    blast_taxa_categorizer.pl -i repseqs.fna.blastout \\
     -k Bacteria__k_txid2_NOT_Environmental_Samples.txt,Archaea__k_txid2157_NOT_Environmental_Samples.txt \\
     -e Bacteria__k_txid2_AND_Environmental_Samples.txt,Archaea__k_txid2157_AND_Environmental_Samples.txt \\
     -r Mouse__f_txid10066_NOT_Environmental_Samples.txt

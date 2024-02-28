@@ -308,7 +308,7 @@ sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will th
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
 if [ -z "$FILTERFILE" ]; then
-  "${HDIR}/filter_contaminating_reads.py" \
+  "${HDIR}/blast_taxa_categorizer.py" \
     -i "${output_dir}/asvs/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -316,7 +316,7 @@ if [ -z "$FILTERFILE" ]; then
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp"
 else
-  "${HDIR}/filter_contaminating_reads.py" \
+  "${HDIR}/blast_taxa_categorizer.py" \
       -i "${output_dir}/asvs/rep_set/final.blastout" \
       -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
       -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
@@ -357,9 +357,9 @@ done <<< "$filtered_lines"
 
 # If new additions were made, re-run the loop
 if [ "$new_addition" = true ]; then
-    # Run the filter_contaminating_reads.py script
+    # Run the blast_taxa_categorizer.py script
     if [ -z "$FILTERFILE" ]; then
-        "${HDIR}/filter_contaminating_reads.py" \
+        "${HDIR}/blast_taxa_categorizer.py" \
             -i "${output_dir}/asvs/rep_set/final.blastout" \
             -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
             -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -367,7 +367,7 @@ if [ "$new_addition" = true ]; then
             -t "$tax_files_dir" \
             -m "${TAXDIR}/merged.dmp"
     else
-        "${HDIR}/filter_contaminating_reads.py" \
+        "${HDIR}/blast_taxa_categorizer.py" \
             -i "${output_dir}/asvs/rep_set/final.blastout" \
             -k $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
             -e $(awk -F'\t' '$4=="Keep"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_AND_Environmental_Samples.txt"}' "$FILTERFILE" |paste -sd, -) \
@@ -411,7 +411,7 @@ echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Determining Likely Taxonomy of ASVs Without Filters"
 echo " - -- --- ---- ---- --- -- -"
-"${HDIR}/filter_contaminating_reads.py" \
+"${HDIR}/blast_taxa_categorizer.py" \
     -i "${output_dir}/asvs/rep_set/final.blastout" \
     -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
     -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -439,8 +439,8 @@ done <<< "$filtered_lines"
 
 # If new additions were made, re-run the loop
 if [ "$new_addition" = true ]; then
-    # Run the filter_contaminating_reads.py script
-    "${HDIR}/filter_contaminating_reads.py" \
+    # Run the blast_taxa_categorizer.py script
+    "${HDIR}/blast_taxa_categorizer.py" \
         -i "${output_dir}/asvs/rep_set/final.blastout" \
         -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
         -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
@@ -552,7 +552,7 @@ echo " - -- --- ---- ---- --- -- -"
 
 module load py-biopython
 # get "top 10 contain multiple families" ASVs
-python ${HDIR}/top_10_family_checker.py final.blastout
+python ${HDIR}/top_ten_family_checker.py final.blastout
 # generate final summary file
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_10_family_checker_out.txt')"
 
