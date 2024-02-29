@@ -89,7 +89,7 @@ trap 'error_handler ${BASH_LINENO[0]} "$BASH_COMMAND"' ERR
 split_asv_table=false
 skip_blast=false
 
-while getopts ":d:o:b:r:e:t:m:u:" opt; do
+while getopts ":d:o:b:r:e:t:us" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
