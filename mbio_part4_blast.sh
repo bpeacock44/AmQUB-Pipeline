@@ -329,7 +329,9 @@ retrieve_taxonomy() {
 # Main loop
 for ((i = 0; i <= N; i++)); do
     FAND="${TAXDIR}/${TAXONS[i]}_AND_Environmental_Samples.txt"
+    echo $FAND
     FNOT="${TAXDIR}/${TAXONS[i]}_NOT_Environmental_Samples.txt"
+    echo $FNOT
 
     # Check if the file was updated within the last 24 hours
     if [[ $(find "$FAND" -mtime -1 2>/dev/null) || $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
@@ -337,6 +339,7 @@ for ((i = 0; i <= N; i++)); do
         continue
     fi
 
+    echo "Retrieving taxonomic IDs for ${TAXON[i]}."
     retrieve_taxonomy "${TAXIDS[i]}[subtree] AND \"Environmental Samples\"[subtree]" "$FAND"
     retrieve_taxonomy "${TAXIDS[i]}[subtree] NOT \"Environmental Samples\"[subtree]" "$FNOT"
 done
@@ -440,9 +443,8 @@ fi
 new_addition=false
 
 # Move the generated ASVs files to the rep_set folder
-if compgen -G "${output_dir}/ASVs2*" > /dev/null; then
-    # Move the files
-    mv "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
+if ls "${output_dir}/ASVs2"* 1> /dev/null 2>&1; then
+    mv "${output_dir}/ASVs2"* "${output_dir}/asvs/rep_set"
 fi
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
