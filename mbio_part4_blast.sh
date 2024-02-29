@@ -241,12 +241,16 @@ add_file_names() {
     local fand="$1"
     local fnot="$2"
 
-    used_taxa+=("$fand" "$fnot")
+    # Extract just the filenames from the paths
+    fand_filename=$(basename "$fand")
+    fnot_filename=$(basename "$fnot")
+
+    used_taxa+=("$fand_filename" "$fnot_filename")
 }
 
 # Process based on FILTERFILE presence
 if [ -z "$FILTERFILE" ]; then
-    tail -n +2 <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | while IFS=$'\t' read -r Name ID Rank Action; do
+    while IFS=$'\t' read -r Name ID Rank Action; do
         # Generate filenames
         FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
         FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
@@ -261,9 +265,9 @@ if [ -z "$FILTERFILE" ]; then
             echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
             add_file_names "" "$FNOT"
         fi
-    done
+    done < <(tail -n +2 <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject"))
 else
-    tail -n +2 ${FILTERFILE} | while IFS=$'\t' read -r Name ID Rank Action; do
+    while IFS=$'\t' read -r Name ID Rank Action; do
         # Generate filenames
         FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
         FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
@@ -278,7 +282,7 @@ else
             echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
             add_file_names "" "$FNOT"
         fi
-    done
+    done < <(tail -n +2 "$FILTERFILE")
 fi
 
 ### Update files 
@@ -294,8 +298,6 @@ for file in "${used_taxa[@]}"; do
     fi
 done
 
-N=$((${#TAXONS[@]}-1))
-echo "$N taxa to update"
 # create AND/NOT search-terms and filenames for esearch/efetch
 # Function to retrieve taxonomy IDs
 retrieve_taxonomy() {
@@ -327,12 +329,19 @@ retrieve_taxonomy() {
 
 # Main loop
 for ((i = 0; i <= $N; i++)); do
-    FAND="${TAXONS[$i]}_AND_Environmental_Samples.txt"
-    FNOT="${TAXONS[$i]}_NOT_Environmental_Samples.txt"
+    FAND="${TAXDIR}/${TAXONS[$i]}_AND_Environmental_Samples.txt"
+    FNOT="${TAXDIR}/${TAXONS[$i]}_NOT_Environmental_Samples.txt"
+
+    # Check if the file was updated within the last 24 hours
+    if [[ $(find "$FAND" -mtime -1 2>/dev/null) || $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
+        echo "Skipping ${TAXONS[$i]} files as they were updated within the last 24 hours."
+        continue
+    fi
 
     retrieve_taxonomy "${TAXIDS[$i]}[subtree] AND \"Environmental Samples\"[subtree]" "$FAND"
     retrieve_taxonomy "${TAXIDS[$i]}[subtree] NOT \"Environmental Samples\"[subtree]" "$FNOT"
 done
+
 
 # download and unzip updated merged.dmp file
 wget -q ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -P ${TAXDIR}
@@ -357,6 +366,7 @@ sudo mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
 sudo touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 cd ${output_dir}
+pwd
 
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
@@ -433,7 +443,7 @@ fi
 new_addition=false
 
 # Move the generated ASVs files to the rep_set folder
-mv "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
+mv -f "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
 
@@ -448,7 +458,7 @@ rm -rf "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
 blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     --db "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
-    -m beth.b.peacock@gmail.com \
+    -m ${MAIL} \
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 rm *.xml
 module purge
@@ -520,7 +530,7 @@ rm -rf ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json
 rm -f *.xml
 blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   --db ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
-  -m beth.b.peacock@gmail.com \
+  -m ${MAIL} \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
 rm *.xml
 module purge
