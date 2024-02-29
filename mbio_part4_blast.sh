@@ -327,14 +327,11 @@ retrieve_taxonomy() {
 }
 
 N=${#TAXONS[@]}
-echo $N
 
 # Main loop
-for ((i = 0; i <= N; i++)); do
+for ((i = 0; i < N; i++)); do
     FAND="${TAXDIR}/${TAXONS[i]}_AND_Environmental_Samples.txt"
-    echo $FAND
     FNOT="${TAXDIR}/${TAXONS[i]}_NOT_Environmental_Samples.txt"
-    echo $FNOT
 
     # Check if the file was updated within the last 24 hours
     if [[ $(find "$FAND" -mtime -1 2>/dev/null) || $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
