@@ -129,7 +129,7 @@ if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$blast_file" ] || [ -z "$EMAIL" ] 
 fi
 
 # Check if email is in correct format
-if ! [[ $EMAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+if ! [[ "${EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     echo "Email is not valid."
     exit 1
 fi
@@ -184,7 +184,7 @@ Working directory: ${DIR}
 Output directory: ${OUTDIR}
 Blast run file: ${blast_file}
 Type of blast: ${run_type}
-Email of user: ${EMAIL}
+Email of user: "${EMAIL}"
 Filterfile if specified: ${FILTERFILE}"
 if [ "$skip_blast" = true ]; then
     echo "BLAST was skipped."
@@ -327,6 +327,7 @@ retrieve_taxonomy() {
 }
 
 N=${#TAXONS[@]}
+echo $N
 
 # Main loop
 for ((i = 0; i <= N; i++)); do
@@ -460,9 +461,10 @@ echo "Assigning Taxonomy With Filters"
 echo " - -- --- ---- ---- --- -- -"
 rm -rf "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
+echo "${EMAIL}"
 blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     --db "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
-    -m ${EMAIL} \
+    -m "${EMAIL}"\
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 rm *.xml
 module purge
@@ -534,7 +536,7 @@ rm -rf ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json
 rm -f *.xml
 blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   --db ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
-  -m ${EMAIL} \
+  -m "${EMAIL}" \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
 rm *.xml
 module purge
