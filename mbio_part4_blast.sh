@@ -234,44 +234,69 @@ echo " - -- --- ---- ---- --- -- -"
 # Create filter files in the taxonomy directory if needed. There are two sections - one for if the user didn't specify
 # a filter file and another for if they did.
 # Read the tab-delimited file, skipping the header
+
+used_taxa=()
+
+add_file_names() {
+    local fand="$1"
+    local fnot="$2"
+
+    used_taxa+=("$fand" "$fnot")
+}
+
+# Process based on FILTERFILE presence
 if [ -z "$FILTERFILE" ]; then
-  tail -n +2 <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | while IFS=$'\t' read -r Name ID Rank Action; do
-      # Generate filenames
-      FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
-      FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
-      # Check the action column and create files accordingly unless they already exist
-      if [ "$Action" == "Keep" ]; then
-          touch "$FAND"
-          touch "$FNOT"
-          echo "Creating or locating files ${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt and ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
-      elif [ "$Action" == "Reject" ]; then
-          touch "$FNOT"
-          echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
-      fi
-  done
+    tail -n +2 <(echo -e "Name\tID\tRank\tAction\nEukaryota\t2759\tk\tKeep\nBacteria\t2\tk\tKeep\nArchaea\t2157\tk\tKeep\nPlaceholder\t0\tk\tReject") | while IFS=$'\t' read -r Name ID Rank Action; do
+        # Generate filenames
+        FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
+        FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
+        # Check the action column and create files accordingly unless they already exist
+        if [ "$Action" == "Keep" ]; then
+            touch "$FAND"
+            touch "$FNOT"
+            echo "Creating or locating files ${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt and ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
+            add_file_names "$FAND" "$FNOT"
+        elif [ "$Action" == "Reject" ]; then
+            touch "$FNOT"
+            echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
+            add_file_names "" "$FNOT"
+        fi
+    done
 else
-  tail -n +2 ${FILTERFILE} | while IFS=$'\t' read -r Name ID Rank Action; do
-      # Generate filenames
-      FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
-      FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
-      # Check the action column and create files accordingly unless they already exist
-      if [ "$Action" == "Keep" ]; then
-          touch "$FAND"
-          touch "$FNOT"
-          echo "Creating or locating files ${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt and ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
-      elif [ "$Action" == "Reject" ]; then
-          touch "$FNOT"
-          echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
-      fi
-  done
+    tail -n +2 ${FILTERFILE} | while IFS=$'\t' read -r Name ID Rank Action; do
+        # Generate filenames
+        FAND="${TAXDIR}/${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt"
+        FNOT="${TAXDIR}/${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
+        # Check the action column and create files accordingly unless they already exist
+        if [ "$Action" == "Keep" ]; then
+            touch "$FAND"
+            touch "$FNOT"
+            echo "Creating or locating files ${Name}__${Rank}_txid${ID}_AND_Environmental_Samples.txt and ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt"
+            add_file_names "$FAND" "$FNOT"
+        elif [ "$Action" == "Reject" ]; then
+            touch "$FNOT"
+            echo "Creating or locating file ${Name}__${Rank}_txid${ID}_NOT_Environmental_Samples.txt."
+            add_file_names "" "$FNOT"
+        fi
+    done
 fi
 
-### Update files - note this will update ALL taxonomy files, not just the ones you are using.
-TAXONS=($(ls ${TAXDIR}/*NOT* | perl -ne '@A=split/_NOT_/;@B=split/__\w_/,$A[0];print"$A[0]\n";'))
-TAXIDS=($(ls ${TAXDIR}/*NOT* | perl -ne '@A=split/_NOT_/;@B=split/__\w_/,$A[0];print"$B[1]\n";'))
-N=$((${#TAXONS[@]}-1)); echo "$N taxa to update"
+### Update files 
+TAXONS=()
+TAXIDS=()
 
-#create AND/NOT search-terms and filenames for esearch/efetch
+for file in "${used_taxa[@]}"; do
+    if [[ $file == *NOT* ]]; then
+        taxon=$(echo "$file" | perl -ne '@A=split/_NOT_/;@B=split/__\w_/,$A[0];print"$A[0]\n"')
+        taxid=$(echo "$file" | perl -ne '@A=split/_NOT_/;@B=split/__\w_/,$A[0];print"$B[1]\n"')
+        TAXONS+=("$taxon")
+        TAXIDS+=("$taxid")
+    fi
+done
+
+N=$((${#TAXONS[@]}-1))
+echo "$N taxa to update"
+# create AND/NOT search-terms and filenames for esearch/efetch
 # Function to retrieve taxonomy IDs
 retrieve_taxonomy() {
     local query="$1"
@@ -295,7 +320,7 @@ retrieve_taxonomy() {
     done
 
     if ! $success; then
-        echo "Failed to retrieve taxonomy for $output_file after $max_attempts attempts. Please run part 4 again with the s flag to skip the BLAST."
+        echo "Failed to retrieve taxonomy for $output_file after $max_attempts attempts. This may be because you're requesting too many in quick succession. Run part 4 again with the s flag to skip the BLAST."
         exit 1
     fi
 }
