@@ -546,10 +546,9 @@ def download_eposted_taxonIDs_to_XML(opts):
             data = fetch_handle.read()
             fetch_handle.close()
             print(":  Writing batch to file", file=sys.stderr)
-            #out_handle.write(data)
             out_handle.write(data.decode('utf-8'))
-            #out_handle.close()
-            #add names of saved XML files to a list in opts
+            # add debugging information
+            print(":  Wrote %d bytes to file %s" % (len(data), out_file), file=sys.stderr)
             opts['xml_files'].append(out_file)
             idx += 1
 #
