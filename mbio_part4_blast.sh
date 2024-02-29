@@ -326,6 +326,8 @@ retrieve_taxonomy() {
     fi
 }
 
+N=${#TAXONS[@]}
+
 # Main loop
 for ((i = 0; i <= N; i++)); do
     FAND="${TAXDIR}/${TAXONS[i]}_AND_Environmental_Samples.txt"
@@ -460,7 +462,7 @@ rm -rf "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
 blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     --db "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
-    -m ${MAIL} \
+    -m ${EMAIL} \
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 rm *.xml
 module purge
@@ -532,7 +534,7 @@ rm -rf ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json
 rm -f *.xml
 blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   --db ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
-  -m ${MAIL} \
+  -m ${EMAIL} \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
 rm *.xml
 module purge
