@@ -272,13 +272,41 @@ TAXIDS=($(ls ${TAXDIR}/*NOT* | perl -ne '@A=split/_NOT_/;@B=split/__\w_/,$A[0];p
 N=$((${#TAXONS[@]}-1)); echo "$N taxa to update"
 
 #create AND/NOT search-terms and filenames for esearch/efetch
-for I in $(seq 0 $N); do
-  FAND=${TAXONS[$I]}_AND_Environmental_Samples.txt
-  FNOT=${TAXONS[$I]}_NOT_Environmental_Samples.txt
-  echo "Retrieving taxonomy for ${FAND}" 
-  esearch -db taxonomy -query "${TAXIDS[$I]}[subtree] AND \"Environmental Samples\"[subtree]" | efetch -format uid > $FAND
-  echo "Retrieving taxonomy for ${FNOT}" 
-  esearch -db taxonomy -query "${TAXIDS[$I]}[subtree] NOT \"Environmental Samples\"[subtree]" | efetch -format uid > $FNOT
+# Function to retrieve taxonomy IDs
+retrieve_taxonomy() {
+    local query="$1"
+    local output_file="$2"
+
+    local max_attempts=3
+    local attempt=1
+    local success=false
+
+    while [ $attempt -le $max_attempts ]; do
+        echo "Attempt $attempt: Retrieving taxonomy for $output_file"
+        esearch -db taxonomy -query "$query" | efetch -format uid > "$output_file"
+        if [ $? -eq 0 ]; then
+            success=true
+            break
+        else
+            echo "Attempt $attempt failed. Retrying in 5 seconds..."
+            sleep 5
+            ((attempt++))
+        fi
+    done
+
+    if ! $success; then
+        echo "Failed to retrieve taxonomy for $output_file after $max_attempts attempts. Please run part 4 again with the s flag to skip the BLAST."
+        exit 1
+    fi
+}
+
+# Main loop
+for ((i = 0; i <= $N; i++)); do
+    FAND="${TAXONS[$i]}_AND_Environmental_Samples.txt"
+    FNOT="${TAXONS[$i]}_NOT_Environmental_Samples.txt"
+
+    retrieve_taxonomy "${TAXIDS[$i]}[subtree] AND \"Environmental Samples\"[subtree]" "$FAND"
+    retrieve_taxonomy "${TAXIDS[$i]}[subtree] NOT \"Environmental Samples\"[subtree]" "$FNOT"
 done
 
 # download and unzip updated merged.dmp file
