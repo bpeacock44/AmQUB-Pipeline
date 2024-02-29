@@ -356,6 +356,7 @@ tax_files_dir="${userdir}/mbio_taxa_fz"
 sudo mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
 sudo touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
+cd ${output_dir}
 
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
@@ -432,7 +433,7 @@ fi
 new_addition=false
 
 # Move the generated ASVs files to the rep_set folder
-mv ./ASVs2* "${output_dir}/asvs/rep_set"
+mv "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
 
