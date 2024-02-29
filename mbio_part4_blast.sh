@@ -77,13 +77,12 @@ set -e
 
 # Custom error handler function
 error_handler() {
-    local line_number=$1
-    local error_message=$2
-    echo "Error on line $line_number: $error_message"
+    local error_message=$1
+    echo "Error on line $error_message"
 }
 
 # Trap errors and call the error handler
-trap 'error_handler ${BASH_LINENO[0]} "$BASH_COMMAND"' ERR
+trap 'error_handler "$BASH_COMMAND"' ERR
 
 # ARGUMENTS
 split_asv_table=false
@@ -334,7 +333,7 @@ for ((i = 0; i <= N; i++)); do
 
     # Check if the file was updated within the last 24 hours
     if [[ $(find "$FAND" -mtime -1 2>/dev/null) || $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
-        echo "Skipping ${TAXONS[i]} files as they were updated within the last 24 hours."
+        echo "Skipping ${TAXONS[i]} - already up-to-date."
         continue
     fi
 
@@ -365,7 +364,6 @@ sudo mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
 sudo touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 sudo chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
 cd ${output_dir}
-pwd
 
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
@@ -442,7 +440,10 @@ fi
 new_addition=false
 
 # Move the generated ASVs files to the rep_set folder
-mv -f "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
+if compgen -G "${output_dir}/ASVs2*" > /dev/null; then
+    # Move the files
+    mv "${output_dir}/ASVs2*" "${output_dir}/asvs/rep_set"
+fi
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
 
