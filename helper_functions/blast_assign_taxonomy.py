@@ -34,7 +34,6 @@ Related scripts:
 
 from collections import defaultdict
 from urllib.error import HTTPError
-import http.client  # Add this import statement
 from docopt import docopt
 from Bio import Entrez
 import xmltodict
@@ -514,16 +513,13 @@ def get_next_xml_idx(opts):
     return idx
 #
 
-import time
-from urllib.error import HTTPError
-from Bio import Entrez
-
 def download_eposted_taxonIDs_to_XML(opts):
     # Download taxonomies in XML format
     opts['xml_files'] = []
     idx = get_next_xml_idx(opts)
     for start in range(0, opts['count'], opts['retmax']):
         out_file = opts['taxa_xml_file'] + str(idx) + ".xml"
+        # out_handle = open(out_file, "wb")
         with open(out_file, 'w') as out_handle:
             end = min(opts['count'], start + opts['retmax'])
             num2fetch = str(end - start)
@@ -545,21 +541,27 @@ def download_eposted_taxonIDs_to_XML(opts):
                         print(":  Error from server %s" % err, file=sys.stderr)
                         raise
 
-            # Get XML and save to file
-            try:
-                data = fetch_handle.read()
-            except http.client.IncompleteRead as e:
-                print("Incomplete read. Retrying...", file=sys.stderr)
-                attempt += 1
-                time.sleep(15)
-                continue
+            while True:
+                try:
+                    # Get XML and save to file
+                    data = fetch_handle.read()
+                    fetch_handle.close()
+                    print(":  Writing batch to file", file=sys.stderr)
+                    # out_handle.write(data)
+                    out_handle.write(data.decode('utf-8'))
+                    # out_handle.close()
+                    # Add names of saved XML files to a list in opts
+                    opts['xml_files'].append(out_file)
+                    idx += 1
+                    break
+                except http.client.IncompleteRead:
+                    # Retry if an IncompleteRead exception occurs
+                    print("IncompleteRead exception occurred. Retrying...")
+                    time.sleep(5)  # Wait before retrying
 
-            fetch_handle.close()
-            print(":  Writing batch to file", file=sys.stderr)
-            out_handle.write(data.decode('utf-8'))
-            opts['xml_files'].append(out_file)
-            idx += 1
-#
+# Call the function with your options
+download_eposted_taxonIDs_to_XML(opts)
+
 
 def get_taxonomies_from_XML_files(opts):
     #@Returns dict[taxonIDs]=taxonomic_lineages

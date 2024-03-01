@@ -284,6 +284,8 @@ else
     done < <(tail -n +2 "$FILTERFILE")
 fi
 
+echo
+
 ### Update files 
 TAXONS=()
 TAXIDS=()
@@ -344,20 +346,32 @@ for ((i = 0; i < N; i++)); do
     retrieve_taxonomy "${TAXIDS[i]}[subtree] NOT \"Environmental Samples\"[subtree]" "$FNOT"
 done
 
-# download and unzip updated merged.dmp file
-wget -q ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -P ${TAXDIR}
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to download taxdmp.zip."
-    exit 1
+echo
+
+# download and unzip updated merged.dmp file if it was not already downloaded today
+if [[ -f "${TAXDIR}/merged.dmp" ]]; then
+    if [[ $(find "${TAXDIR}/merged.dmp" -mtime -1) ]]; then
+        echo "Updated merged.dmp file present."
+    else
+        wget -q ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -P "${TAXDIR}"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to download taxdmp.zip."
+            exit 1
+        fi
+        unzip -o "${TAXDIR}/taxdmp.zip" -d "${TAXDIR}"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to unzip taxdmp.zip."
+            exit 1
+        fi
+        rm -rf "${TAXDIR}/taxdmp.zip"
+    fi
+else
+    echo "File ${TAXDIR}/merged.dmp does not exist."
 fi
-unzip -o ${TAXDIR}/taxdmp.zip -d ${TAXDIR}
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to unzip taxdmp.zip."
-    exit 1
-fi
-rm -rf ${TAXDIR}/taxdmp.zip 
 
 touch "${TAXDIR}/Placeholder__k_txid0_NOT_Environmental_Samples.txt"
+
+echo
 
 # find the user's usearch path, which is where the AccnsWithDubiousTaxAssigns.txt file will be stored.
 userpath=$(which usearch)
