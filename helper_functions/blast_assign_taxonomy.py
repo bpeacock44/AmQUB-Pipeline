@@ -559,10 +559,6 @@ def download_eposted_taxonIDs_to_XML(opts):
                     print("IncompleteRead exception occurred. Retrying...")
                     time.sleep(5)  # Wait before retrying
 
-# Call the function with your options
-download_eposted_taxonIDs_to_XML(opts)
-
-
 def get_taxonomies_from_XML_files(opts):
     #@Returns dict[taxonIDs]=taxonomic_lineages
     all_new_taxonomies_dict = {}
