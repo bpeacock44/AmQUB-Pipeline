@@ -529,8 +529,12 @@ blast_taxa_categorizer.py \
     -m "${TAXDIR}/merged.dmp" #-f
 
 # now we have a new bad_accns file to process:
+bad_accns="${output_dir}/bad_accns.txt"
+ls bad_accns
 # Filter out lines starting with # or empty lines
+echo filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
 filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+
 
 while IFS= read -r line; do
     number=$(echo "$line" | cut -f1)
