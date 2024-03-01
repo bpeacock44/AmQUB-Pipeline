@@ -514,44 +514,37 @@ def get_next_xml_idx(opts):
 #
 
 def download_eposted_taxonIDs_to_XML(opts):
-    #download taxonomies in XML format
+    # download taxonomies in XML format
     opts['xml_files'] = []
     idx = get_next_xml_idx(opts)
     for start in range(0, opts['count'], opts['retmax']):
-        out_file = opts['taxa_xml_file']+str(idx)+".xml"
-        #out_handle = open(out_file, "wb")
+        out_file = opts['taxa_xml_file'] + str(idx) + ".xml"
         with open(out_file, 'w') as out_handle:
-
-            end = min(opts['count'], start+opts['retmax'])
+            end = min(opts['count'], start + opts['retmax'])
             num2fetch = str(end - start)
             attempt = 1
             while attempt <= opts['max_attempts']:
                 try:
-                    print(":  Efetching ["+num2fetch+"] taxa. Attempt",attempt, file=sys.stderr)
+                    print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
                     fetch_handle = Entrez.efetch(db=opts['db'], rettype="", retmode=opts['retmode'],
                                                  retstart=start, retmax=opts['retmax'],
                                                  webenv=opts['WebEnv'], query_key=opts['QueryKey'])
+                    data = fetch_handle.read()
+                    fetch_handle.close()
+                    out_handle.write(data.decode('utf-8'))
+                    opts['xml_files'].append(out_file)
+                    idx += 1
                     break
                 except HTTPError as err:
                     if 500 <= err.code <= 599 or err.code == 400:
                         print(":  Received error from server %s" % err, file=sys.stderr)
                         attempt += 1
-                        time.sleep(15)
+                        time.sleep(15 * attempt)  # Increasing delay with each attempt
                         continue
                     else:
                         print(":  Error from server %s" % err, file=sys.stderr)
                         raise
 
-            #get XML and save to file
-            data = fetch_handle.read()
-            fetch_handle.close()
-            #print(":  Writing batch to file", file=sys.stderr)
-            #out_handle.write(data)
-            out_handle.write(data.decode('utf-8'))
-            #out_handle.close()
-            #add names of saved XML files to a list in opts
-            opts['xml_files'].append(out_file)
-            idx += 1
 #
 
 def get_taxonomies_from_XML_files(opts):
