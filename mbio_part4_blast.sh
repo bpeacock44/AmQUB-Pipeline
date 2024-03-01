@@ -416,7 +416,10 @@ check_existence() {
 }
 
 # Filter out lines starting with # or empty lines
-filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+# Check if $bad_accns is non-empty and contains lines that are not empty and do not start with #
+if [[ -s "$bad_accns" && $(grep -cve '^#|^$' "$bad_accns") -gt 0 ]]; then
+    filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+fi
 
 while IFS= read -r line; do
     number=$(echo "$line" | cut -f1)
@@ -542,13 +545,10 @@ blast_taxa_categorizer.py \
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp" #-f
 
-# now we have a new bad_accns file to process:
-bad_accns="${output_dir}/bad_accns.txt"
-ls $bad_accns
 # Filter out lines starting with # or empty lines
-echo filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
-filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
-
+if [[ -s "$bad_accns" && $(grep -cve '^#|^$' "$bad_accns") -gt 0 ]]; then
+    filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+fi
 
 while IFS= read -r line; do
     number=$(echo "$line" | cut -f1)

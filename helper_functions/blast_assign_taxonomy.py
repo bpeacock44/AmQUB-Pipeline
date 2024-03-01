@@ -558,6 +558,7 @@ def download_eposted_taxonIDs_to_XML(opts):
                     # Retry if an IncompleteRead exception occurs
                     print("IncompleteRead exception occurred. Retrying...")
                     time.sleep(5)  # Wait before retrying
+#
 
 def get_taxonomies_from_XML_files(opts):
     #@Returns dict[taxonIDs]=taxonomic_lineages
@@ -566,13 +567,12 @@ def get_taxonomies_from_XML_files(opts):
         #parse the downloaded XML file into a dict
         print(":  Parsing XML file ["+out_file+"]", file=sys.stderr)
         new_taxIDs_dict = parse_xml_file(out_file)
-        print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
+        #print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
 
         #merge the old and new dicts
-        print(":  Updating and saving new_taxIDs_dict")
-        print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        #print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
         all_new_taxonomies_dict.update(new_taxIDs_dict)
-        print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        #print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
 
     return all_new_taxonomies_dict
 #
