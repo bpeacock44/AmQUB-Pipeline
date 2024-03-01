@@ -521,7 +521,6 @@ def download_eposted_taxonIDs_to_XML(opts):
     idx = get_next_xml_idx(opts)
     for start in range(0, opts['count'], opts['retmax']):
         out_file = opts['taxa_xml_file'] + str(idx) + ".xml"
-        # out_handle = open(out_file, "wb")
         with open(out_file, 'w') as out_handle:
             end = min(opts['count'], start + opts['retmax'])
             num2fetch = str(end - start)
@@ -533,7 +532,7 @@ def download_eposted_taxonIDs_to_XML(opts):
                                                  retstart=start, retmax=opts['retmax'],
                                                  webenv=opts['WebEnv'], query_key=opts['QueryKey'])
                     break
-                except HTTPError as err:
+                except http.client.HTTPError as err:
                     if 500 <= err.code <= 599 or err.code == 400:
                         print(":  Received error from server %s" % err, file=sys.stderr)
                         attempt += 1
@@ -545,21 +544,28 @@ def download_eposted_taxonIDs_to_XML(opts):
 
             while True:
                 try:
-                    # Get XML and save to file
                     data = fetch_handle.read()
                     fetch_handle.close()
-                    #print(":  Writing batch to file", file=sys.stderr)
-                    # out_handle.write(data)
+                    print(":  Writing batch to file", file=sys.stderr)
                     out_handle.write(data.decode('utf-8'))
-                    # out_handle.close()
-                    # Add names of saved XML files to a list in opts
                     opts['xml_files'].append(out_file)
                     idx += 1
+                    # Verify server response
+                    if not is_valid_xml(out_file):
+                        print(f"Invalid XML file downloaded: {out_file}", file=sys.stderr)
                     break
                 except http.client.IncompleteRead:
-                    # Retry if an IncompleteRead exception occurs
                     print("IncompleteRead exception occurred. Retrying...")
-                    time.sleep(5)  # Wait before retrying
+                    time.sleep(5)
+#
+
+def is_valid_xml(file_path):
+    try:
+        tree = ET.parse(file_path)
+        return True
+    except ET.ParseError as e:
+        print(f"Error parsing XML file '{file_path}': {e}")
+        return False
 #
 
 def get_taxonomies_from_XML_files(opts):
