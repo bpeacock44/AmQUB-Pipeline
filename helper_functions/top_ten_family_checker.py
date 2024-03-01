@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Usage: python ${HDIR}/top_ten_family_checker.py <blastout.file>
 
 # This checks the first 10 blast results for each ASV that can return a family in it's taxonomic info

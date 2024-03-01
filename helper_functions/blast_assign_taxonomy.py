@@ -524,8 +524,9 @@ def download_eposted_taxonIDs_to_XML(opts):
             num2fetch = str(end - start)
             attempt = 1
             while attempt <= opts['max_attempts']:
+                print(": Efetching taxa.")
                 try:
-                    print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
+                    #print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
                     fetch_handle = Entrez.efetch(db=opts['db'], rettype="", retmode=opts['retmode'],
                                                  retstart=start, retmax=opts['retmax'],
                                                  webenv=opts['WebEnv'], query_key=opts['QueryKey'])
@@ -554,12 +555,12 @@ def get_taxonomies_from_XML_files(opts):
         #parse the downloaded XML file into a dict
         print(":  Parsing XML file ["+out_file+"]", file=sys.stderr)
         new_taxIDs_dict = parse_xml_file(out_file)
-        print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
+        #print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
 
         #merge the old and new dicts
-        print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        #print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
         all_new_taxonomies_dict.update(new_taxIDs_dict)
-        print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        #print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
 
     return all_new_taxonomies_dict
 #
