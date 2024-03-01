@@ -34,6 +34,7 @@ Related scripts:
 
 from collections import defaultdict
 from urllib.error import HTTPError
+import http.client  # Add this import statement
 from docopt import docopt
 from Bio import Entrez
 import xmltodict
