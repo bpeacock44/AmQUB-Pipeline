@@ -50,6 +50,7 @@ Related scripts:
   rrna_copy_adjustments.py
   biom_table_math_ops.py"""
 
+__version__ = "na"
 
 SCRIPT_INFO['required_options'] = [
     make_option('-i', '--input_fp', type="existing_filepath",

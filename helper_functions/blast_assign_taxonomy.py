@@ -557,7 +557,6 @@ def get_taxonomies_from_XML_files(opts):
         print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
 
         #merge the old and new dicts
-        print(":  Updating and saving new_taxIDs_dict")
         print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
         all_new_taxonomies_dict.update(new_taxIDs_dict)
         print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
