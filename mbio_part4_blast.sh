@@ -530,7 +530,7 @@ blast_taxa_categorizer.py \
 
 # now we have a new bad_accns file to process:
 bad_accns="${output_dir}/bad_accns.txt"
-ls bad_accns
+ls $bad_accns
 # Filter out lines starting with # or empty lines
 echo filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
 filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
