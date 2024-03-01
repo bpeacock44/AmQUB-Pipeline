@@ -43,8 +43,6 @@ import time
 import sys
 import re
 import os
-import http.client
-
 
 
 class ASV:
@@ -516,23 +514,25 @@ def get_next_xml_idx(opts):
 #
 
 def download_eposted_taxonIDs_to_XML(opts):
-    # Download taxonomies in XML format
+    #download taxonomies in XML format
     opts['xml_files'] = []
     idx = get_next_xml_idx(opts)
     for start in range(0, opts['count'], opts['retmax']):
-        out_file = opts['taxa_xml_file'] + str(idx) + ".xml"
+        out_file = opts['taxa_xml_file']+str(idx)+".xml"
+        #out_handle = open(out_file, "wb")
         with open(out_file, 'w') as out_handle:
-            end = min(opts['count'], start + opts['retmax'])
+
+            end = min(opts['count'], start+opts['retmax'])
             num2fetch = str(end - start)
             attempt = 1
             while attempt <= opts['max_attempts']:
                 try:
-                    print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
+                    print(":  Efetching ["+num2fetch+"] taxa. Attempt",attempt, file=sys.stderr)
                     fetch_handle = Entrez.efetch(db=opts['db'], rettype="", retmode=opts['retmode'],
                                                  retstart=start, retmax=opts['retmax'],
                                                  webenv=opts['WebEnv'], query_key=opts['QueryKey'])
                     break
-                except http.client.HTTPError as err:
+                except HTTPError as err:
                     if 500 <= err.code <= 599 or err.code == 400:
                         print(":  Received error from server %s" % err, file=sys.stderr)
                         attempt += 1
@@ -542,30 +542,16 @@ def download_eposted_taxonIDs_to_XML(opts):
                         print(":  Error from server %s" % err, file=sys.stderr)
                         raise
 
-            while True:
-                try:
-                    data = fetch_handle.read()
-                    fetch_handle.close()
-                    print(":  Writing batch to file", file=sys.stderr)
-                    out_handle.write(data.decode('utf-8'))
-                    opts['xml_files'].append(out_file)
-                    idx += 1
-                    # Verify server response
-                    if not is_valid_xml(out_file):
-                        print(f"Invalid XML file downloaded: {out_file}", file=sys.stderr)
-                    break
-                except http.client.IncompleteRead:
-                    print("IncompleteRead exception occurred. Retrying...")
-                    time.sleep(5)
-#
-
-def is_valid_xml(file_path):
-    try:
-        tree = ET.parse(file_path)
-        return True
-    except ET.ParseError as e:
-        print(f"Error parsing XML file '{file_path}': {e}")
-        return False
+            #get XML and save to file
+            data = fetch_handle.read()
+            fetch_handle.close()
+            #print(":  Writing batch to file", file=sys.stderr)
+            #out_handle.write(data)
+            out_handle.write(data.decode('utf-8'))
+            #out_handle.close()
+            #add names of saved XML files to a list in opts
+            opts['xml_files'].append(out_file)
+            idx += 1
 #
 
 def get_taxonomies_from_XML_files(opts):
@@ -575,12 +561,13 @@ def get_taxonomies_from_XML_files(opts):
         #parse the downloaded XML file into a dict
         print(":  Parsing XML file ["+out_file+"]", file=sys.stderr)
         new_taxIDs_dict = parse_xml_file(out_file)
-        #print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
+        print(":  Parsed",len(new_taxIDs_dict),"new TaxIDs", file=sys.stderr)
 
         #merge the old and new dicts
-        #print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        print(":  Updating and saving new_taxIDs_dict")
+        print(":    (pre-update) len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
         all_new_taxonomies_dict.update(new_taxIDs_dict)
-        #print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
+        print(":    (post-update)len(all_new_taxonomies_dict:",len(all_new_taxonomies_dict), file=sys.stderr)
 
     return all_new_taxonomies_dict
 #
