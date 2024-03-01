@@ -545,37 +545,6 @@ blast_taxa_categorizer.py \
     -t "$tax_files_dir" \
     -m "${TAXDIR}/merged.dmp" #-f
 
-# Filter out lines starting with # or empty lines
-if [[ -s "$bad_accns" && $(grep -cve '^#|^$' "$bad_accns") -gt 0 ]]; then
-    filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
-fi
-
-while IFS= read -r line; do
-    number=$(echo "$line" | cut -f1)
-    
-    if [ -z "$number" ]; then
-        continue
-    fi
-
-    if ! check_existence "$number"; then
-        echo "$number" >> "$dubious_accns" # Append the number if it doesn't exist
-        echo "Adding $number to AccnsWithDubiousTaxAssigns.txt"
-        new_addition=true
-    fi
-done <<< "$filtered_lines"
-
-# If new additions were made, re-run the loop
-if [ "$new_addition" = true ]; then
-    # Run the blast_taxa_categorizer.py script
-    blast_taxa_categorizer.py \
-        -i "${output_dir}/asvs/rep_set/final.blastout" \
-        -k $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
-        -e $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
-        -r $(awk -F'\t' '$4=="Reject"{print "'${TAXDIR}'/"$1"__"$3"_txid"$2"_NOT_Environmental_Samples.txt"}' <(echo -e "Name\tID\tRank\tAction\nPlaceholder\t0\tk\tReject") | paste -sd, -) \
-        -t "$tax_files_dir" \
-        -m "${TAXDIR}/merged.dmp" #-f
-fi
-
 # Rename the generated ASVs files and move to the rep_set folder
 mv ./ASVs2filter.log ./nf_ASVs2filter.log
 mv ./ASVs2summary.txt ./nf_ASVs2summary.txt
