@@ -179,7 +179,7 @@ exec > "$output_file" 2>&1
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 2 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for Part 4 of the Microbiome Pipeline. Processing the following arguments:
 Working directory: ${DIR}
 Output directory: ${OUTDIR}
 Blast run file: ${blast_file}
@@ -335,13 +335,13 @@ for ((i = 0; i < N; i++)); do
     FAND="${TAXDIR}/${TAXONS[i]}_AND_Environmental_Samples.txt"
     FNOT="${TAXDIR}/${TAXONS[i]}_NOT_Environmental_Samples.txt"
 
-    # Check if the file was updated within the last 24 hours
-    if [[ $(find "$FAND" -mtime -1 2>/dev/null) || $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
+    # Check if the file is not empty and was updated within the last 24 hours
+    if [[ -s "$FAND" && $(find "$FAND" -mtime -1 2>/dev/null) ]] && [[ -s "$FNOT" && $(find "$FNOT" -mtime -1 2>/dev/null) ]]; then
         echo "Skipping ${TAXONS[i]} - already up-to-date."
         continue
     fi
 
-    echo "Retrieving taxonomic IDs for ${TAXON[i]}."
+    echo "Retrieving taxonomic IDs for ${TAXONS[i]}."
     retrieve_taxonomy "${TAXIDS[i]}[subtree] AND \"Environmental Samples\"[subtree]" "$FAND"
     retrieve_taxonomy "${TAXIDS[i]}[subtree] NOT \"Environmental Samples\"[subtree]" "$FNOT"
 done
