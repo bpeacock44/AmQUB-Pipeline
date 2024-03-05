@@ -43,6 +43,8 @@ import time
 import sys
 import re
 import os
+import http.client  # Add this import
+
 
 
 class ASV:
@@ -526,25 +528,33 @@ def download_eposted_taxonIDs_to_XML(opts):
             while attempt <= opts['max_attempts']:
                 print(": Efetching taxa.")
                 try:
-                    #print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
+                    print(":  Efetching [" + num2fetch + "] taxa. Attempt", attempt, file=sys.stderr)
                     fetch_handle = Entrez.efetch(db=opts['db'], rettype="", retmode=opts['retmode'],
                                                  retstart=start, retmax=opts['retmax'],
                                                  webenv=opts['WebEnv'], query_key=opts['QueryKey'])
-                    data = fetch_handle.read()
+                    data = b''
+                    while True:
+                        chunk = fetch_handle.read(1024)
+                        if not chunk:
+                            break
+                        data += chunk
                     fetch_handle.close()
                     out_handle.write(data.decode('utf-8'))
                     opts['xml_files'].append(out_file)
                     idx += 1
+                    print(f":  Taxa fetched successfully for {num2fetch} taxa.")
                     break
-                except HTTPError as err:
-                    if 500 <= err.code <= 599 or err.code == 400:
+                except (HTTPError, http.client.IncompleteRead) as err:
+                    if isinstance(err, HTTPError) and (500 <= err.code <= 599 or err.code == 400):
                         print(":  Received error from server %s" % err, file=sys.stderr)
-                        attempt += 1
-                        time.sleep(15 * attempt)  # Increasing delay with each attempt
-                        continue
-                    else:
-                        print(":  Error from server %s" % err, file=sys.stderr)
-                        raise
+                    elif isinstance(err, http.client.IncompleteRead):
+                        print(":  Received incomplete read from server %s" % err, file=sys.stderr)
+                    attempt += 1
+                    time.sleep(15 * attempt)  # Increasing delay with each attempt
+                    continue
+                except Exception as e:
+                    print(":  Error occurred: %s" % e, file=sys.stderr)
+                    raise
 
 #
 

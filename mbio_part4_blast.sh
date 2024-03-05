@@ -476,7 +476,6 @@ echo "Assigning Taxonomy With Filters"
 echo " - -- --- ---- ---- --- -- -"
 rm -rf "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json"
 rm -f *.xml
-echo "${EMAIL}"
 blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     --db "${output_dir}/asvs/rep_set/assgntax/taxonomyDB.json" --assign_all --add_sizes \
     -m "${EMAIL}"\
