@@ -157,7 +157,7 @@ fi
 
 output_dir="${DIR}/${OUTDIR}"
 TAXDIR="${DIR}/${OUTDIR}/tax_dir"
-mkdir -vP $TAXDIR
+mkdir -vp $TAXDIR
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
