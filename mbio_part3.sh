@@ -229,7 +229,7 @@ module load r
 otblfp="asv_table_01.txt"
 fastafp="asvs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('${otblfp}', '${fastafp}', '${outfp}')"
+Rscript -e "source(''${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
 
 mkdir -vp "${output_dir}/asvs/rep_set"
 mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"
