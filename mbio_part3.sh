@@ -191,11 +191,12 @@ sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 cd "${output_dir}/asvs"
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
 module load r
+HDIR="/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions"
 
 # Run Rscript with inline R commands
 Rscript -e '{
     # Source the helper script
-    source("/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/pipeline_helper_functions.R")
+    source("'${HDIR}'/pipeline_helper_functions.R")
 
     # Load the ASV table
     tbl <- loadQIIMEasvtable("asv_table_00.txt")
@@ -228,7 +229,7 @@ module load r
 otblfp="asv_table_01.txt"
 fastafp="asvs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
-Rscript -e "source('pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('${otblfp}', '${fastafp}', '${outfp}')"
 
 mkdir -vp "${output_dir}/asvs/rep_set"
 mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"

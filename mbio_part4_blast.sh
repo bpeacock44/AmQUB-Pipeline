@@ -629,9 +629,6 @@ module load r
 otblfp="asv_table_02_add_taxa.txt"
 outfp="asv_table_03_add_seqs.txt"
 
-
-# can't source something in the path I guess???
-
 HDIR="/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions"
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
@@ -655,7 +652,7 @@ echo " - -- --- ---- ---- --- -- -"
 
 module load py-biopython
 # get "top 10 contain multiple families" ASVs
-python top_ten_family_checker.py final.blastout
+top_ten_family_checker.py rep_set/final.blastout
 # generate final summary file
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_ten_family_checker_out.txt')"
 
