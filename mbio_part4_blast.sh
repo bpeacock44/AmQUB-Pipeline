@@ -593,12 +593,12 @@ biomAddObservations ${OTBL}.biom asv_table_02_add_taxa.biom rep_set/assgntax/seq
 OTBL=asv_table_02_add_taxa
 summarize_taxa.py -i ${OTBL}.biom -L 2,6,7;
 to_process=($(find . -maxdepth 1 -type f -name 'asv_table_02_add_taxa*.biom'))
-
+echo $split_asv_table
 for F in "${to_process[@]}"; do
     FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
     ID=$(echo "$FNAME" | sed 's/.biom//')
     biom2txt $F "asv_table_02_add_taxa${ID}.txt"
-    if [[ $split_asv_table ]]; then
+    if [[ $split_asv_table == true ]]; then
         KDOMS=(k__Archaea k__Bacteria k__Eukaryota)
         for K in "${KDOMS[@]}"; do
             grep -P "(#|$K)" "asv_table_02_add_taxa${ID}.txt" > "asv_table_02_add_taxa${ID}.${K}.txt"
