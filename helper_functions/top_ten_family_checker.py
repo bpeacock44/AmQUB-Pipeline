@@ -8,7 +8,8 @@
 
 from collections import defaultdict
 from Bio import Entrez
-from urllib.error import HTTPError
+#from urllib.error import HTTPError
+from urllib.request import HTTPError
 import time
 import argparse
 
