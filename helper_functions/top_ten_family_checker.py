@@ -53,15 +53,14 @@ def fetch_taxonomy(tax_id):
                 return entry['ScientificName']
     except HTTPError as err:
         if 500 <= err.code <= 599 or err.code == 400:
-            print(f"Received error from server for tax_id {tax_id}: {err}")
+            print("Received error from server for tax_id {}: {}".format(tax_id, err))
             failed_requests.add(tax_id)  # Add tax_id to failed requests
         else:
-            print(f"Error from server for tax_id {tax_id}: {err}")
+            print("Error from server for tax_id {}: {}".format(tax_id, err))
     except Exception as e:
-        print(f"Error fetching taxonomy for tax_id {tax_id}: {e}")
+        print("Error fetching taxonomy for tax_id {}: {}".format(tax_id, e))
     
     return None
-
 
 def process_identifiers(identifiers, output_file):
     first_family = None
