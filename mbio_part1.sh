@@ -46,6 +46,15 @@
 
 set -e
 
+# Custom error handler function
+error_handler() {
+    local error_message=$1
+    echo "Error on line $error_message" | tee /dev/tty
+}
+
+# Trap errors and call the error handler
+trap 'error_handler "$BASH_COMMAND"' ERR
+
 # ARGUMENTS
 while getopts ":d:j:m:" opt; do
   case $opt in

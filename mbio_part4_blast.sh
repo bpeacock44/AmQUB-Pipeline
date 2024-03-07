@@ -78,7 +78,7 @@ set -e
 # Custom error handler function
 error_handler() {
     local error_message=$1
-    echo "Error on line $error_message"
+    echo "Error on line $error_message" | tee /dev/tty
 }
 
 # Trap errors and call the error handler
