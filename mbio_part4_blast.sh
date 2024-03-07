@@ -354,21 +354,28 @@ if [[ -f "${TAXDIR}/merged.dmp" ]]; then
     if [[ $(find "${TAXDIR}/merged.dmp" -mtime -1) ]]; then
         echo "Updated merged.dmp file present."
     else
-        wget -q ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -P "${TAXDIR}"
-        if [ $? -ne 0 ]; then
-            echo "Error: Failed to download taxdmp.zip."
-            exit 1
-        fi
-        unzip -o "${TAXDIR}/taxdmp.zip" -d "${TAXDIR}"
-        if [ $? -ne 0 ]; then
-            echo "Error: Failed to unzip taxdmp.zip."
-            exit 1
-        fi
-        rm -rf "${TAXDIR}/taxdmp.zip"
+        echo "File ${TAXDIR}/merged.dmp exists but was not updated within the last day."
+        download_file=true
     fi
 else
     echo "File ${TAXDIR}/merged.dmp does not exist."
+    download_file=true
 fi
+
+if [ "$download_file" = true ]; then
+    wget -q ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip -P "${TAXDIR}"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to download taxdmp.zip."
+        exit 1
+    fi
+    unzip -o "${TAXDIR}/taxdmp.zip" -d "${TAXDIR}"
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to unzip taxdmp.zip."
+        exit 1
+    fi
+    rm -rf "${TAXDIR}/taxdmp.zip"
+fi
+
 
 touch "${TAXDIR}/Placeholder__k_txid0_NOT_Environmental_Samples.txt"
 
@@ -651,8 +658,11 @@ echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
 
 module load py-biopython
+
+# CANNOT BE IN CONDA HERE
 # get "top 10 contain multiple families" ASVs
 top_ten_family_checker.py rep_set/final.blastout
+mv top_ten_family_checker_out.txt rep_set
 # generate final summary file
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_ten_family_checker_out.txt')"
 
