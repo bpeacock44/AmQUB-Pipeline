@@ -391,7 +391,6 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     
     idx = 0
     for line in blasthit:
-        print("Parsing line:", line, file=sys.stderr)
         hitvals = line.split('\t')
         # indexOf = {'stitle': 8, 'bitscore': 6, 'evalue': 5, 'mismatch': 4, 'pident': 2, 'length': 3, 'staxids': 7, 'sseqid': 1, 'qseqid': 0}
         #query id, subject id, % identity, alignment length, mismatches, evalue, bit score, subject tax ids, subject title
