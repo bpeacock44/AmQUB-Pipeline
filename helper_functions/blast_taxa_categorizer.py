@@ -391,6 +391,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     
     idx = 0
     for line in blasthit:
+        print("Parsing line:", line, file=sys.stderr)
         hitvals = line.split('\t')
         # indexOf = {'stitle': 8, 'bitscore': 6, 'evalue': 5, 'mismatch': 4, 'pident': 2, 'length': 3, 'staxids': 7, 'sseqid': 1, 'qseqid': 0}
         #query id, subject id, % identity, alignment length, mismatches, evalue, bit score, subject tax ids, subject title
@@ -398,6 +399,10 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
         #['LR031899.1', '90.789', '76', '3', '1.30e-17', '99.0', '3712', 'Brassica oleracea HDEM' ]
         try:
             accnver = hitvals[indexOf['sseqid']].split('|')[-2]
+        except IndexError:
+            print("Error: IndexError occurred while parsing this line:", file=sys.stderr)
+            print(line, file=sys.stderr)  # Print the line that caused the error
+            sys.exit(0)
         except:
             print("'accnver = hitvals[indexOf['sseqid']].split('|')[-2]'  failed on this line:")
             print(line)
@@ -441,6 +446,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
             sys.exit(0)
             
     return (asv, size, lol)
+
 #
 
 
