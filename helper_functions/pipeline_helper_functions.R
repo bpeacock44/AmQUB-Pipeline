@@ -158,9 +158,6 @@ add_sequences_to_asv_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
     if(!file.exists(fastafp)) {
         errmessg <- paste0(errmessg, paste0("File [", fastafp,"] does not exist!\n"))
     }
-    if(file.exists(outfp)) {
-        errmessg <- paste0(errmessg, paste0("File [", outfp,"] already exists!\n"))
-    }
     if(nchar(errmessg) > 0) {
         cat(usage,"\n")
         stop(errmessg)
