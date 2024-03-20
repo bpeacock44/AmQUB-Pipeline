@@ -70,7 +70,7 @@ my $mapBCcount = scalar @$BCs;
 
 #create an output filename, saving in the same directory as the fastq file
 $$opt{o} = "${fasqdir}uFQBC_${fastqfile}_BC${mapBCcount}_M$$opt{M}.txt" unless $$opt{o};
-die "** Warning ** Output file [$$opt{o}] already exists!\n" if -e $$opt{o} && ! $$opt{f};
+#die "** Warning ** Output file [$$opt{o}] already exists!\n" if -e $$opt{o} && ! $$opt{f};
 
 
 #make a barcode->SampleID lookup
