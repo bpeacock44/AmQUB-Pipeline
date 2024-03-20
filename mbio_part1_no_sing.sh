@@ -125,6 +125,9 @@ for JB in "${JBS[@]}"; do
     check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" 
 done
 
+# must be in qiime1 env for the next one. ##RM
+source /sw/miniconda3/bin/activate qiime1 ##RM
+
 for JB in ${JBS[@]}; do
     # Define _BC_ again.
     _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
@@ -172,6 +175,9 @@ Converting mismatches to perfect matches
     [[ -e "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" ]] && echo "File ${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq was generated." || (echo "Error: File ${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq was not generated!" && exit 1)
     [[ -e "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" ]] && echo "File ${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq was generated." || (echo "Error: File ${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq was not generated!" && exit 1)
 done
+
+# deactivate qiime1 ##RM
+conda deactivate ##RM
 
 # print number of reads per barcode
 echo | tee /dev/tty

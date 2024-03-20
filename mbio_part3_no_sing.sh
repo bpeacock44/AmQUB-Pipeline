@@ -23,6 +23,9 @@
 
 # When this code is run, a new directory named as you indicated will be created for analysis output. 
 
+# <> # TO DO:
+# <> # conda qiime1 activation??
+
 # CODE FOLLOWS HERE #
 
 set -e
@@ -185,11 +188,14 @@ sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 #use R to sort ASV table
 cd "${output_dir}/asvs"
+export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/ ##RM
+module load r ##RM
+HDIR="/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions"
 
-# Run Rscript with inline R commands
+# Run Rscript with inline R commands - ##RM HDIR
 Rscript -e '{
     # Source the helper script
-    source("/helper_functions/pipeline_helper_functions.R")
+    source("'${HDIR}'/pipeline_helper_functions.R")
 
     # Load the ASV table
     tbl <- loadQIIMEasvtable("asv_table_00.txt")
@@ -204,6 +210,10 @@ Rscript -e '{
     write.table(tbl, file="asv_table_01.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 }'
 
+module purge ##RM
+
+source /sw/miniconda3/bin/activate qiime1 ##RM
+
 #source for bash helper functions
 source "qiime_shell_helper_functions.sh"
 
@@ -211,11 +221,15 @@ source "qiime_shell_helper_functions.sh"
 OTBL=asv_table_01
 txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
 
+export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/ ##RM
+module load r ##RM
+
 #add counts to ASV file
 otblfp="asv_table_01.txt"
 fastafp="asvs.fa"
 outfp="seqs_chimera_filtered_ASVs.fasta"
-Rscript -e "source('/helper_functions/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
+##RM HDIR
 
 mkdir -vp "${output_dir}/asvs/rep_set"
 mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"
