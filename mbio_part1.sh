@@ -37,11 +37,6 @@
 #PCR_CONTROL   ACATGGCCTAAT    CONTROL    A4    JB110    NA    NA    NA
 # ########## MAPPING FILE FORMAT ########## 
 
-
-
-# <> # TO DO:
-# <> # conda qiime1 activation??
-
 # CODE FOLLOWS HERE #
 
 set -e

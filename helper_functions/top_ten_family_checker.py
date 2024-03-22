@@ -13,18 +13,24 @@ import time
 import argparse
 
 # Function to parse BLAST output file
+# Function to parse BLAST output file
 def parse_blast_output(file_path):
     queries = defaultdict(list)
     current_query = None
     with open(file_path, 'r') as file:
         for line in file:
             if line.startswith("# Query:"):
+                if current_query:
+                    yield current_query, queries[current_query]  # Yield the current query and its tax IDs
+                    queries[current_query] = []  # Reset the tax IDs list
                 current_query = line.strip().split(":")[-1].strip().split()[0]
             elif not line.startswith("#") and current_query:
                 fields = line.strip().split("\t")
                 tax_id = fields[7].split(";")[0]
                 queries[current_query].append(tax_id)
-    return queries
+    if current_query:
+        yield current_query, queries[current_query]  # Yield the last query and its tax IDs
+
 
 # Initialize tax_cache as an empty dictionary
 tax_cache = {}
@@ -91,11 +97,8 @@ def main():
     output_file = "top_ten_family_checker_out.txt"
 
     blast_output_file = args.blastout_file
-    selected_identifiers = []
-    queries = parse_blast_output(blast_output_file)
-    for query, tax_ids in queries.items():  # Iterate over items (query, tax_ids)
+    for query, tax_ids in parse_blast_output(blast_output_file):
         process_identifiers({query: tax_ids}, output_file)
-
 
 if __name__ == "__main__":
     main()
