@@ -31,9 +31,9 @@ first_run=true  # Add a flag for the first run
 
 criteria_met() {
     if [ "$first_run" == true ]; then
-    	echo "Skipping criteria check for the first run."
-    	return 0
-	fi
+        echo "Skipping criteria check for the first run."
+        return 0
+    fi
 
     echo "Checking criteria..."
     reblast_file="${DIR}/asvs/rep_set/${reblast_iteration}.fasta"
@@ -113,13 +113,13 @@ while criteria_met; do
     fi
 
     bout="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout"
- 	outfile="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
-	${HDIR}/reblast_check.pl ${bout} ${outfile}
+    outfile="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
+    ${HDIR}/reblast_check.pl ${bout} ${outfile}
     echo $bout 
     echo $outfile
 
-	# Get the number of reads contributing to the biggest ASV
-	total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta)
+    # Get the number of reads contributing to the biggest ASV
+    total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta)
     echo "Determining which ASVs are worth blasting."
     echo ${total}
 
@@ -174,6 +174,4 @@ if [ -e "${DIR}/asvs/rep_set/30000.rb1.blastout" ]; then
 fi
 
 echo "# BLAST processed" >> ${DIR}/asvs/rep_set/final.blastout 
-
-
 
