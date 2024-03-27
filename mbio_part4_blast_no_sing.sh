@@ -412,8 +412,6 @@ fi
 
 bad_accns="${output_dir}/bad_accns.txt"
 dubious_accns="${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt"
-echo "$bad_accns"
-ls "$bad_accns"
 
 # Function to check if a number exists in the dubious_accns file
 check_existence() {

@@ -426,7 +426,11 @@ check_existence() {
 # Filter out lines starting with # or empty lines
 # Check if $bad_accns is non-empty and contains lines that are not empty and do not start with #
 if [[ -s "$bad_accns" && $(grep -cve '^#|^$' "$bad_accns") -gt 0 ]]; then
-    filtered_lines=$(grep -vE '^#|^$' "$bad_accns")
+    if filtered_lines=$(grep -vE '^#|^$' "$bad_accns" 2>/dev/null); then
+        echo "New bad accns: $filtered_lines"
+    else
+        echo "No new bad accns."
+    fi
 fi
 
 while IFS= read -r line; do
