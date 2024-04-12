@@ -1,0 +1,123 @@
+Bootstrap:docker
+From:ubuntu:22.04
+
+%files
+	qiime1_setup_files/qiime1.yml .
+	qiime1_setup_files/qiime1.spec-file.txt .
+	helper_functions
+%post
+	export TZ='America/Los_Angeles'
+	export DEBIAN_FRONTEND=noninteractive
+	mkdir bind
+	mkdir blast
+	mkdir database
+	mkdir edirect
+	mkdir python-venvs
+	chmod +x helper_functions/*
+	yes | unminimize
+	apt -y update
+	apt -y install \
+	build-essential \
+	util-linux \
+	nano \
+	vim \
+	less \
+	python3-venv \
+	locales \
+	file \
+	rename \
+	man-db \
+	wget	
+
+#Setting up NCBI E-utilites
+	echo "N" | sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
+	mv $HOME/edirect .
+
+
+#Setting up locales(needed for some programs apparently)
+	echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+	locale-gen en_US.utf8
+	export LC_ALL=en_US.UTF-8
+	export LANG=en_US.UTF-8
+
+#Creating python virtual env
+ 	python3 -m venv /python-venvs/python-pip-modules
+	/python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U wheel
+ 	/python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U docopt   
+	/python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U biopython  
+ 	/python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U xmltodict 
+
+#Downloading and extracting BLAST+
+	wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.15.0+-x64-linux.tar.gz -P /tmp/ && tar -zxvf /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz -C /blast/ && rm -r /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz
+
+# Downloading and Installing R (https://github.com/nickjer/singularity-r/blob/master/singularity-r.def)
+	apt install -y --no-install-recommends software-properties-common dirmngr 
+	wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+	add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+	apt install -y --no-install-recommends \
+	r-base \
+	r-base-core \
+	r-base-dev \
+	r-recommended \
+	libcurl4-openssl-dev \
+	libssl-dev \
+	libxml2-dev \
+	libcairo2-dev \
+	libxt-dev \
+	libopenblas-dev
+
+	echo "options(repos = c(CRAN = 'https://cran.rstudio.com/'), download.file.method = 'libcurl')" >> /usr/lib/R/etc/Rprofile.site	
+
+  	mkdir -p /library
+  	echo "R_LIBS_SITE=/library:\${R_LIBS_SITE}" >> /usr/lib/R/etc/Renviron.site
+	
+	Rscript -e 'install.packages("dplyr")'
+	Rscript -e 'install.packages("writexl")'
+	Rscript -e 'install.packages("readr")'
+
+
+# Install Miniconda
+	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+	bash /tmp/miniconda.sh -b -p /opt/miniconda && \
+	export PATH="/opt/miniconda/bin:$PATH" && \
+	conda update -y conda && \
+
+# Adding download channels
+	conda config --add channels bioconda
+	conda config --add channels conda-forge
+	conda config --add channels free
+	conda config --set restore_free_channel true
+	conda config --set channel_priority flexible	
+
+
+#Creating environment and activating it (https://stackoverflow.com/questions/56446195/activate-conda-environment-on-execution-of-singularity-container-in-nextflow)
+	conda env create -f qiime1.yml
+	conda install --name qiime1 --file qiime1.spec-file.txt
+	echo ". /opt/miniconda/etc/profile.d/conda.sh" >> $SINGULARITY_ENVIRONMENT
+	echo " . /opt/miniconda/bin/activate qiime1" >> $SINGULARITY_ENVIRONMENT
+
+#Removing yml and spec files
+	rm qiime1.spec-file.txt qiime1.yml
+
+%environment
+	export PATH="/opt/miniconda/bin:$PATH"
+	export LANGUAGE=en_US:en
+	export LC_ALL=en_US.UTF-8
+ 	export LANG=en_US.UTF-8
+	export PATH=/bind:$PATH
+	export PATH="/helper_functions/:$PATH"
+	export PATH="/blast/ncbi-blast-2.15.0+/bin:$PATH"
+	export HDIR="/helper_functions"
+	export PATH=/edirect/:$PATH
+
+%labels
+	author mcuay001@ucr.edu
+	version 1.2.1
+
+%help
+	Singularity container for the Borneman lab.
+		* Please refer to the singularity_instructions.md for information on 
+		how to run the container.
+
+%test 
+    exit 0
