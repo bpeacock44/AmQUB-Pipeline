@@ -15,7 +15,7 @@ From:ubuntu:22.04
 	mkdir python-venvs
 	chmod +x helper_functions/*
 	yes | unminimize
-	apt -y update
+	apt -y update && apt -y upgrade
 	apt -y install \
 	build-essential \
 	util-linux \
