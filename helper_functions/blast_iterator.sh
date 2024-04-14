@@ -10,7 +10,12 @@
 
 set -e
 
-HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
+#Mario:These paths/commands don't exist within the container and thus will cause
+#issues if they are called or referenced.
+	#Note: The HDIR variable has been added as a $PATH environment variable and
+	#points to the helper directory within the container.
+
+#HDIR=/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions
 
 # Set strict mode
 set -euo pipefail
