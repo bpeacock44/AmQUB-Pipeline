@@ -77,10 +77,10 @@ From:ubuntu:22.04
 
 
 # Install Miniconda
-	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
-	bash /tmp/miniconda.sh -b -p /opt/miniconda && \
-	export PATH="/opt/miniconda/bin:$PATH" && \
-	conda update -y conda && \
+	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /miniconda.sh
+	bash /miniconda.sh -b -p /opt/miniconda
+	export PATH="/opt/miniconda/bin:$PATH"
+	conda update -y conda
 
 # Adding download channels
 	conda config --add channels bioconda
@@ -96,8 +96,8 @@ From:ubuntu:22.04
 	echo ". /opt/miniconda/etc/profile.d/conda.sh" >> $SINGULARITY_ENVIRONMENT
 	echo " . /opt/miniconda/bin/activate qiime1" >> $SINGULARITY_ENVIRONMENT
 
-#Removing yml and spec files
-	rm qiime1.spec-file.txt qiime1.yml
+#Removing left over files
+	rm qiime1.spec-file.txt qiime1.yml miniconda.sh
 
 %environment
 	export PATH="/opt/miniconda/bin:$PATH"
