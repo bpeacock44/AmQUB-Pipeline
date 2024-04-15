@@ -9,7 +9,12 @@
 
 set -e
 
-module load r
+
+
+#Mario:These paths/commands don't exist within the container and thus will cause
+#issues if they are called or referenced.
+
+#module load r
 
 # Check if all required arguments are provided
 if [ "$#" -ne 5 ]; then

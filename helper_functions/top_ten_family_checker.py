@@ -47,7 +47,9 @@ def fetch_taxonomy(tax_id):
         # Check if this tax_id has previously failed
         if tax_id in failed_requests:
             return None  # Return None directly if it previously failed
-        
+
+        #Mario: This email will also be listed in the container's copy of this
+        #helper script.
         Entrez.email = 'beth.b.peacock@gmail.com'  # Set your email here
         handle = Entrez.efetch(db="taxonomy", id=tax_id, retmode="xml")
         record = Entrez.read(handle)[0]
