@@ -8,18 +8,6 @@
 
 set -e
 
-echo " - -- --- ---- ---- --- -- -"
-echo "Loading Qiime1 and helper functions"
-echo " - -- --- ---- ---- --- -- -"
-
-#Mario:these paths/commands don't exist within the container and thus will cause
-#issuse if they are called or referenced.
-
-#source /sw/anaconda3/etc/profile.d/conda.sh
-#conda activate qiime1
-#source ~/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/qiime_shell_helper_functions.sh
-#module load r
-
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking arguments and samples"

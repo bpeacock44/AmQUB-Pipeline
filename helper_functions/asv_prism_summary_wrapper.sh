@@ -9,13 +9,6 @@
 
 set -e
 
-
-
-#Mario:These paths/commands don't exist within the container and thus will cause
-#issues if they are called or referenced.
-
-#module load r
-
 # Check if all required arguments are provided
 if [ "$#" -ne 5 ]; then
     echo "Usage: $0 <ASV table path> <mapping file> <column name> <comma-delimited treatment list> <number of taxa desired in final output>"

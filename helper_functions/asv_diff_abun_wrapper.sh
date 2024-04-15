@@ -8,21 +8,6 @@
 
 set -e
 
-echo " - -- --- ---- ---- --- -- -"
-echo "Loading Qiime1 and helper functions"
-echo " - -- --- ---- ---- --- -- -"
-
-#Mario:These paths/commands don't exist within the container and thus will cause
-#issues if they are called or referenced.
-
-#source /sw/anaconda3/etc/profile.d/conda.sh
-#conda activate qiime1
-#source ~/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions/qiime_shell_helper_functions.sh
-#module load r
-
-# LD_LIBRARY_PATH modification
-#LD_LIBRARY_PATH=/home/bpeacock_ucr_edu/.conda/envs/qiime1/lib:$LD_LIBRARY_PATH
-
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking arguments and samples"

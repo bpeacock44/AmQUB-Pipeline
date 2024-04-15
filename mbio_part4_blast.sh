@@ -68,9 +68,6 @@
 # bacteria is listed as a superkingdom on NCBI, I just put "k" because it's my personal preference and the retrieval still works.)
 # ########## FILTER FILE EXAMPLE (-t) ########## 
 
-# <> # TO DO:
-# <> # conda qiime1 activation??
-
 # CODE FOLLOWS HERE #
 
 set -e
@@ -386,11 +383,10 @@ echo
 #userdir=$(dirname "$userpath")
 
 #Mario: Within the container, usearch will ALWAYS exist within the bind directory. These commands write to the binded directory and anything that has been written to this directory will persist on the host's binded directory, even after the container is closed
-
 tax_files_dir="/bind/mbio_taxa_fz"
-mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
-touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
-chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
+mkdir -vp "$tax_files_dir" 
+touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" 
+chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" 
 cd ${output_dir}
 
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
@@ -481,14 +477,6 @@ fi
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
 
-
-#Mario:These paths/commands don't exist within the container and thus will cause
-#issues if they are called or referenced 
-
-#module load py-docopt
-#module load py-biopython
-#module load py-xmltodict
-
 #Mario: Created helper script that activates python virtual environment containing the necessary pip modules
 #for the next steps.
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
@@ -505,19 +493,11 @@ blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 
 rm *.xml
-#Mario: Didn't deactivate the python virtual environment because the following python scripts use python3
 
-#module purge
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Printing Taxa Levels With Filters"
 echo " - -- --- ---- ---- --- -- -"
-
-#Mario: Qiime2 is currently not setup, I was told the environment isn't necessary. The environment can be setup it becomes necessary, so leaving the command commented out is fine and won't cause issues inside the container.
-
-# count taxa levels
-# Activate the Qiime2 environment
-#source /sw/miniconda3/bin/activate qiime2 || { echo "Error: Unable to activate Qiime2 environment"; exit 1; }
 
 # Source Qiime shell helper functions
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
@@ -544,11 +524,6 @@ mv ./ASVs2reject.txt ./nf_ASVs2reject.txt
 mv ./ASVs2keep.txt ./nf_ASVs2keep.txt
 mv ./nf_* ${output_dir}/asvs/rep_set
 
-#Mario: Refer to comment made on similar commands
-#module load py-docopt
-#module load py-biopython
-#module load py-xmltodict
-
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Assigning Taxonomy Without Filters"
@@ -560,8 +535,6 @@ blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   -m "${EMAIL}" \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
 rm *.xml
-
-#Mario: Replaced module purge with the command to deactivate the python virtual environment
 
 deactivate
 
@@ -620,17 +593,10 @@ for F in "${to_process[@]}"; do
     biom2txt "asv_table_02_add_taxa${ID}_norm.biom" "asv_table_02_add_taxa${ID}_norm.txt"
 done
 
-#Mario: Refer to comment made on similar commands
-#export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
-#module load r
-
 # add seqs to L8 
 otblfp="asv_table_02_add_taxa.txt"
 outfp="asv_table_03_add_seqs.txt"
 
-#Mario: Added HDIR as a $PATH envrionment variable that points to the helper_functions path inside of the container.
-
-#HDIR="/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions"
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
 otblfp="asv_table_02_add_taxa_norm.txt"
@@ -651,10 +617,7 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Creating Summary File"
 echo " - -- --- ---- ---- --- -- -"
 
-#Mario:Refer to comment made on similar commands
-#module load py-biopython
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
-# CANNOT BE IN CONDA HERE
 # get "top 10 contain multiple families" ASVs
 top_ten_family_checker.py rep_set/final.blastout --email ${EMAIL}
 mv top_ten_family_checker_out.txt rep_set
