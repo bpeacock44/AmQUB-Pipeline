@@ -223,7 +223,7 @@ txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom
 
 export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/ ##RM
 module load r ##RM
-
+HDIR=/sw/paul_helper_scripts
 #add counts to ASV file
 otblfp="asv_table_01.txt"
 fastafp="asvs.fa"

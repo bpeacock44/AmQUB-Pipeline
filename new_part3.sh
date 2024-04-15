@@ -180,14 +180,29 @@ echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
+usearch --otutab "${output_dir}/combined.fq" -quiet -otus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 #use R to sort ASV table
 cd "${output_dir}/asvs"
 
 # Run Rscript with inline R commands
-qiime_table_sorter.py asv_table_00.txt asv_table_01.txt
+Rscript -e '{
+    # Source the helper script
+    source("/helper_functions/pipeline_helper_functions.R")
+
+    # Load the ASV table
+    tbl <- loadQIIMEasvtable("asv_table_00.txt")
+
+    # Sort columns alphabetically
+    tbl <- sortQIIMEasvtable(tbl, sortby="col", normalize_sort=FALSE)
+
+    # Sort rows descending by rowSums
+    tbl <- sortQIIMEasvtable(tbl, sortby="row", normalize_sort=FALSE)
+
+    # Save the table to a new file
+    write.table(tbl, file="asv_table_01.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+}'
 
 #source for bash helper functions
 source "qiime_shell_helper_functions.sh"

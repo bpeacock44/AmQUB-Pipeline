@@ -656,7 +656,7 @@ echo " - -- --- ---- ---- --- -- -"
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 # CANNOT BE IN CONDA HERE
 # get "top 10 contain multiple families" ASVs
-top_ten_family_checker.py rep_set/final.blastout
+top_ten_family_checker.py rep_set/final.blastout --email ${EMAIL}
 mv top_ten_family_checker_out.txt rep_set
 # generate final summary file
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_ten_family_checker_out.txt')"
