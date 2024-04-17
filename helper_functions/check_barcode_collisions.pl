@@ -11,7 +11,7 @@
 
 use strict;
 use Getopt::Std;
-use lib '/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions';
+use lib '/helper_functions';
 
 my @argv = @ARGV;
 $0 =~ s/.*\/// if $0 =~ /\//;
