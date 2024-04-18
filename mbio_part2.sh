@@ -8,6 +8,8 @@
 
 # Optional arguments:
 # -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
+# -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated
+# in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
 # -o: a subset ID - if you want to run further analyses on a subset of the samples in your data, 
 # you can create a mapping file in the same format as the original with the lines of unwanted 
 # samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be 
@@ -15,6 +17,7 @@
 
 # Examples:
 # mbio_part2.sh -d /path/to/dir -j JB141 
+# mbio_part2.sh -d /path/to/dir -j JB141 -s 137,148
 # mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 
 # mbio_part2.sh -d /path/to/dir -j JB141 -m 1
 # mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 -m 1
@@ -48,11 +51,13 @@ error_handler() {
 trap 'error_handler "$BASH_COMMAND"' ERR
 
 # ARGUMENTS
-while getopts ":d:j:o:m:" opt; do
+while getopts ":d:j:s:o:m:" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
     j) JB="$OPTARG"
+    ;;
+    s) IFS=',' read -ra LENS <<< "$OPTARG"
     ;;
     o) OPTION_O="$OPTARG"
     ;;
@@ -65,7 +70,7 @@ done
 
 # Check for mandatory arguments
 if [ -z "$DIR" ] || [ -z "$JB" ]; then
-    echo "Usage: $0 -d <directory_path> -j <data_ID> [-o <optional alternative_map> -m <optional mismatch number>]"
+    echo "Usage: $0 -d <directory_path> -j <data_ID> [-s <optional list of trim lengths> -o <optional alternative_map> -m <optional mismatch number>]"
     exit 1
 fi
 
@@ -133,6 +138,7 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Log file for Part 2 of the Microbiome Pipeline. Processing the following arguments:
 Working Directory: ${DIR}
 Data ID: ${JB}
+Trim Lengths for Stats if specified: ${LENS[@]}
 Subset if specified: ${OPTION_O}
 Mismatches if specified: ${mmatchnum}
  - -- --- ---- ---- --- -- -"
@@ -182,25 +188,38 @@ Generating stats about the potential effects trimming and filtering will have on
 MAX_LENGTH=$(head -n 400 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq | awk '{if(NR%4==2) print length($1)}' | sort -nr | head -n 1)
 
 # Set STARTAT based on the calculated max length
-if (( MAX_LENGTH > 250 )); then
-    STARTAT=220; # For 301 bp reads
-else
-    STARTAT=140; # For 151 bp reads
-fi
-
+STARTAT=$((MAX_LENGTH - 11))
 INC=1; # Increment value
 
 [[ -e ${ODIR}/all_eestats${STARTAT},${INC}.txt ]] && rm ${ODIR}/all_eestats${STARTAT},${INC}.txt
 
 usearch -fastq_eestats2 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt" -length_cutoffs ${STARTAT},*,${INC}
 
-# final message - what is next
-echo
-echo " - -- --- ---- ---- --- -- -
-Stats ready. Please view and select your trim length accordingly.
-Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt
+## DO OPTIONAL STATS IF SPECIFIC REQUEST
+if [[ ! -z "$LENS" ]]; then
+    for STARTAT2 in ${LENS[@]}; do
+        echo ${STARTAT2} | tee /dev/tty
+        STARTAT2_beg=$((STARTAT2 - 1))
+        STARTAT2_end=$((STARTAT2 + 1))
+        usearch -fastq_eestats2 "${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq" -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT2}.inc_${INC}.txt" -length_cutoffs "${STARTAT2_beg},${STARTAT2_end},${INC}"
+    done
+fi
 
-Part 3 will combine as many of your data files as you specify into a single ASV table. 
+# final message - what is next
+echo  | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -  
+Stats ready. Please view and select your trim length accordingly.
+Stats have been saved as: ${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt"  | tee /dev/tty
+
+if [[ ! -z "$LENS" ]]; then
+    echo "Your specified stat results have been saved as the following:"  | tee /dev/tty
+    for STARTAT2 in ${LENS[@]}; do
+        echo "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT2}.inc_${INC}.txt"  | tee /dev/tty
+    done
+fi
+
+echo | tee /dev/tty
+echo "Part 3 will combine as many of your data files as you specify into a single ASV table. 
 You will indicate your trim length under -l and an output file for your results under -o.
 
 -j will be all the samples you want to include by output directory name 
