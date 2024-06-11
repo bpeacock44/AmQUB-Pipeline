@@ -37,7 +37,7 @@ error_handler() {
 trap 'error_handler "$BASH_COMMAND"' ERR
 
 # ARGUMENTS
-while getopts ":d:j:l:o:m:" opt; do
+while getopts ":d:j:l:o:m:n" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -48,7 +48,9 @@ while getopts ":d:j:l:o:m:" opt; do
     o) OUTDIR="$OPTARG"
     ;;    
     m) mmatchnum="$OPTARG"
-    ;;    
+    ;;
+    n) MIN="$OPTARG"
+    ;;     
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
   esac
@@ -56,7 +58,7 @@ done
 
 # Check for mandatory arguments
 if [ -z "$DIR" ] || [ -z "${JBS[*]}" ] || [ -z "$LEN" ] || [ -z "$OUTDIR" ]; then
-    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> [-m <mismatch number>]"
+    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> [-m <mismatch number> -n <min size for asv calling>]"
     exit 1
 fi
 
@@ -108,8 +110,6 @@ echo "Trimming and Filtering Reads"
 echo " - -- --- ---- ---- --- -- -"
 
 # set up and go to output directory
-cd JBmkdir -vp ${output_dir}
-cd "${output_dir}"
 
 echo "This folder contains the results of ${JBS[@]} trimmed at ${LEN}." > "${output_dir}/summary.txt"
 
@@ -160,8 +160,13 @@ usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_di
 #make a subdirectory for the asvs
 mkdir -vp "${output_dir}/asvs"
 
-#cluster unique sequences into asvs using the UNOISE3 algorithm (default -minsize=8)
-usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/asvs/asvs.fa"
+if [ -n "$MIN" ]; then
+    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with custom minsize
+    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -minsize "${MIN}" -zotus "${output_dir}/asvs/asvs.fa"
+else
+    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with default minsize (8)
+    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/asvs/asvs.fa"
+fi
 
 # Convert '>Zotu' to '>Asv' in the file
 sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
@@ -182,11 +187,8 @@ echo " - -- --- ---- ---- --- -- -"
 usearch --otutab "${output_dir}/combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
-#use R to sort ASV table
-cd "${output_dir}/asvs"
-
-# Run Rscript with inline R commands
-qiime_table_sorter.py asv_table_00.txt asv_table_01.txt
+# Run python script to sort qiime table
+qiime_table_sorter.py "${output_dir}/asvs/asv_table_00.txt" "${output_dir}/asvs/asv_table_01.txt"
 
 #source for bash helper functions
 source "qiime_shell_helper_functions.sh"
@@ -196,9 +198,9 @@ OTBL=asv_table_01
 txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom"
 
 #add counts to ASV file
-otblfp="asv_table_01.txt"
-fastafp="asvs.fa"
-outfp="seqs_chimera_filtered_ASVs.fasta"
+otblfp="${output_dir}/asvs/asv_table_01.txt"
+fastafp="${output_dir}/asvs/asvs.fa"
+outfp="${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta"
 Rscript -e "source('/helper_functions/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
 
 mkdir -vp "${output_dir}/asvs/rep_set"

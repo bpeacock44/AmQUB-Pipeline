@@ -153,14 +153,14 @@ echo " - -- --- ---- ---- --- -- -"
 cd "${output_dir}"
 
 # split ASV file into multiple files, with prefix
-fasta_file="asvs/rep_set/seqs_chimera_filtered_ASVs.fasta"  # Specify your input FASTA file
-seqkit split "$fasta_file" -p ${num} -O asvs/rep_set
+fasta_file="${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta"  # Specify your input FASTA file
+seqkit split "$fasta_file" -p ${num} -O "${output_dir}asvs/rep_set"
 
 filename=seqs_chimera_filtered_ASVs.fasta
 # Rename files
-files=(asvs/rep_set/seqs_chimera_filtered_ASVs.part*)
+files=(${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.part*)
 for ((i = 0; i < ${#files[@]}; i++)); do
-    new_file_name="asvs/rep_set/$((i + 1))_${filename}"
+    new_file_name="${output_dir}/asvs/rep_set/$((i + 1))_${filename}"
     mv "${files[i]}" "$new_file_name"
     echo "Created $new_file_name"
 done
@@ -180,7 +180,7 @@ awk 'BEGIN {file_number=1} /^#!/ { if (file_number <= '"$num"') { close((file_nu
 
 # Run BLAST script in the background
 for N in $(seq 1 "$num"); do
-	${DIR}/multi_blast_iterator.sh "${output_dir}" "${run_type}" "${N}" &
+	multi_blast_iterator.sh "${output_dir}" "${run_type}" "${N}" &
 done
 
 wait
@@ -191,7 +191,7 @@ rm -f "${DIR}/asvs/rep_set/final.blastout"
 cat "${DIR}/asvs/rep_set/"*".blastout" | grep -v "# BLAST processed" >> "${DIR}/asvs/rep_set/final.blastout"
 
 # Extract headers from seqs_chimera_filtered_ASVs.fasta
-grep '^>' "${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" | sed 's/^>//g' > headers.txt
+grep '^>' "${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" | sed 's/^>//g' > "${DIR}/asvs/rep_set/headers.txt"
 
 # Check if each header is present in final.blastout
 while IFS= read -r header; do
@@ -199,15 +199,12 @@ while IFS= read -r header; do
         echo "Header '$header' not found in final.blastout. There was an issue with the blast."
         #exit 1
     fi
-done < headers.txt
+done < "${DIR}/asvs/rep_set/headers.txt"
 
 # Cleanup: Remove temporary headers.txt file
-rm headers.txt
+rm "${DIR}/asvs/rep_set/headers.txt"
 rm "${DIR}/asvs/rep_set/"*_final.blastout
 rm "${DIR}/asvs/rep_set/"*rb*blastout
-
-
-cat "${output_dir}/asvs/rep_set/"*_final.blastout > "${output_dir}/asvs/rep_set/final.blastout"
 
 echo "# BLAST processed" >> "${output_dir}/asvs/rep_set/final.blastout"
 
