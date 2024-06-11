@@ -150,7 +150,7 @@ TASK=blastn
 INFASTA=$1
 MAXTSEQS=$2  
 EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 OPTS" 
+# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
 ```
 If running a local blast, you could use the same format but do not include the SBATCH and module load lines.
 

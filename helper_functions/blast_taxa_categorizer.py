@@ -17,7 +17,7 @@ singletKaccns = {}
 
 
 def usage():
-    x="""
+    x = r"""
 Create lists of non-contaminating (target) and contaminating (non-target) ASVs by parsing local BLAST results of your sequences against the nt database
 
 Usage: perl $0 [OPTIONS]

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# Usage: python ${HDIR}/top_ten_family_checker.py <blastout.file> --email <email>
+# Usage: python mixed_family_checker.py <blastout.file> --email <email>
 
 # This checks the first 10 blast results for each ASV that can return a family in it's taxonomic info
 # and checks if the families in that top 10 group are identical or not. If they are not, the ASV is written
-# to a new file called "top_ten_family_checker_out.txt." This information may be helpful in assessing
+# to a new file called "mixed_family_checker_out.txt." This information may be helpful in assessing
 # the taxonomic assignment's quality.
 
 from collections import defaultdict
@@ -94,7 +94,7 @@ def main():
     parser.add_argument('blastout_file', type=str, help='Path to BLAST output file')
     parser.add_argument('--email', type=str, help='Your email address for Entrez')
     args = parser.parse_args()
-    output_file = "top_ten_family_checker_out.txt"
+    output_file = "mixed_family_checker_out.txt"
 
     blast_output_file = args.blastout_file
     email = args.email

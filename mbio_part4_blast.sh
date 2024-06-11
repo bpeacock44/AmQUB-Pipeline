@@ -26,19 +26,16 @@
 # This script follows part 3, which must be completed first. 
 # The output file will have already been generated in part 3.
 
+## NOTE THAT YOU CANNOT SUBMIT BATCHES FROM WITHIN THE SINGULARITY. If you want to run blast across various computational 
+## resources, it is better to do that manually on your system and then resume this pipeline after. 
+## See tutorials on github for guidance.
 
-
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
-##!/bin/bash 
-##SBATCH -p i128
-##SBATCH -c 128
-## any other parameters or modules needed
-#module load blast-plus
-
+# ########## BLAST FILE EXAMPLE (-b) ########## 
+#!/bin/bash 
 ##<>#<>#<>#<>#<>
 ## YOU MUST SET THESE:
 ##<>#<>#<>#<>#<>
-#DATABASE_PATH=/sw/dbs/blast_db_download/nt
+#DATABASE_PATH=/database/nt (this line can be whatever type of database you wish to use i.e nt,nr,etc)
 #NUMTHREADS=128
 
 ##<>#<>#<>#<>#<>
@@ -49,14 +46,8 @@
 #INFASTA=$1
 #MAXTSEQS=$2  
 #EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
-
-
-
-# If running a local blast, use the same format but don't include the SBATCH lines.
-
-
+#blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+# ########## SLURM BLAST FILE EXAMPLE (-b) ########### ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 
 # ########## FILTER FILE EXAMPLE (-t) ########## 
 # If I am doing fungal ITS taken from a plant sample, then the file might include:
@@ -68,10 +59,9 @@
 # bacteria is listed as a superkingdom on NCBI, I just put "k" because it's my personal preference and the retrieval still works.)
 # ########## FILTER FILE EXAMPLE (-t) ########## 
 
-# <> # TO DO:
-# <> # conda qiime1 activation??
-
 # CODE FOLLOWS HERE #
+
+#!/bin/bash
 
 set -e
 
@@ -87,8 +77,9 @@ trap 'error_handler "$BASH_COMMAND"' ERR
 # ARGUMENTS
 split_asv_table=false
 skip_blast=false
+james_sum_file_gen=false
 
-while getopts ":d:o:b:r:e:t:us" opt; do
+while getopts ":d:o:b:r:e:t:usj" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -115,6 +106,8 @@ while getopts ":d:o:b:r:e:t:us" opt; do
     ;;
     s) skip_blast=true
     ;;
+    j) james_sum_file_gen=true
+    ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
   esac
@@ -123,9 +116,17 @@ done
 shift $((OPTIND -1))
 
 # Check for mandatory arguments
-if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$blast_file" ] || [ -z "$EMAIL" ] || [ -z "$run_type" ]; then
-    echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -b <blast parameter file> -r <local|slurm> -e <email@email.com> [-t <filtertax_file> -m <mismatch number>]"
+if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$EMAIL" ]; then
+    echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -e <email@email.com> [-b <blast parameter file> -r <local|slurm> -t <filtertax_file> -u -s -j]"
     exit 1
+fi
+
+# If blast is not skipped, check for the blast_file and run_type arguments
+if [ "$skip_blast" = false ]; then
+    if [ -z "$blast_file" ] || [ -z "$run_type" ]; then
+        echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -b <blast parameter file> -r <local|slurm> -e <email@email.com> [-t <filtertax_file> -u -s -j]"
+        exit 1
+    fi
 fi
 
 # Check if email is in correct format
@@ -183,25 +184,32 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Log file for Part 4 of the Microbiome Pipeline. Processing the following arguments:
 Working directory: ${DIR}
 Output directory: ${OUTDIR}
-Blast run file: ${blast_file}
-Type of blast: ${run_type}
 Email of user: "${EMAIL}"
 Filterfile if specified: ${FILTERFILE}"
+
 if [ "$skip_blast" = true ]; then
     echo "BLAST was skipped."
+else
+    echo "Blast run file: ${blast_file}"
+    echo "Type of blast: ${run_type}"
 fi
+
 if [ "$split_asv_table" = true ]; then
     echo "Final ASV tables will be split into three domains of life since this is universal assay data."
 fi
+
+if [ "$james_sum_file_gen" = true ]; then
+    echo "A James Summary File will be generated at the end."
+fi
+
 echo " - -- --- ---- ---- --- -- -"
+
 
 if [ "$skip_blast" = false ]; then
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo "Running BLAST on ASVs"
     echo " - -- --- ---- ---- --- -- -"
-    
-    cd "${output_dir}"
     
     # Run BLAST script in the background
     blast_iterator.sh "${output_dir}" "${blast_file}" ${run_type} &
@@ -386,12 +394,10 @@ echo
 #userdir=$(dirname "$userpath")
 
 #Mario: Within the container, usearch will ALWAYS exist within the bind directory. These commands write to the binded directory and anything that has been written to this directory will persist on the host's binded directory, even after the container is closed
-
 tax_files_dir="/bind/mbio_taxa_fz"
-mkdir -vp "$tax_files_dir" # TODO: will this be problematic, Mario?
-touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
-chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" # TODO: will this be problematic, Mario?
-cd ${output_dir}
+mkdir -vp "$tax_files_dir" 
+touch "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" 
+chmod 777 "${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt" 
 
 # This section will create the ASVs2filter.log, which will be used to assign taxonomy. 
 # Again, there are two sections - one for if the user didn't specify a filter file and another for if they did.
@@ -475,19 +481,11 @@ fi
 new_addition=false
 
 # Move the generated ASVs files to the rep_set folder
-if ls "${output_dir}/ASVs2"* 1> /dev/null 2>&1; then
-    mv "${output_dir}/ASVs2"* "${output_dir}/asvs/rep_set"
+if ls ASVs2* 1> /dev/null 2>&1; then
+    mv ASVs2* "${output_dir}/asvs/rep_set"
 fi
 
 mkdir -vp "${output_dir}/asvs/rep_set/assgntax"
-
-
-#Mario:These paths/commands don't exist within the container and thus will cause
-#issues if they are called or referenced 
-
-#module load py-docopt
-#module load py-biopython
-#module load py-xmltodict
 
 #Mario: Created helper script that activates python virtual environment containing the necessary pip modules
 #for the next steps.
@@ -504,20 +502,19 @@ blast_assign_taxonomy.py -i "${output_dir}/asvs/rep_set/ASVs2filter.log" \
     -m "${EMAIL}"\
     -o "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt"
 
-rm *.xml
-#Mario: Didn't deactivate the python virtual environment because the following python scripts use python3
+if [ ! -f "${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt" ]; then
+    echo "Error: Output file not found."
+    exit 1
+else
+    echo "Blast assign taxonomy completed successfully."
+fi
 
-#module purge
+rm *.xml
+
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Printing Taxa Levels With Filters"
 echo " - -- --- ---- ---- --- -- -"
-
-#Mario: Qiime2 is currently not setup, I was told the environment isn't necessary. The environment can be setup it becomes necessary, so leaving the command commented out is fine and won't cause issues inside the container.
-
-# count taxa levels
-# Activate the Qiime2 environment
-#source /sw/miniconda3/bin/activate qiime2 || { echo "Error: Unable to activate Qiime2 environment"; exit 1; }
 
 # Source Qiime shell helper functions
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
@@ -538,16 +535,10 @@ blast_taxa_categorizer.py \
     -m "${TAXDIR}/merged.dmp" #-f
 
 # Rename the generated ASVs files and move to the rep_set folder
-mv ./ASVs2filter.log ./nf_ASVs2filter.log
-mv ./ASVs2summary.txt ./nf_ASVs2summary.txt
-mv ./ASVs2reject.txt ./nf_ASVs2reject.txt
-mv ./ASVs2keep.txt ./nf_ASVs2keep.txt
-mv ./nf_* ${output_dir}/asvs/rep_set
-
-#Mario: Refer to comment made on similar commands
-#module load py-docopt
-#module load py-biopython
-#module load py-xmltodict
+mv ./ASVs2filter.log ${output_dir}/asvs/rep_set/nf_ASVs2filter.log
+mv ./ASVs2summary.txt ${output_dir}/asvs/rep_set/nf_ASVs2summary.txt
+mv ./ASVs2reject.txt ${output_dir}/asvs/rep_set/nf_ASVs2reject.txt
+mv ./ASVs2keep.txt ${output_dir}/asvs/rep_set/nf_ASVs2keep.txt
 
 echo
 echo " - -- --- ---- ---- --- -- -"
@@ -559,9 +550,15 @@ blast_assign_taxonomy.py -i ${output_dir}/asvs/rep_set/nf_ASVs2filter.log \
   --db ${output_dir}/asvs/rep_set/assgntax/nf_taxonomyDB.json --assign_all --add_sizes \
   -m "${EMAIL}" \
   -o ${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt
-rm *.xml
 
-#Mario: Replaced module purge with the command to deactivate the python virtual environment
+  if [ ! -f "${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt" ]; then
+    echo "Error: Output file not found."
+    exit 1
+else
+    echo "Blast assign taxonomy completed successfully."
+fi
+
+rm *.xml
 
 deactivate
 
@@ -582,85 +579,96 @@ echo "Adding Taxa and Sequences to ASV Tables"
 echo " - -- --- ---- ---- --- -- -"
 
 #add taxa to ASV table
-cd ${output_dir}/asvs
-
 OTBL=asv_table_01
-biomAddObservations ${OTBL}.biom asv_table_02_add_taxa.biom rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt
+biomAddObservations ${output_dir}/asvs/${OTBL}.biom ${output_dir}/asvs/asv_table_02_add_taxa.biom ${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt
 
 # create three additional taxonomic levels of ASV tables
-OTBL=asv_table_02_add_taxa
-summarize_taxa.py -i ${OTBL}.biom -L 2,6,7;
-to_process=($(find . -maxdepth 1 -type f -name 'asv_table_02_add_taxa*.biom'))
-echo $split_asv_table
+OTBL="asv_table_02_add_taxa"
+summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7
+
+to_process=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "${OTBL}*.biom"))
+
+echo "$split_asv_table"
+
 for F in "${to_process[@]}"; do
-    FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
-    ID=$(echo "$FNAME" | sed 's/.biom//')
-    biom2txt $F "asv_table_02_add_taxa${ID}.txt"
-    if [[ $split_asv_table == true ]]; then
-        KDOMS=(k__Archaea k__Bacteria k__Eukaryota)
+    if [ ! -f "$F" ]; then
+        echo "Error: File $F not found."
+        exit 1
+    fi
+
+    FNAME=$(basename "$F" | sed 's|^asv_table_02_add_taxa||' | sed 's/.biom//')
+    ID=$(basename "$F" | sed 's/asv_table_02_add_taxa//' | sed 's/.biom//')
+
+    biom2txt "$F" "${output_dir}/asvs/${OTBL}${ID}.txt"
+
+    if [[ "$split_asv_table" == true ]]; then
+        KDOMS=("k__Archaea" "k__Bacteria" "k__Eukaryota")
         for K in "${KDOMS[@]}"; do
-            grep -P "(#|$K)" "asv_table_02_add_taxa${ID}.txt" > "asv_table_02_add_taxa${ID}.${K}.txt"
-            OTBL="asv_table_02_add_taxa${ID}.${K}"
-            if ! grep -q "$K" "${OTBL}.txt"; then
-                rm "${OTBL}.txt"
+            grep -P "(#|$K)" "${output_dir}/asvs/${OTBL}${ID}.txt" > "${output_dir}/asvs/${OTBL}${ID}.${K}.txt"
+            NEW_OTBL="${OTBL}${ID}.${K}"
+            if ! grep -q "$K" "${output_dir}/asvs/${NEW_OTBL}.txt"; then
+                rm "${output_dir}/asvs/${NEW_OTBL}.txt"
             else
-                if [[ "${OTBL}.txt" == *"_L"* ]]; then
-                    txt2biom_notax "${OTBL}.txt" "${OTBL}.biom"
-                    biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
-                    biom2txt_notax "${OTBL}_norm.biom" "${OTBL}_norm.txt"
+                if [[ "${NEW_OTBL}" == *"_L"* ]]; then
+                    txt2biom_notax "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
                 else 
-                    txt2biom "${OTBL}.txt" "${OTBL}.biom"
-                    biom_table_math_ops.py -i "${OTBL}.biom" -o "${OTBL}_norm.biom" --normalize2unity
-                    biom2txt "${OTBL}_norm.biom" "${OTBL}_norm.txt"
+                    txt2biom "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
                 fi
+                biom_table_math_ops.py -i "${output_dir}/asvs/${NEW_OTBL}.biom" -o "${output_dir}/asvs/${NEW_OTBL}_norm.biom" --normalize2unity
+                biom2txt "${output_dir}/asvs/${NEW_OTBL}_norm.biom" "${output_dir}/asvs/${NEW_OTBL}_norm.txt"
             fi
         done
     fi
-    biom_table_math_ops.py -i ${F} -o "asv_table_02_add_taxa${ID}_norm.biom" --normalize2unity
-    biom2txt "asv_table_02_add_taxa${ID}_norm.biom" "asv_table_02_add_taxa${ID}_norm.txt"
-done
 
-#Mario: Refer to comment made on similar commands
-#export MODULEPATH=$MODULEPATH:/sw/spack/share/spack/modules/linux-centos7-cascadelake/
-#module load r
+    biom_table_math_ops.py -i "$F" -o "${output_dir}/asvs/${OTBL}${ID}_norm.biom" --normalize2unity
+    biom2txt "${output_dir}/asvs/${OTBL}${ID}_norm.biom" "${output_dir}/asvs/${OTBL}${ID}_norm.txt"
+done
 
 # add seqs to L8 
-otblfp="asv_table_02_add_taxa.txt"
-outfp="asv_table_03_add_seqs.txt"
+otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
+outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
-#Mario: Added HDIR as a $PATH envrionment variable that points to the helper_functions path inside of the container.
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', ${output_dir}'/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
-#HDIR="/home/bpeacock_ucr_edu/real_projects/PN94_singularity_of_microbiome_pipeline/targeted_microbiome_via_blast/helper_functions"
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+otblfp="${output_dir}/asvs/asv_table_02_add_taxa_norm.txt"
+outfp="${output_dir}/asvs/asv_table_03_add_seqs_norm.txt"
 
-otblfp="asv_table_02_add_taxa_norm.txt"
-outfp="asv_table_03_add_seqs_norm.txt"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', ${output_dir}'/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
 
-to_process2=($(find . -maxdepth 1 -type f -name '*taxa.k*txt'))
+for F in "${to_process2[@]}"; do
+    if [ ! -f "$F" ]; then
+        echo "Error: File $F not found."
+        exit 1
+    fi
 
-for F in ${to_process2[@]}; do
-    FNAME=$(echo "$F" | sed 's|^./asv_table_02_add_taxa||')
-    otblfp=${F}
-    outfp="asv_table_03_add_seqs${FNAME}"
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', 'rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+    FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
+    otblfp="${F}"
+    outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 done
 
-echo " - -- --- ---- ---- --- -- -"
-echo "Creating Summary File"
-echo " - -- --- ---- ---- --- -- -"
+if [ "$james_sum_file_gen" = true ]; then
+    echo " - -- --- ---- ---- --- -- -"
+    echo "Creating Summary File"
+    echo " - -- --- ---- ---- --- -- -"
 
-#Mario:Refer to comment made on similar commands
-#module load py-biopython
-source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
-# CANNOT BE IN CONDA HERE
-# get "top 10 contain multiple families" ASVs
-top_ten_family_checker.py rep_set/final.blastout --email ${EMAIL}
-mv top_ten_family_checker_out.txt rep_set
-# generate final summary file
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('asv_table_03_add_seqs_norm.txt', 'rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', 'rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', 'asv_table_03_add_seqs.txt', 'rep_set/top_ten_family_checker_out.txt')"
+    source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
+    # Error check for mixed_family_checker.py
+    mixed_family_checker.py "${output_dir}/asvs/rep_set/final.blastout" --email "${EMAIL}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
+
+    # Move output file with error check
+    mv mixed_family_checker_out.txt "${output_dir}/asvs/rep_set/" || { echo "Error: Unable to move mixed_family_checker_out.txt"; exit 1; }
+
+    # Error check for Rscript
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('${output_dir}/asvs/asv_table_03_add_seqs_norm.txt', '${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', '${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', '${output_dir}/asvs/asv_table_03_add_seqs.txt', '${output_dir}/asvs/rep_set/mixed_family_checker_out.txt')" || { echo "Error: Rscript failed"; exit 1; }
+else
+    echo "No James Summary File Generated, as requested."
+fi
+
+echo
 echo "All ASV tables have been generated. A summary file can be found here:" | tee /dev/tty
 echo $summary_file_name | tee /dev/tty
 echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
