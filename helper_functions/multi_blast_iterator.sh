@@ -1,10 +1,10 @@
-#!/bin/bash 
+#!/bin/bash
 
-# This script will run BLAST with 5000 max seqs and then check to see if the results are satisfcatory to determine LCA
-# for all ASVs that are greater than 1% the size of the largest ASV. 
-# In this context, that means that the results reach a point where the bitscore begins to go down so you know you've 
-# collected all the highest bitscore results available. If you have not reached this point, BLAST will run again with 
-# 30000 max seqs for those ASVs only. 
+# This script will run BLAST with 5000 max seqs and then check to see if the results are satisfactory to determine LCA
+# for all ASVs that are greater than 1% the size of the largest ASV.
+# In this context, that means that the results reach a point where the bitscore begins to go down so you know you've
+# collected all the highest bitscore results available. If you have not reached this point, BLAST will run again with
+# 30000 max seqs for those ASVs only.
 # If LCA still cannot be determined, then the script will proceed regardless of whether the results are satisfactory
 # and all BLAST results will be used.
 
@@ -18,11 +18,11 @@ reblast_iteration="rb0"
 maxseqs=5000
 
 DIR=$1
-BLAST_FILE=$2
-RUN_TYPE=$3
+RUN_TYPE=$2
+PREFIX=$3
 
 timestamp="$(date +"%Y%m%d_%H:%M:%S")"
-output_file="${DIR}/blast.${timestamp}.log"
+output_file="${DIR}/${PREFIX}_blast.${timestamp}.log"
 exec > "$output_file" 2>&1
 
 first_run=true  # Add a flag for the first run
@@ -34,7 +34,7 @@ criteria_met() {
     fi
 
     echo "Checking criteria..."
-    reblast_file="${DIR}/asvs/rep_set/${reblast_iteration}.fasta"
+    reblast_file="${DIR}/asvs/rep_set/${PREFIX}_${reblast_iteration}.fasta"
 
     # Check if the reblast file has any lines
     if [ ! -s "$reblast_file" ] || [ "$(wc -l < "$reblast_file")" -eq 0 ]; then
@@ -52,19 +52,19 @@ while criteria_met; do
     echo "Starting first batch of jobs..."
 
     if "$first_run"; then
-        input_file="${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta"
+        input_file="${DIR}/asvs/rep_set/${PREFIX}_seqs_chimera_filtered_ASVs.fasta"
     else
-        input_file="${DIR}/asvs/rep_set/${reblast_iteration}.fasta"
+        input_file="${DIR}/asvs/rep_set/${PREFIX}_${reblast_iteration}.fasta"
     fi
 
     if [[ "$RUN_TYPE" == local ]]; then
         # Run locally
-        ${BLAST_FILE} "${input_file}" "${maxseqs}" > "${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout"
+        "${PREFIX}_blast.sh" "${input_file}" "${maxseqs}" > "${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout"
         echo "BLAST completed locally for $input_file"
     else
         # Submit as sbatch job
-        echo sbatch -o "${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout" ${BLAST_FILE} "${input_file}" "${maxseqs}" 
-        job_id=$(sbatch -o "${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout" ${BLAST_FILE} "${input_file}" "${maxseqs}" | awk '{print $NF}')
+        echo sbatch -o "${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout" "${PREFIX}_blast.sh" "${input_file}" "${maxseqs}"
+        job_id=$(sbatch -o "${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout" "${PREFIX}_blast.sh" "${input_file}" "${maxseqs}" | awk '{print $NF}')
         echo "Blast job submitted with ID: $job_id for $input_file"
         job_ids+=("$job_id")
 
@@ -110,45 +110,42 @@ while criteria_met; do
         exit 1
     fi
 
-    bout="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout"
-    outfile="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
+    bout="${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout"
+    outfile="${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout.not_enough_hits.txt"
     ${HDIR}/reblast_check.pl ${bout} ${outfile}
-    echo $bout 
-    echo $outfile
 
     # Get the number of reads contributing to the biggest ASV
     total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta)
     echo "Determining which ASVs are worth blasting."
-    echo ${total}
 
-    not_enough_hits_file="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
-    big_ASVs_file="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.big_ASVs.txt"
-    reblast_seqs_file="${DIR}/asvs/rep_set/${next_value}.fasta"
-    
+    not_enough_hits_file="${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout.not_enough_hits.txt"
+    big_ASVs_file="${DIR}/asvs/rep_set/${PREFIX}.${maxseqs}_${reblast_iteration}.blastout.not_enough_hits.big_ASVs.txt"
+    reblast_seqs_file="${DIR}/asvs/rep_set/${PREFIX}_${next_value}.fasta"
+
     # Check if the not_enough_hits_file is empty
     if [ -s "$not_enough_hits_file" ]; then
         # Proceed with grep and subsequent commands
-        grep -w -f "$not_enough_hits_file" ${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta | \
+        grep -w -f "$not_enough_hits_file" "${DIR}/asvs/rep_set/${PREFIX}_seqs_chimera_filtered_ASVs.fasta" | \
         awk -v total="$total" '{
             # Remove ">" from the first column
             gsub(">", "", $1)
-    
+
             # Calculate the ratio and store the result after the white space
             ratio = $2 / total
-    
+
             # Print lines where the ratio is 0.01 or less
             if (ratio <= 0.01) {
                 print $1, $2, ratio
             }
         }' | \
         awk '$3 > 0.01' > "$big_ASVs_file"
-    
+
         # Additional commands
-        awk '/^>/{sub(/ .*/, "");}1' "${DIR}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" > ${DIR}/asvs/rep_set/modified_seqs.fasta
-    
+        awk '/^>/{sub(/ .*/, "");}1' "${DIR}/asvs/rep_set/${PREFIX}_seqs_chimera_filtered_ASVs.fasta" > "${DIR}/asvs/rep_set/${PREFIX}_modified_seqs.fasta"
+
         echo "Extracting reblast seqs."
         # Extract the fasta sequences needing a reblast
-        seqkit grep -n -f "$big_ASVs_file" ${DIR}/asvs/rep_set/modified_seqs.fasta -o "$reblast_seqs_file"
+        seqkit grep -n -f "$big_ASVs_file" "${DIR}/asvs/rep_set/${PREFIX}_modified_seqs.fasta" -o "$reblast_seqs_file"
     else
         # If the not_enough_hits_file is empty, create an empty file for reblast_seqs
         touch "$reblast_seqs_file"
@@ -156,20 +153,11 @@ while criteria_met; do
 
     case $reblast_iteration in
         "rb0") maxseqs=30000; reblast_iteration="rb1" ;;
-        "rb1") echo "Completed all reblast iterations. Any ASVs that may require further reBLASTing are stored in ${DIR}/asvs/rep_set/${next_value}.fasta"; exit 0 ;;
+        "rb1") echo "Completed all reblast iterations. Any ASVs that may require further reBLASTing are stored in ${DIR}/asvs/rep_set/${PREFIX}_${next_value}.fasta"; exit 0 ;;
     esac
 
     first_run=false
     echo "First loop completed."
 done
 
-echo "Merging all blastout files."
-
-rm -f ${DIR}/asvs/rep_set/final.blastout
-cat ${DIR}/asvs/rep_set/5000.rb0.blastout | grep -v "# BLAST processed" >> ${DIR}/asvs/rep_set/final.blastout 
-if [ -e "${DIR}/asvs/rep_set/30000.rb1.blastout" ]; then
-    cat "${DIR}/asvs/rep_set/30000.rb1.blastout" | grep -v "# BLAST processed" >> "${DIR}/asvs/rep_set/final.blastout"
-fi
-
-echo "# BLAST processed" >> ${DIR}/asvs/rep_set/final.blastout 
-
+echo "Blast ${PREFIX} Finished."

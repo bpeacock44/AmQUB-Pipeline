@@ -30,8 +30,8 @@ avg_values <- colMeans(df4[,3:ncol(df4)])
 
 # Apply correlation and p-value functions
 results <- lapply(df4[, 3:ncol(df4)], function(col) {
-  cor_val <- cor(col, df4$Rating)
-  p_val <- cor.test(col, df4$Rating)$p.value
+  cor_val <- cor(col, df4$rating_column)
+  p_val <- cor.test(col, df4$rating_column)$p.value
   fdr_val <- p.adjust(p_val, method = "fdr", n = ncol(df4) - 2)
   data.frame(cor_coef = cor_val, p_value = p_val, FDR = fdr_val)
 })

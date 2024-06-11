@@ -108,8 +108,7 @@ echo "Trimming and Filtering Reads"
 echo " - -- --- ---- ---- --- -- -"
 
 # set up and go to output directory
-output_dir="${DIR}/${OUTDIR}"
-mkdir -vp ${output_dir}
+cd JBmkdir -vp ${output_dir}
 cd "${output_dir}"
 
 echo "This folder contains the results of ${JBS[@]} trimmed at ${LEN}." > "${output_dir}/summary.txt"
@@ -148,7 +147,7 @@ rm -f "${output_dir}/filtered.fa"
 if [ ${#JBS[@]} -gt 1 ]; then
   #EITHER combine if you have multiple files
   for JB in ${JBS[@]}; do
-  cat "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" >> "${output_dir}/filtered.fa"
+  cat "${DIR}/${JB}_output/${JB}.filtered.fa" >> "${output_dir}/filtered.fa"
   done
 else
   #OR create a symlink if you have only one file

@@ -28,17 +28,18 @@
 
 
 
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
-##!/bin/bash 
-##SBATCH -p i128
-##SBATCH -c 128
-## any other parameters or modules needed
-#module load blast-plus
+## NOTE THAT YOU CANNOT SUBMIT BATCHES FROM WITHIN THE SINGULARITY. If you want to run blast across various computational 
+## resources, it is better to do that manually on your system and then resume this pipeline after. 
+## See tutorials on github for guidance.
 
+
+
+# ########## BLAST FILE EXAMPLE (-b) ########## 
+#!/bin/bash 
 ##<>#<>#<>#<>#<>
 ## YOU MUST SET THESE:
 ##<>#<>#<>#<>#<>
-#DATABASE_PATH=/sw/dbs/blast_db_download/nt
+#DATABASE_PATH=/database/nt (this line can be whatever type of database you wish to use i.e nt,nr,etc)
 #NUMTHREADS=128
 
 ##<>#<>#<>#<>#<>
@@ -49,13 +50,8 @@
 #INFASTA=$1
 #MAXTSEQS=$2  
 #EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
-
-
-
-# If running a local blast, use the same format but don't include the SBATCH lines.
-
+#blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+# ########## SLURM BLAST FILE EXAMPLE (-b) ########### ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 
 
 # ########## FILTER FILE EXAMPLE (-t) ########## 

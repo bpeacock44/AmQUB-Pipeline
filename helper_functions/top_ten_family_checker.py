@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Usage: python ${HDIR}/top_ten_family_checker.py <blastout.file> --email <email>
+# Usage: python top_ten_family_checker.py <blastout.file> --email <email>
 
 # This checks the first 10 blast results for each ASV that can return a family in it's taxonomic info
 # and checks if the families in that top 10 group are identical or not. If they are not, the ASV is written

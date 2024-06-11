@@ -1,72 +1,60 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import sys
 
-# Define helper functions
-def load_qiime_asv_table(fp):
-    # Load a QIIME-happy text ASV table file
-    with open(fp, 'r') as file:
-        # Read all lines
-        lines = file.readlines()
+if len(sys.argv) != 3:
+    print("Usage: ./qiime_table_sorter.py input_file output_file")
+    sys.exit(1)
 
-    # Extract column names from the first row
-    col_names = lines[0].strip().split('\t')
-    
-    # Load data excluding the header
-    data = [line.strip().split('\t') for line in lines[1:]]
+input_file = sys.argv[1]
+output_file = sys.argv[2]
 
-    return col_names, data
+# Read the data from the input file and store it in a list of lists
+data = []
+with open(input_file, 'r') as file:
+    for line in file:
+        data.append(line.strip().split('\t'))
 
-def sort_qiime_asv_table(col_names, data, sortby="row", normalize_sort=False):
-    # Sort tbl descending by rowSums or ascending by colSums
-    numcols = [idx for idx, col_name in enumerate(col_names) if col_name.isdigit()]
-    if sortby == "row":
-        if normalize_sort:
-            for row in data:
-                row_sum = sum(float(row[col_idx]) for col_idx in numcols)
-                if row_sum != 0:
-                    for col_idx in numcols:
-                        row[col_idx] = float(row[col_idx]) / row_sum
-        data.sort(key=lambda x: sum(float(x[col_idx]) for col_idx in numcols), reverse=True)
-    elif sortby == "col":
-        data.sort(key=lambda x: [x[idx] for idx in numcols])
-    else:
-        raise ValueError("Values for 'sortby' must be either 'row' or 'col'")
-    return col_names, data
+# Extract headers and remove them from the data
+headers = data[0]
+data = data[1:]
 
-def find_last_header_line(fp):
-    # Your implementation of finding the last header line
-    pass
+# Convert numerical values from strings to integers (assuming all columns after the first are numeric)
+for row in data:
+    for i in range(1, len(row)):
+        row[i] = int(row[i])
 
-def save_table(col_names, data, output_file):
-    # Save the table to a new file
-    with open(output_file, 'w') as file:
-        # Write header
-        file.write('\t'.join(col_names) + '\n')
-        # Write data
-        for row in data:
-            file.write('\t'.join(row) + '\n')
-    print(f"Sorted ASV table saved to {output_file}")
+# Calculate row sums and add them as an additional column
+for row in data:
+    row.append(sum(row[1:]))
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python qiime_table_sorter.py <input_file> <output_file>")
-        sys.exit(1)
+# Sort the data by the last column (row sums) in descending order
+sorted_data = sorted(data, key=lambda x: x[-1], reverse=True)
 
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
+# Join sorted data with headers
+sorted_with_headers = [headers] + sorted_data
 
-    # Load ASV table
-    col_names, data = load_qiime_asv_table(input_file)
+# Transpose the data to make it easier to work with columns
+transposed_data = list(zip(*sorted_with_headers))
 
-    # Sort columns alphabetically
-    col_names, data = sort_qiime_asv_table(col_names, data, sortby="col", normalize_sort=False)
+# Sort columns alphabetically (excluding the first column which contains IDs)
+sorted_columns = sorted(transposed_data[1:], key=lambda x: x[0])
 
-    # Sort rows descending by rowSums
-    col_names, data = sort_qiime_asv_table(col_names, data, sortby="row", normalize_sort=False)
+# Transpose back the sorted columns
+sorted_with_sorted_columns = [transposed_data[0]] + list(zip(*sorted_columns))
 
-    # Save the table to a new file
-    save_table(col_names, data, output_file)
+# Store sorted_with_sorted_columns[0] as a separate list called asvs
+asvs = sorted_with_sorted_columns[0]
 
-if __name__ == "__main__":
-    main()
+# Remove sorted_with_sorted_columns[0]
+del sorted_with_sorted_columns[0]
+
+sorted_with_sorted_columns = [list(row) for row in sorted_with_sorted_columns]
+
+for i in range(len(sorted_with_sorted_columns)):
+    sorted_with_sorted_columns[i].insert(0, asvs[i])
+
+# Write sorted_with_sorted_columns to the output file
+with open(output_file, 'w') as file:
+    for row in sorted_with_sorted_columns:
+        file.write('\t'.join(map(str, row)) + '\n')
