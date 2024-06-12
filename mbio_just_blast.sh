@@ -154,7 +154,7 @@ cd "${output_dir}"
 
 # split ASV file into multiple files, with prefix
 fasta_file="${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta"  # Specify your input FASTA file
-seqkit split "$fasta_file" -p ${num} -O "${output_dir}asvs/rep_set"
+seqkit split "$fasta_file" -p ${num} -O "${output_dir}/asvs/rep_set"
 
 filename=seqs_chimera_filtered_ASVs.fasta
 # Rename files
