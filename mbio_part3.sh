@@ -111,7 +111,7 @@ echo " - -- --- ---- ---- --- -- -"
 
 # set up and go to output directory
 output_dir="${DIR}/${OUTDIR}"
-mkdir "${DIR}/${OUTDIR}"
+mkdir -vp "${DIR}/${OUTDIR}"
 echo "This folder contains the results of ${JBS[@]} trimmed at ${LEN}." > "${output_dir}/summary.txt"
 
 # make tax directory
