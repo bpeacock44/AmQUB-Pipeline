@@ -201,11 +201,6 @@ while IFS= read -r header; do
     fi
 done < "${output_dir}/asvs/rep_set/headers.txt"
 
-# Cleanup: Remove temporary headers.txt file
-rm "${output_dir}/asvs/rep_set/headers.txt"
-rm "${output_dir}/asvs/rep_set/"*_final.blastout
-rm "${output_dir}/asvs/rep_set/"*rb*blastout
-
 echo "# BLAST processed" >> "${output_dir}/asvs/rep_set/final.blastout"
 
 
