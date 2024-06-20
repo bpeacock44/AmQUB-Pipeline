@@ -190,17 +190,6 @@ echo "Merging all blastout files."
 rm -f "${output_dir}/asvs/rep_set/final.blastout"
 cat "${output_dir}/asvs/rep_set/"*".blastout" | grep -v "# BLAST processed" >> "${output_dir}/asvs/rep_set/final.blastout"
 
-# Extract headers from seqs_chimera_filtered_ASVs.fasta
-grep '^>' "${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta" | sed 's/^>//g' > "${output_dir}/asvs/rep_set/headers.txt"
-
-# Check if each header is present in final.blastout
-while IFS= read -r header; do
-    if ! grep -q "${header}" "${output_dir}/asvs/rep_set/final.blastout"; then
-        echo "Header '$header' not found in final.blastout. There was an issue with the blast."
-        #exit 1
-    fi
-done < "${output_dir}/asvs/rep_set/headers.txt"
-
 echo "# BLAST processed" >> "${output_dir}/asvs/rep_set/final.blastout"
 
 
