@@ -165,7 +165,7 @@ mkdir -vp "${output_dir}/asvs"
 usearch -cluster_smallmem "${output_dir}/uniques.fa" -id 1 -centroids "${output_dir}/asvs/asvs.fa"
 
 # Convert headers
-sed 's/>Uniq\([0-9]*\);.*$/>Asv\1;/' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
+sed 's/>Uniq\([0-9]*\);.*$/>Asv\1/' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
 
 # Check if the replacement was successful before overwriting
 if grep -q '>Asv' "${output_dir}/asvs/z.fa"; then
