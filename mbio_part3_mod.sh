@@ -164,16 +164,6 @@ mkdir -vp "${output_dir}/asvs"
 # MODIFIED LINE - CLUSTERING at 100% IDENTITY
 usearch -cluster_smallmem "${output_dir}/uniques.fa" -id 1 -centroids "${output_dir}/asvs/asvs.fa"
 
-# Convert '>Zotu' to '>Asv' in the file
-sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
-
-# Check if the replacement was successful before overwriting
-if grep -q '>Asv' "${output_dir}/asvs/z.fa"; then
-    # Overwrite the original file if '>Asv' is found
-    mv -v "${output_dir}/asvs/z.fa" "${output_dir}/asvs/asvs.fa"
-else
-    echo "Header replacement failed. Original file not overwritten."
-fi
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Creating Initial ASV Table"
