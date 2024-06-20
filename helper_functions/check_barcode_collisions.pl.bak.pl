@@ -75,26 +75,6 @@ $$opt{o} = "${fasqdir}uFQBC_${fastqfile}_BC${mapBCcount}_M$$opt{M}.txt" unless $
 
 #make a barcode->SampleID lookup
 my %bcIDlu;
-# Check if $BCs is defined and an array reference
-if (!defined $BCs) {
-    warn "BCs is undefined at line 78\n";
-} elsif (ref($BCs) ne 'ARRAY') {
-    warn "BCs is not an array reference at line 78\n";
-} else {
-    # Print the contents of $BCs for further inspection
-    use Data::Dumper;
-    warn "BCs content: " . Dumper($BCs) . "\n";
-}
-
-# Check if $$map{H}{"#SampleID"} is defined and an array reference
-if (!defined $$map{H}{"#SampleID"}) {
-    warn "\$map{H}{\"#SampleID\"} is undefined at line 78\n";
-} elsif (ref($$map{H}{"#SampleID"}) ne 'ARRAY') {
-    warn "\$map{H}{\"#SampleID\"} is not an array reference at line 78\n";
-} else {
-    # Print the contents of $$map{H}{"#SampleID"} for further inspection
-    warn "\$map{H}{\"#SampleID\"} content: " . Dumper($$map{H}{"#SampleID"}) . "\n";
-}
 @bcIDlu{@$BCs} = @{$$map{H}{"#SampleID"}};
 print "Mapping file [$$opt{m}] contains $mapBCcount barcodes\n";
 print "Map barcode lengths=$bclen\n";
