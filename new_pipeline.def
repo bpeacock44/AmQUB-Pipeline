@@ -4,12 +4,14 @@ From:ubuntu:22.04
 %files
 	qiime1_setup_files/qiime1.spec-file.txt .
 	helper_functions
+	mbio_part* .
 
 %post
 	export TZ='America/Los_Angeles'
 	export DEBIAN_FRONTEND=noninteractive
-	mkdir bind && mkdir blast && mkdir database && mkdir edirect && mkdir python-venvs
+	mkdir bind && mkdir blast && mkdir database && mkdir edirect && mkdir python-venvs && mkdir pipeline_scripts
 	chmod +x helper_functions/*
+	mv mbio_part* pipeline_scripts && chmod +x pipeline_scripts/*
 	apt -y update && apt -y upgrade
 	apt -y install build-essential util-linux nano vim less python3-venv locales file rename man-db wget	
 
@@ -95,6 +97,7 @@ From:ubuntu:22.04
  	export LANG=en_US.UTF-8
 	export PATH=/bind:$PATH
 	export PATH="/helper_functions/:$PATH"
+	export PATH="/pipeline_scripts/:$PATH"
 	export PATH="/blast/ncbi-blast-2.15.0+/bin:$PATH"
 	export HDIR="/helper_functions"
 	export PATH=/edirect/:$PATH
