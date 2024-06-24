@@ -378,6 +378,18 @@ else
       -m "${TAXDIR}/merged.dmp" #-f
 fi
 
+#Mario: blast_taxa_categorizer.py generates bad_accns.txt in the current directory from which the script was executed.
+#Before when the script changed directory into ${output_dir} the file(bad_accns) would be generated in the correct place; now it is generated in the current directory.
+#This is because the python script defaults to generating output files in the current directory. Having the file not generated in the correct location would cause 
+#issuses later on as the file which the variable bad_accans references, doesn't exist in that directory.
+#To solve this, I simply mv the generated file into the output_dir; similar to how the ASV2 files are moved.
+
+#I did notice that blast_taxa_categorizer.py has an output flag (-o) that outputs files into the passed in directory path, but it's commented out
+#and the code to append the directory path to the files isn't present. I assume this was done for a reason so, I didn't change anything within blast_taxa_categorizer.py
+
+#mv bad_accns.txt generated into output_dir
+mv bad_accns.txt ${output_dir}
+
 bad_accns="${output_dir}/bad_accns.txt"
 dubious_accns="${tax_files_dir}/AccnsWithDubiousTaxAssigns.txt"
 
@@ -498,6 +510,9 @@ mv ./ASVs2filter.log ${output_dir}/asvs/rep_set/nf_ASVs2filter.log
 mv ./ASVs2summary.txt ${output_dir}/asvs/rep_set/nf_ASVs2summary.txt
 mv ./ASVs2reject.txt ${output_dir}/asvs/rep_set/nf_ASVs2reject.txt
 mv ./ASVs2keep.txt ${output_dir}/asvs/rep_set/nf_ASVs2keep.txt
+#Mario: Another bad_accns is generated, which overwrites previous one. Unknown as to what to do with this file so
+#I just moved it and renamed it to nf_bad_accns.txt
+mv ./bad_accns.txt ${output_dir}/nf_bad_accns.txt
 
 echo
 echo " - -- --- ---- ---- --- -- -"
@@ -543,7 +558,10 @@ biomAddObservations ${output_dir}/asvs/${OTBL}.biom ${output_dir}/asvs/asv_table
 
 # create three additional taxonomic levels of ASV tables
 OTBL="asv_table_02_add_taxa"
-summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7
+
+#Mario: Added -o flag which specifies the output directory location
+#http://qiime.org/scripts/summarize_taxa.html
+summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7 -o "${output_dir}/asvs"
 
 to_process=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "${OTBL}*.biom"))
 
@@ -623,6 +641,11 @@ if [ "$james_sum_file_gen" = true ]; then
 
     # Error check for Rscript
     Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('${output_dir}/asvs/asv_table_03_add_seqs_norm.txt', '${output_dir}/asvs/rep_set/assgntax/nf_seqs_chimera_filtered_tax_assignments.txt', '${output_dir}/asvs/rep_set/assgntax/seqs_chimera_filtered_tax_assignments.txt', '${output_dir}/asvs/asv_table_03_add_seqs.txt', '${output_dir}/asvs/rep_set/mixed_family_checker_out.txt')" || { echo "Error: Rscript failed"; exit 1; }
+   
+    #Move generated ASVSumamry file
+    mv ASV_summary* ${output_dir}/asvs
+
+
 else
     echo "No James Summary File Generated, as requested."
 fi
