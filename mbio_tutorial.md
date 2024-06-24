@@ -13,11 +13,11 @@ Part 4: This part is optional, as you may want to use other methods for assignin
 ## Part 1
 ### USAGE
 This script expects to be given at least two aguments:
--d: a working directory, which contains a one folder for each of your fastq files named by ID
--j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
+- -d: a working directory, which contains a one folder for each of your fastq files named by ID
+- -j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
 
 Optional argument:
--m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
+- -m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
 
 Examples:
 ```sh
