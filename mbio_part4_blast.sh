@@ -628,13 +628,15 @@ done
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
+# Verify paths
 ls $otblfp
-ls ${output_dir}'/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta'
+ls ${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta
 echo $outfp
-echo "Rscript -e \"source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('${otblfp}', '${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '${outfp}')\""
 
-
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+# Construct and run the command
+command="Rscript -e \"source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('${otblfp}', '${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '${outfp}')\""
+echo $command  # Check the command
+eval $command  # Run the command
 
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa_norm.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs_norm.txt"
