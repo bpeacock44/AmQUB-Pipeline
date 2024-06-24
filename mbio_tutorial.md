@@ -253,7 +253,7 @@ blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS
 
 After you run mbio_part4_SPLIT_blast.sh, you will need to run mbio_part4_blast.sh as usual - just make sure to run with the -s flag so it doesn't run BLAST all over again!
 
-# EXAMPLE OVERALL PIPELINE:
+# Example of Overall Pipeline:
 
 ```sh
 # start an interactive node with some power.
@@ -287,7 +287,7 @@ ${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_fina
 
 ```
 
-# EXAMPLE OVERALL PIPELINE WITH SPLIT BLAST:
+# Example of Overall Pipeline with Split Blast:
 
 ```sh
 # start an interactive node with some power.
