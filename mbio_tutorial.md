@@ -260,34 +260,33 @@ After you run mbio_part4_SPLIT_blast.sh, you will need to run mbio_part4_blast.s
 ## Example of Overall Pipeline:
 
 ```sh
-# start an interactive node with some power.
+### A directory called sing_to_bind contains usearch.
+### WDIR contains sing_to_bind and the sif file, as well as your folders with data.
+
+# start an interactive session with some power.
 srun -c 128 --mem 300gb --pty bash -l
-module load singularity
 
-#A directory called sing_to_bind contains usearch and targeted_microbiome_via_blast, which is cloned from this repository UNTIL ADDED TO SINGULARITY
-#WDIR contains sing_to_bind and the sif file, as well as your folders with data.
-
-## Enter the singularity using this command. 
+# enter the singularity
 WDIR=/path/to/WDIR
-singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
+module load singularity
+singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.3.sif --cleanenv --no-home 
 
+# define paths
 WDIR=/path/to/WDIR
 SDIR=${WDIR}/sing_to_bind
 
-##### pre-processing, barcode mismatches, etc. (Can run on any number of files.) 
-${SDIR}/targeted_microbiome_via_blast/mbio_part1.sh -d ${WDIR} -j "ID1"
+# part 1
+mbio_part1.sh -d ${WDIR} -j "ID1"
 
-## INTEGRATE new part2 - doesn't seem to be in the github cloud yet. Improve instructions for this as well
-##### demultiplexing, collecting stats. (Must be run on individual files AFTER part 1a has been run.)
-${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID1" -o small
-${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+# part 2
+mbio_part2.sh -d ${WDIR} -j "ID1" -o small
+mbio_part2.sh -d ${WDIR} -j "ID2" -o big
 
-##### trimming, filtering, combining, ASV generation, ASV table generation, etc. in preparation for taxonomic classification
-${SDIR}/targeted_microbiome_via_blast/mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+# part 3
+mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
 
-# must add targeted_microbiome_via_blast to the PATH UNTIL ADDED TO SINGULARITY
-export PATH="${SDIR}/targeted_microbiome_via_blast/helper_functions:$PATH"
-${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -b blast.sh -r slurm
+# part 4
+mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -b blast.sh -r slurm
 
 ```
 
