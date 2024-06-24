@@ -111,8 +111,8 @@ When this code is run, a new directory named as you indicated will be created fo
 
 This part can be run a few different ways, depending on how you want to run BLAST. 
 
-1) Run within the singularity as an interactive session on a cluster (request the resources you will need for BLAST, and use -r slurm)
-2) Run locally on your computer within the singularity (-r local)
+1) Run within the singularity as an interactive session on a cluster (request the resources you will need for BLAST)
+2) Run locally on your computer within the singularity
 3) If you have a very large ASV file, you may want to split it up and run on separate resources. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below. For both 1 and 2, the following applies.
 
 ### USAGE 
