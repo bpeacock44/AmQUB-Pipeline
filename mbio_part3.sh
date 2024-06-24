@@ -1,27 +1,16 @@
 #!/bin/bash
+# See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-# This script expects to be given at least 4 aguments:
-# -d: a working directory, which contains one folder for each of your fastq files named by ID
-# -j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1,ID2,ID3_subset2,etc.)
-# -l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
-# -o: the name of your output directory
+#This script expects to be given at least 4 arguments:
+#-d: a working directory, which contains one folder for each of your fastq files named by ID
+#-j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
+#-l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
+#-o: the name of your output directory
 
-# Optional arguments:
-# -m: number of mismatches, if using (again, this should have been specified from part1)
-
-# Examples:
-# mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out
-# mbio_part3.sh -d /path/to/dir -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -m 1
-
-### INPUT ###
-# This script follows part 2, which must be completed first. You will look at your trim stats, 
-# determine what length you want to trim to, and run this code to finish the analysis.
-
-# So, as an example, your working directory might now include:
-#       Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
-
-# When this code is run, a new directory named as you indicated will be created for analysis output. 
+#Optional arguments:
+#-m: number of mismatches, if using (again, this should have been specified from part1)
+#-n: change the minsize of the unoise3 algorithm (default is 8)
 
 # CODE FOLLOWS HERE #
 

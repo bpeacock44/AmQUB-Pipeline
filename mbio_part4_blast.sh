@@ -1,63 +1,22 @@
 #!/bin/bash
+# See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-# This script expects to be given at least 4 aguments:
-# -d: a working directory, which contains one folder for each of your fastq files named by ID
-# -o: the name of your output directory
-# -b: the path to your blast script file
-# -r: the type of blast run you want to do (local or slurm)
-# -e: email of the user for NCBI purposes
+#This script expects to be given at least 5 arguments:
+#-d: a working directory, which contains one folder for each of your fastq files named by ID
+#-o: the name of your output directory
+#-b: the path to your blast script file
+#-r: the type of blast run you want to do (local or slurm)
+#-e: email of the user for NCBI purposes
 
-# Optional arguments:
-# -t This is a filter file - it will have four tab-delimited columns. 
-# Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
-# ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
-# and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
-# -u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
-# -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc.
-
-# Examples:
-# mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
-# mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
-# mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -r local -s
-# mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -u
-
-### INPUT ###
-# This script follows part 3, which must be completed first. 
-# The output file will have already been generated in part 3.
-
-## NOTE THAT YOU CANNOT SUBMIT BATCHES FROM WITHIN THE SINGULARITY. If you want to run blast across various computational 
-## resources, it is better to do that manually on your system and then resume this pipeline after. 
-## See tutorials on github for guidance.
-
-# ########## BLAST FILE EXAMPLE (-b) ########## 
-#!/bin/bash 
-##<>#<>#<>#<>#<>
-## YOU MUST SET THESE:
-##<>#<>#<>#<>#<>
-#DATABASE_PATH=/database/nt (this line can be whatever type of database you wish to use i.e nt,nr,etc)
-#NUMTHREADS=128
-
-##<>#<>#<>#<>#<>
-## GENERALLY DON'T CHANGE THESE:
-##<>#<>#<>#<>#<>
-#OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-#TASK=blastn
-#INFASTA=$1
-#MAXTSEQS=$2  
-#EVAL=0.001
-#blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########### ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
-
-# ########## FILTER FILE EXAMPLE (-t) ########## 
-# If I am doing fungal ITS taken from a plant sample, then the file might include:
-# Name    ID    Rank    Action
-# Fungi    4751    k    Keep
-# Viridiplantae    33090    k    Reject
-# This way, I am giving preference to fungal taxonomies and rejecting any plant ones. Note that RANK is LOWERCASE!!
-# Also, rank doesn't particularly matter - it just keeps the file naming convention clean. (So for example, even though 
-# bacteria is listed as a superkingdom on NCBI, I just put "k" because it's my personal preference and the retrieval still works.)
-# ########## FILTER FILE EXAMPLE (-t) ########## 
+#Optional arguments:
+#-t This is a filter file - it will have four tab-delimited columns. 
+#Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
+#ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
+#and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
+#-u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
+#-s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
+#-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 
 # CODE FOLLOWS HERE #
 

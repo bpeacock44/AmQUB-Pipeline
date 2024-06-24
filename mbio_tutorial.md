@@ -13,16 +13,16 @@ Part 4: This part is optional, as you may want to use other methods for assignin
 ## Part 1
 ### USAGE
 This script expects to be given at least two aguments:
-- d: a working directory, which contains a one folder for each of your fastq files named by ID
-- j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
+-d: a working directory, which contains a one folder for each of your fastq files named by ID
+-j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
 
 Optional argument:
-- m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
+-m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
 
 Examples:
 ```sh
-mbio_part1.sh -d /path/to/dir -j JB141,JB143 
-mbio_part1.sh -d /path/to/dir -j JB141,JB143 -m 1
+mbio_part1.sh -d /path/to/dir -j ID1,ID2 
+mbio_part1.sh -d /path/to/dir -j ID1,ID2 -m 1
 ```
 
 ### INPUT
@@ -45,24 +45,28 @@ B003.110	GCGATTAGGTCG	IGNORE	A3	JB110	3	Psyllid 13-18	2/28/19
 PCR_CONTROL	ACATGGCCTAAT	CONTROL	A4	JB110	NA	NA	NA
 ```
 
+IMPORTANT NOTE: At this stage, the map file should contain the barcodes for ALL SAMPLES present in the fastq file or the results may contain undetected errors.
+
 ## Part 2
 
 ### USAGE
-This script expects to be given at least two aguments:
-- d: a working directory, which contains the folder containing the fastq file you want to process.
-- j: a single ID. This script must be run individually on your IDs 
+This script expects to be given at least two arguments:
+-d: a working directory, which contains the folder containing the fastq file you want to process.
+-j: a single ID. This script must be run individually on your IDs 
 (This is in contrast to part 1, which was run just once for all.)
 
 Optional arguments:
-- m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
-- o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
+-m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
+-s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
+-o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
 
 Examples:
 ```sh
-mbio_part2.sh -d /path/to/dir -j JB141 
-mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 
-mbio_part2.sh -d /path/to/dir -j JB141 -m 1
-mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 -m 1
+mbio_part2.sh -d /path/to/dir -j ID1 
+mbio_part2.sh -d /path/to/dir -j ID1 -s 137,148
+mbio_part2.sh -d /path/to/dir -j ID1 -o sub1 
+mbio_part2.sh -d /path/to/dir -j ID1 -m 1
+mbio_part2.sh -d /path/to/dir -j ID1 -o sub1 -m 1
 ```
 ### INPUT
 This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) has been run through part 1, which is used to find and replace mismatched barcodes with perfect match barcodes. 
@@ -78,19 +82,21 @@ When this code is run, a new directory will be created for your output named eit
 ## Part 3
 
 ### USAGE
-This script expects to be given at least 4 aguments:
-- d: a working directory, which contains one folder for each of your fastq files named by ID
-- j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1,ID2,ID3_subset2,etc.)
-- l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
-- o: the name of your output directory
+This script expects to be given at least 4 arguments:
+-d: a working directory, which contains one folder for each of your fastq files named by ID
+-j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
+-l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
+-o: the name of your output directory
 
 Optional arguments:
-- m: number of mismatches, if using (again, this should have been specified from part1)
+-m: number of mismatches, if using (again, this should have been specified from part1)
+-n: change the minsize of the unoise3 algorithm (default is 8)
 
 Examples:
 ```sh
-mbio_part3.sh -d ${MDIR} -j "JB141_Nickels01_output,JB143_output" -l 150 -o test1_out
-mbio_part3.sh -d ${MDIR} -j "JB141_Nickels01_output,JB143_output" -l 150 -o test2_out -m 1
+mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test1_out
+mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test2_out -m 1
+mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 8
 ```
 
 ### INPUT ###
@@ -103,26 +109,35 @@ When this code is run, a new directory named as you indicated will be created fo
 
 ## Part 4
 
+This part can be run a few different ways, depending on how you want to run BLAST. 
+
+1) Run within the singularity as an interactive session on a cluster (request the resources you will need for BLAST, and use -r slurm)
+2) Run locally on your computer within the singularity (-r local)
+3) If you have a very large ASV file, you may want to split it up and run on separate resources. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below. For both 1 and 2, the following applies.
+
 ### USAGE 
-This script expects to be given at least 4 aguments:
-- d: a working directory, which contains one folder for each of your fastq files named by ID
-- o: the name of your output directory
-- b: the path to your blast script file
-- r: the type of blast run you want to do (local or slurm)
-- e: email of the user for NCBI purposes
+This script expects to be given at least 5 arguments:
+-d: a working directory, which contains one folder for each of your fastq files named by ID
+-o: the name of your output directory
+-b: the path to your blast script file
+-r: the type of blast run you want to do (local or slurm)
+-e: email of the user for NCBI purposes
 
 Optional arguments:
-- t: filter file (see below for details.) If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
-- m: number of mismatches, if using (again, this should have been specified from part1)
-- u: just for universal assay - causes final ASV tables to be split into 3 taxonomic domains prior to normalizing
-- s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc.
+-t This is a filter file - it will have four tab-delimited columns. 
+Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
+ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
+and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
+-u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
+-s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
+-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 
 Examples:
 ```sh
-mbio_part4.sh -d ${MDIR} -o test1_out -b ${MDIR}/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt 
-mbio_part4.sh -d ${MDIR} -o test2_out -b ${MDIR}/blast.sh -e email@email.com -r slurm -t ${MDIR}/filterfile.txt -m 1 
-mbio_part4.sh -d ${MDIR} -o test3_out -b ${MDIR}/blast.sh -e email@email.com -r local -s
-mbio_part4.sh -d ${MDIR} -o test4_out -b ${MDIR}/blast.sh -e email@email.com -r local -m 1 -u 
+mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -r slurm -t filterfile.txt 
+mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -r slurm -t filterfile.txt -m 1
+mbio_part4.sh -d /path/to/dir -o test3_out -e email@email.com -s
+mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -r local -u -j
 ```
 
 ### INPUT 
@@ -150,7 +165,7 @@ TASK=blastn
 INFASTA=$1
 MAXTSEQS=$2  
 EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
 ```
 If running a local blast, you could use the same format but do not include the SBATCH and module load lines.
 
@@ -171,3 +186,158 @@ Viridiplantae    33090    k    Reject
 Note that rank is lowercase.
 
 When assigning taxonomy, decisions will be made based on bitscore. Highest bitscore results among non-rejected taxonomic groups will contribute to the taxonomic assignment. If the highest bitscores are in your "keep" group or the the highest bitscore is shared between groups, then your taxonomic assignment will be from the "keep" group. However, if the bitscore is higher in environmental samples of the "keep" group OR, secondarily, if it is higher in unspecified groups (taxonomies not listed in your filter file) then those will be used instead.
+
+## Part 4 Split
+
+If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
+
+It has no optional arguments:
+-d: a working directory, which contains one folder for each of your fastq files named by ID
+-o: the name of your output directory
+-b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
+-n: number of different jobs you want to run
+-r: the type of blast run you want to do (local or slurm)
+
+### INPUT 
+As before, this script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
+
+For argument -b, you are going to want to make a blast script but it should include ALL the scripts you want to run. The code will automatically split this file by shebang, and also split your ASV file and merge the results back together into a single blast file.
+```
+# ########## SLURM BLAST FILE EXAMPLE (-b), if you had 2 jobs to run ########## 
+#!/bin/bash 
+#SBATCH -p epyc
+#SBATCH -c 256
+#SBATCH --mem=300G 
+# any other parameters or modules needed
+module load ncbi-blast/2.6.0+
+module load db-ncbi
+
+#<>#<>#<>#<>#<>
+# YOU MUST SET THESE:
+#<>#<>#<>#<>#<>
+DATABASE_PATH=$NCBI_DB/nt
+NUMTHREADS=256
+
+#<>#<>#<>#<>#<>
+# GENERALLY DON'T CHANGE THESE:
+#<>#<>#<>#<>#<>
+OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
+TASK=blastn
+INFASTA=$1
+MAXTSEQS=$2  
+EVAL=0.001
+blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+
+#!/bin/bash 
+#SBATCH -c 256
+#SBATCH --mem=300G 
+# any other parameters or modules needed
+module load ncbi-blast/2.6.0+
+module load db-ncbi
+
+#<>#<>#<>#<>#<>
+# YOU MUST SET THESE:
+#<>#<>#<>#<>#<>
+DATABASE_PATH=$NCBI_DB/nt
+NUMTHREADS=256
+
+#<>#<>#<>#<>#<>
+# GENERALLY DON'T CHANGE THESE:
+#<>#<>#<>#<>#<>
+OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
+TASK=blastn
+INFASTA=$1
+MAXTSEQS=$2  
+EVAL=0.001
+blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+```
+
+After you run mbio_part4_SPLIT_blast.sh, you will need to run mbio_part4_blast.sh as usual - just make sure to run with the -s flag so it doesn't run BLAST all over again!
+
+# EXAMPLE OVERALL PIPELINE:
+
+```sh
+# start an interactive node with some power.
+srun -c 128 --mem 300gb --pty bash -l
+module load singularity
+
+#A directory called sing_to_bind contains usearch and targeted_microbiome_via_blast, which is cloned from this repository UNTIL ADDED TO SINGULARITY
+#WDIR contains sing_to_bind and the sif file, as well as your folders with data.
+
+## Enter the singularity using this command. 
+WDIR=/path/to/WDIR
+singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
+
+WDIR=/path/to/WDIR
+SDIR=${WDIR}/sing_to_bind
+
+##### pre-processing, barcode mismatches, etc. (Can run on any number of files.) 
+${SDIR}/targeted_microbiome_via_blast/mbio_part1.sh -d ${WDIR} -j "ID1"
+
+## INTEGRATE new part2 - doesn't seem to be in the github cloud yet. Improve instructions for this as well
+##### demultiplexing, collecting stats. (Must be run on individual files AFTER part 1a has been run.)
+${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID1" -o small
+${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+
+##### trimming, filtering, combining, ASV generation, ASV table generation, etc. in preparation for taxonomic classification
+${SDIR}/targeted_microbiome_via_blast/mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+
+# must add targeted_microbiome_via_blast to the PATH UNTIL ADDED TO SINGULARITY
+export PATH="${SDIR}/targeted_microbiome_via_blast/helper_functions:$PATH"
+${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -b blast.sh -r slurm
+
+```
+
+# EXAMPLE OVERALL PIPELINE WITH SPLIT BLAST:
+
+```sh
+# start an interactive node with some power.
+srun -c 128 --mem 300gb --pty bash -l
+module load singularity
+
+#A directory called sing_to_bind contains usearch and targeted_microbiome_via_blast, which is cloned from this repository.
+#WDIR contains sing_to_bind and the sif file, as well as your folders with data.
+
+## Enter the singularity using this command. 
+WDIR=/path/to/WDIR
+singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
+
+WDIR=/path/to/WDIR
+SDIR=${WDIR}/sing_to_bind
+
+##### pre-processing, barcode mismatches, etc. (Can run on any number of files.) 
+${SDIR}/targeted_microbiome_via_blast/mbio_part1.sh -d ${WDIR} -j "ID1"
+
+## INTEGRATE new part2 - doesn't seem to be in the github cloud yet. Improve instructions for this as well
+##### demultiplexing, collecting stats. (Must be run on individual files AFTER part 1a has been run.)
+${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID1" -o small
+${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+
+##### trimming, filtering, combining, ASV generation, ASV table generation, etc. in preparation for taxonomic classification
+${SDIR}/targeted_microbiome_via_blast/mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+
+#EXIT singularity AND node bc to run blast you will be submitting two jobs.
+exit
+exit 
+
+WDIR=/path/to/WDIR
+SDIR=${WDIR}/sing_to_bind
+
+module load db-ncbi # this must be available locally
+module load seqkit # this must be available locally
+
+# must add targeted_microbiome_via_blast to the PATH
+export PATH="${SDIR}/targeted_microbiome_via_blast/helper_functions:$PATH"
+${SDIR}/targeted_microbiome_via_blast/mbio_just_blast.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
+
+srun -c 128 --mem 300gb --pty bash -l
+module load singularity
+WDIR=/path/to/WDIR
+singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
+WDIR=/path/to/WDIR
+SDIR=${WDIR}/sing_to_bind
+
+##### classification and final file generation
+${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
+
+```

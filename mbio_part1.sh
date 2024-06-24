@@ -1,41 +1,13 @@
 #!/bin/bash
+# See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-# This script expects to be given at least two aguments:
-# -d: a working directory, which contains a one folder for each of your fastq files named by ID
-# -j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
+#This script expects to be given at least two aguments:
+#-d: a working directory, which contains a one folder for each of your fastq files named by ID
+#-j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
 
-# Optional argument:
-# -m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
-
-# Examples:
-# mbio_part1.sh -d /path/to/dir -j JB141,JB143 
-# mbio_part1.sh -d /path/to/dir -j JB141,JB143 -m 1
-
-### INPUT ###
-# Each folder needs to contain a fastq file named by ID followed by "_L1P1.fq" and an appropriately 
-#       formatted mapping file followed by "_map.txt"
-# For example, the directory indicated contains a folder called JB141 and it contains the files 
-#       "JB141_L1P1.fq" and "JB141_map.txt."
-
-
-
-# ########## MAPPING FILE FORMAT ########## 
-# MAP FILES MUST CONTAIN AT LEAST TWO COLUMNS:  
-# 1) SampleID (with a # before as in #SampleID) - these are the IDs you associate with each sample
-# 2) BarcodeSequence - the barcodes for each sample
-# 3) SampleType - you can use this to filter later on - 
-# e.g. removing controls before data analysis, removing samples that aren't relevant, etc.
-# 4) Any characteristics you want to us later on to run differential analysis or correlation, etc.
-
-# Other metadata can also be included in additional columns as desired. Here is a short example:
-
-#SampleID    BarcodeSequence    SampleType    PlatePosition   Library    TubeLabel    Contents    DateTaken
-#B001.110    CTCGACTACTGA    SAMPLE    A1    JB110    1    Psyllid 1-6    2/28/19
-#B002.110    TGACCAGTAGTC    SAMPLE    A2    JB110    2    Psyllid 7-12    2/28/19
-#B003.110    GCGATTAGGTCG    IGNORE    A3    JB110    3    Psyllid 13-18    2/28/19
-#PCR_CONTROL   ACATGGCCTAAT    CONTROL    A4    JB110    NA    NA    NA
-# ########## MAPPING FILE FORMAT ########## 
+#Optional argument:
+#-m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
 
 # CODE FOLLOWS HERE #
 

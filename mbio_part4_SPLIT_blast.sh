@@ -1,4 +1,9 @@
 #!/bin/bash
+# See mbio_tutorial.md for further guidance!
+
+# This script is handy if you are running the pipeline on a cluster and you want to break your ASVs into multiple
+# files so you can run blast in separate jobs. After you run this pipeline, you will need to run mbio_part4_blast.sh 
+# with the -s option enabled to finish up the analysis. This is JUST THE BLAST.
 
 ### USAGE ###
 # This script expects to be given at least 4 aguments:
@@ -7,70 +12,6 @@
 # -b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
 # -n: number of different jobs you want to run
 # -r: the type of blast run you want to do (local or slurm)
-
-# Examples:
-# mbio_just_blast.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -n 2 -r slurm
-
-### INPUT ###
-# This script follows part 3, which must be completed first. 
-# The output file will have already been generated in part 3.
-
-
-
-## NOTE THAT YOU CANNOT SUBMIT BATCHES FROM WITHIN THE SINGULARITY. If you want to run blast across various computational 
-## resources, it is better to do that manually on your system and then resume this pipeline after. 
-## See tutorials on github for guidance.
-
-
-
-# ########## SLURM BLAST FILE EXAMPLE (-b), if you had 2 jobs to run ########## 
-##!/bin/bash 
-##SBATCH -p epyc
-##SBATCH -c 256
-##SBATCH --mem=300G 
-## any other parameters or modules needed
-#module load ncbi-blast/2.6.0+
-#module load db-ncbi
-
-##<>#<>#<>#<>#<>
-## YOU MUST SET THESE:
-##<>#<>#<>#<>#<>
-#DATABASE_PATH=$NCBI_DB/nt
-#NUMTHREADS=256
-
-##<>#<>#<>#<>#<>
-## GENERALLY DON'T CHANGE THESE:
-##<>#<>#<>#<>#<>
-#OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-#TASK=blastn
-#INFASTA=$1
-#MAXTSEQS=$2  
-#EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-
-##!/bin/bash 
-##SBATCH -c 256
-##SBATCH --mem=300G 
-## any other parameters or modules needed
-#module load ncbi-blast/2.6.0+
-#module load db-ncbi
-
-##<>#<>#<>#<>#<>
-## YOU MUST SET THESE:
-##<>#<>#<>#<>#<>
-#DATABASE_PATH=$NCBI_DB/nt
-#NUMTHREADS=256
-
-##<>#<>#<>#<>#<>
-## GENERALLY DON'T CHANGE THESE:
-##<>#<>#<>#<>#<>
-#OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-#TASK=blastn
-#INFASTA=$1
-#MAXTSEQS=$2  
-#EVAL=0.001
-# blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-# ########## SLURM BLAST FILE EXAMPLE (-b) ########## 
 
 # CODE FOLLOWS HERE #
 
