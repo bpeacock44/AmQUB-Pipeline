@@ -116,7 +116,6 @@ This part can be run a few different ways, depending on how you want to run BLAS
 3) If you have a very large ASV file, you may want to split it up and run on separate resources. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below. For both 1 and 2, the following applies.
 
 ### USAGE 
-<<<<<<< HEAD
 This script expects to be given at least 5 arguments:
 - -d: a working directory, which contains one folder for each of your fastq files named by ID
 - -o: the name of your output directory
