@@ -74,8 +74,8 @@ This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) ha
 Each folder needs to contain the fastq files resulting from 1a, which are named by ID followed by \_A1P1.M#.fq and \_A1P2.M#.fq, as well as a mapping file (either the original or a subset.)
 
 So, as an example, your working directory might now include:
-- - Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
-- - JB141_map.txt should also be present in folder if subset map isn't used.
+- Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
+- JB141_map.txt should also be present in folder if subset map isn't used.
 
 When this code is run, a new directory will be created for your output named either with the unique identifier for your subset, if given (e.g. JB141_Nickels01_output), or it will be named after your regular ID if no unique map was provided (e.g. JB141_output) 
 
@@ -103,7 +103,7 @@ mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 
 This script follows part 2, which must be completed first. You will look at your trim stats, determine what length you want to trim to, and run this code to finish the analysis.
 
 So, as an example, your working directory might now include:
-- - Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
+- Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
 
 When this code is run, a new directory named as you indicated will be created for analysis output. 
 
@@ -171,12 +171,11 @@ If running a local blast, you could use the same format but do not include the S
 
 For argument -t, you can choose to include a filter file that will essentially indicate taxonomic groups you want to give preference for and reject outright in the taxonomic assignment process. For example, if I was running the analysis on bacterial ITS amplicon data taken a plant sample, then I might want to give preference to bacterial taxa and reject any plant taxa.
 
-The format will be as follows 
-Header (Name, ID, Rank, and Action)
-Name - the taxonomic name on NCBI
-ID - the taxonomic ID on NCBI
-Rank - the rank of the taxonomic group (Note that this doesn't have to match NCBI, as seen here with bacteria, which is listed as a superkingdom on NCBI. It is primarily for your information.)
-Action - whether you want to give preference to (keep) or reject this group.
+The columns will be as follows, with a header: (Name, ID, Rank, and Action)
+- Name - the taxonomic name on NCBI
+- ID - the taxonomic ID on NCBI
+- Rank - the rank of the taxonomic group (Note that this doesn't have to match NCBI, as seen here with bacteria, which is listed as a superkingdom on NCBI. It is primarily for your information.)
+- Action - whether you want to give preference to (keep) or reject this group.
 
 ```
 Name    ID    Rank    Action
