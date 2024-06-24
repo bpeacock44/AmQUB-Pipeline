@@ -62,6 +62,28 @@ for ((i=0; i<${#JBS[@]}; i++)); do
   JBS[$i]=${JBS[$i]%%_output}
 done
 
+# Check appropriateness fo the trim length.
+for JB in "${JBS[@]}"; do
+    file="${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq"
+
+    # Check if the file exists and is not empty
+    if [ -s "$file" ]; then
+        # Get the length of the first sequence in the FASTA file
+        first_sequence_length=$(head -n 2 "$file" | grep -v '^>' | tr -d '\n' | wc -c)
+
+        # Compare the length with $LEN
+        if [ "$first_sequence_length" -lt "$(($LEN - 5))" ]; then
+            echo "Your chosen trim length (-l) is inappropriate for the length of your reads."
+            exit 1
+        fi
+    else
+        echo "Error while attempting to check read length: File $file doesn't exist or is empty. This file needs to be present!"
+        exit 1
+    fi
+
+    break
+done
+
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
