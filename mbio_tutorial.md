@@ -134,7 +134,6 @@ and make sure. If you are doing a universal assay, do not include the -t flag an
 Examples:
 ```sh
 mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -t filterfile.txt 
-mbio_part4.sh -d /path/to/dir -o test2_out -b /path/to/blast.sh -e email@email.com -t filterfile.txt -m 1
 mbio_part4.sh -d /path/to/dir -o test3_out -e email@email.com -s
 mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -u -j
 ```
