@@ -128,7 +128,7 @@ Include any taxonomic groups that you want to preferentially keep or reject as w
 ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
 and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
 - -u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
-- -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
+- -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -b is not required.
 - -j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 
 Examples:
