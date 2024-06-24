@@ -4,7 +4,8 @@
 ### USAGE ###
 #This script expects to be given at least 4 arguments:
 #-d: a working directory, which contains one folder for each of your fastq files named by ID
-#-j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
+#-j: the folders created in the last part that you intend to process in a comma-delimited list 
+    #(ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
 #-l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
 #-o: the name of your output directory
 

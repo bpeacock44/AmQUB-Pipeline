@@ -11,8 +11,12 @@
 
 #Optional arguments:
 #-m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
-#-s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
-#-o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
+#-s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated 
+    #in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
+#-o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can 
+    #create a mapping file in the same format as the original with the lines of unwanted samples removed. 
+    #This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same 
+    #ID folder as the other files are in.
 
 # CODE FOLLOWS HERE #
 

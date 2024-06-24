@@ -6,7 +6,6 @@
 #-d: a working directory, which contains one folder for each of your fastq files named by ID
 #-o: the name of your output directory
 #-b: the path to your blast script file
-#-r: the type of blast run you want to do (local or slurm)
 #-e: email of the user for NCBI purposes
 
 #Optional arguments:
@@ -15,8 +14,10 @@
 #ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
 #and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
 #-u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
-#-s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
-#-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
+#-s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment 
+    #steps etc. Note that if -s is enabled, -b is not required.
+#-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. 
+    #Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 
 # CODE FOLLOWS HERE #
 
@@ -38,7 +39,7 @@ split_asv_table=false
 skip_blast=false
 james_sum_file_gen=false
 
-while getopts ":d:o:b:r:e:t:usj" opt; do
+while getopts ":d:o:b:e:t:usj" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -46,17 +47,6 @@ while getopts ":d:o:b:r:e:t:usj" opt; do
     ;;    
     b) blast_file="$OPTARG"
     ;;
-    r) 
-      case "$OPTARG" in
-        local|slurm)
-          run_type="$OPTARG"
-          ;;
-        *)
-          echo "Invalid value for -r option. Allowed values are 'local' or 'slurm'."
-          exit 1
-          ;;
-      esac
-      ;;
     e) EMAIL="$OPTARG"
     ;;
     t) FILTERFILE="$OPTARG"
@@ -72,18 +62,19 @@ while getopts ":d:o:b:r:e:t:usj" opt; do
   esac
 done
 
+
 shift $((OPTIND -1))
 
 # Check for mandatory arguments
 if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$EMAIL" ]; then
-    echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -e <email@email.com> [-b <blast parameter file> -r <local|slurm> -t <filtertax_file> -u -s -j]"
+    echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -e <email@email.com> [-b <blast parameter file> -t <filtertax_file> -u -s -j]"
     exit 1
 fi
 
-# If blast is not skipped, check for the blast_file and run_type arguments
+# If blast is not skipped, check for the blast_file arguments
 if [ "$skip_blast" = false ]; then
-    if [ -z "$blast_file" ] || [ -z "$run_type" ]; then
-        echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -b <blast parameter file> -r <local|slurm> -e <email@email.com> [-t <filtertax_file> -u -s -j]"
+    if [ -z "$blast_file" ]; then
+        echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -b <blast parameter file> -e <email@email.com> [-t <filtertax_file> -u -s -j]"
         exit 1
     fi
 fi
@@ -94,30 +85,11 @@ if ! [[ "${EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     exit 1
 fi
 
-# Check if the -t option is not provided
-if [ -z "$FILTERFILE" ]; then
-    # Ask for confirmation
-    read -p "You have not indicated a taxon-to-filter file. This means you are either analyzing a universal amplicon dataset OR you do not wish to assign your ASVs with any taxa preferentially. Is this correct? (yes/no): " choice
-
-    # Process the user's choice
-    case "$choice" in
-        yes|Yes|YES)
-            echo "Proceeding without a taxon-to-filter file."
-            ;;
-        no|No|NO)
-            echo "Exiting. Please provide a taxon-to-filter file using the -t option."
-            exit 1
-            ;;
-        *)
-            echo "Invalid choice. Please enter 'yes' or 'no'."
-            exit 1
-            ;;
-    esac
-fi
-
+# Define initial paths and run_type variable.
 output_dir="${DIR}/${OUTDIR}"
 TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 mkdir -vp $TAXDIR
+run_type=local
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
@@ -150,7 +122,6 @@ if [ "$skip_blast" = true ]; then
     echo "BLAST was skipped."
 else
     echo "Blast run file: ${blast_file}"
-    echo "Type of blast: ${run_type}"
 fi
 
 if [ "$split_asv_table" = true ]; then

@@ -7,7 +7,8 @@
 #-j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
 
 #Optional argument:
-#-m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
+#-m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of 
+    #mismatches into perfect match barcodes)
 
 # CODE FOLLOWS HERE #
 
