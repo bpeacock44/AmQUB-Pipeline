@@ -51,14 +51,14 @@ IMPORTANT NOTE: At this stage, the map file should contain the barcodes for ALL 
 
 ### USAGE
 This script expects to be given at least two arguments:
--d: a working directory, which contains the folder containing the fastq file you want to process.
--j: a single ID. This script must be run individually on your IDs 
+- -d: a working directory, which contains the folder containing the fastq file you want to process.
+- -j: a single ID. This script must be run individually on your IDs 
 (This is in contrast to part 1, which was run just once for all.)
 
 Optional arguments:
--m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
--s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
--o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
+- -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
+- -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
+- -o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
 
 Examples:
 ```sh
@@ -74,8 +74,8 @@ This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) ha
 Each folder needs to contain the fastq files resulting from 1a, which are named by ID followed by \_A1P1.M#.fq and \_A1P2.M#.fq, as well as a mapping file (either the original or a subset.)
 
 So, as an example, your working directory might now include:
-- Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
-- JB141_map.txt should also be present in folder if subset map isn't used.
+- - Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
+- - JB141_map.txt should also be present in folder if subset map isn't used.
 
 When this code is run, a new directory will be created for your output named either with the unique identifier for your subset, if given (e.g. JB141_Nickels01_output), or it will be named after your regular ID if no unique map was provided (e.g. JB141_output) 
 
@@ -83,14 +83,14 @@ When this code is run, a new directory will be created for your output named eit
 
 ### USAGE
 This script expects to be given at least 4 arguments:
--d: a working directory, which contains one folder for each of your fastq files named by ID
--j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
--l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
--o: the name of your output directory
+- -d: a working directory, which contains one folder for each of your fastq files named by ID
+- -j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
+- -l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
+- -o: the name of your output directory
 
 Optional arguments:
--m: number of mismatches, if using (again, this should have been specified from part1)
--n: change the minsize of the unoise3 algorithm (default is 8)
+- -m: number of mismatches, if using (again, this should have been specified from part1)
+- -n: change the minsize of the unoise3 algorithm (default is 8)
 
 Examples:
 ```sh
@@ -103,7 +103,7 @@ mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 
 This script follows part 2, which must be completed first. You will look at your trim stats, determine what length you want to trim to, and run this code to finish the analysis.
 
 So, as an example, your working directory might now include:
-- Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
+- - Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
 
 When this code is run, a new directory named as you indicated will be created for analysis output. 
 
@@ -117,20 +117,20 @@ This part can be run a few different ways, depending on how you want to run BLAS
 
 ### USAGE 
 This script expects to be given at least 5 arguments:
--d: a working directory, which contains one folder for each of your fastq files named by ID
--o: the name of your output directory
--b: the path to your blast script file
--r: the type of blast run you want to do (local or slurm)
--e: email of the user for NCBI purposes
+- -d: a working directory, which contains one folder for each of your fastq files named by ID
+- -o: the name of your output directory
+- -b: the path to your blast script file
+- -r: the type of blast run you want to do (local or slurm)
+- -e: email of the user for NCBI purposes
 
 Optional arguments:
--t This is a filter file - it will have four tab-delimited columns. 
+- -t This is a filter file - it will have four tab-delimited columns. 
 Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
 ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
 and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
--u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
--s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
--j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
+- -u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
+- -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -r and -b are not required.
+- -j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 
 Examples:
 ```sh
@@ -192,11 +192,11 @@ When assigning taxonomy, decisions will be made based on bitscore. Highest bitsc
 If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
 
 It has no optional arguments:
--d: a working directory, which contains one folder for each of your fastq files named by ID
--o: the name of your output directory
--b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
--n: number of different jobs you want to run
--r: the type of blast run you want to do (local or slurm)
+- -d: a working directory, which contains one folder for each of your fastq files named by ID
+- -o: the name of your output directory
+- -b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
+- -n: number of different jobs you want to run
+- -r: the type of blast run you want to do (local or slurm)
 
 ### INPUT 
 As before, this script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
