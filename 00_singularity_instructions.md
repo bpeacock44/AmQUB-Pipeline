@@ -1,4 +1,4 @@
-# Insturctions for setting up the container 
+# Instructions for setting up the container 
 ## Verify singularity is installed
 First, ensure you have the singularity program installed or loaded if you are working in an HPCC environment. If you wish to run the container on your local machine but don't have singularity installed then please refer to 
 the link below for instructions on how to setup singularity on your local machine. The only necessary sections you need to follow are the following.
