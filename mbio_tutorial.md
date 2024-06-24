@@ -190,6 +190,8 @@ When assigning taxonomy, decisions will be made based on bitscore. Highest bitsc
 
 ## Part 4 Split
 
+NOTE: You will need ncbi blast and seqkit installed on your system to run this, since you will not be using the container!
+
 If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
 
 It has no optional arguments:
@@ -292,53 +294,56 @@ ${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_fina
 ## Example of Overall Pipeline with Split Blast:
 
 ```sh
-# start an interactive node with some power.
+### A directory called sing_to_bind contains usearch.
+### WDIR contains sing_to_bind and the sif file, as well as your folders with data.
+
+# start an interactive session with some power.
 srun -c 128 --mem 300gb --pty bash -l
-module load singularity
 
-#A directory called sing_to_bind contains usearch and targeted_microbiome_via_blast, which is cloned from this repository.
-#WDIR contains sing_to_bind and the sif file, as well as your folders with data.
-
-## Enter the singularity using this command. 
+# enter the singularity
 WDIR=/path/to/WDIR
-singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
+module load singularity
+singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.3.sif --cleanenv --no-home 
 
+# define paths
 WDIR=/path/to/WDIR
 SDIR=${WDIR}/sing_to_bind
 
-##### pre-processing, barcode mismatches, etc. (Can run on any number of files.) 
-${SDIR}/targeted_microbiome_via_blast/mbio_part1.sh -d ${WDIR} -j "ID1"
+# part 1
+mbio_part1.sh -d ${WDIR} -j "ID1"
 
-## INTEGRATE new part2 - doesn't seem to be in the github cloud yet. Improve instructions for this as well
-##### demultiplexing, collecting stats. (Must be run on individual files AFTER part 1a has been run.)
-${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID1" -o small
-${SDIR}/targeted_microbiome_via_blast/mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+# part 2
+mbio_part2.sh -d ${WDIR} -j "ID1" -o small
+mbio_part2.sh -d ${WDIR} -j "ID2" -o big
 
-##### trimming, filtering, combining, ASV generation, ASV table generation, etc. in preparation for taxonomic classification
-${SDIR}/targeted_microbiome_via_blast/mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+# part 3
+mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
 
-#EXIT singularity AND node bc to run blast you will be submitting two jobs.
+# EXIT singularity and your interactive session because you want more resources for blast.
 exit
 exit 
 
+# re-define paths
 WDIR=/path/to/WDIR
 SDIR=${WDIR}/sing_to_bind
 
+# load modules required
 module load db-ncbi # this must be available locally
 module load seqkit # this must be available locally
 
-# must add targeted_microbiome_via_blast to the PATH
-export PATH="${SDIR}/targeted_microbiome_via_blast/helper_functions:$PATH"
-${SDIR}/targeted_microbiome_via_blast/mbio_just_blast.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
+# part 4 (just blast)
+mbio_part4_SPLIT_blast -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
 
+# start another interactive session with some power
 srun -c 128 --mem 300gb --pty bash -l
+
+# start singularity as before and re-define paths
 module load singularity
 WDIR=/path/to/WDIR
 singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
 WDIR=/path/to/WDIR
 SDIR=${WDIR}/sing_to_bind
 
-##### classification and final file generation
+# part 4 (the rest)
 ${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
-
 ```
