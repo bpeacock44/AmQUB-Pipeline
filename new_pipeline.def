@@ -4,14 +4,14 @@ From:ubuntu:22.04
 %files
 	qiime1_setup_files/qiime1.spec-file.txt .
 	helper_functions
-	mbio_part* .
+	pipeline_scripts
 
 %post
 	export TZ='America/Los_Angeles'
 	export DEBIAN_FRONTEND=noninteractive
-	mkdir bind && mkdir blast && mkdir database && mkdir edirect && mkdir python-venvs && mkdir pipeline_scripts
+	mkdir bind && mkdir blast && mkdir database && mkdir edirect && mkdir python-venvs
 	chmod +x helper_functions/*
-	mv mbio_part* pipeline_scripts && chmod +x pipeline_scripts/*
+	chmod +x pipeline_scripts/*
 	apt -y update && apt -y upgrade
 	apt -y install build-essential util-linux nano vim less python3-venv locales file rename man-db wget	
 
