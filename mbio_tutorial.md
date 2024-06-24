@@ -10,6 +10,8 @@ Part 3: This part will use usearch trim and filter your reads in preparating for
 
 Part 4: This part is optional, as you may want to use other methods for assigning taxonomy to your ASVs. But Part 4 uses BLAST to assign taxonomy to your ASVs using the NCBI nt database. This is useful for any kind of targeted analyses where you do not have a good curated database available for assignment. (e.g. a universal assay) This pipeline can be manipulated in various ways to try to improve taxonomic assignments, given that the NCBI nt database is not curated. Rather than assigning taxonomy using the top hit, it finds all hits that have the highest bitscore and finds the least common ancestor (LCA) among them, giving preference to non-environmental samples and taxonomic groups that you may or may not choose to indicate.
 
+Note that when you run any of these scripts, a log file will be created that you can reference if you run into errors. Please raise an issue if this occurs! There will be a blast log created separately from your part 4 log specific to the blast run.
+
 ## Part 1
 ### USAGE
 This script expects to be given at least two aguments:
