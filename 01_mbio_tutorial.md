@@ -273,7 +273,6 @@ singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.3.sif --cleanen
 
 # define paths
 WDIR=/path/to/WDIR
-SDIR=${WDIR}/sing_to_bind
 
 # part 1
 mbio_part1.sh -d ${WDIR} -j "ID1"
@@ -324,7 +323,6 @@ exit
 
 # re-define paths
 WDIR=/path/to/WDIR
-SDIR=${WDIR}/sing_to_bind
 
 # load modules required
 module load db-ncbi # this must be available locally
@@ -341,8 +339,7 @@ module load singularity
 WDIR=/path/to/WDIR
 singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
 WDIR=/path/to/WDIR
-SDIR=${WDIR}/sing_to_bind
 
 # part 4 (the rest)
-${SDIR}/targeted_microbiome_via_blast/mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
+mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
 ```
