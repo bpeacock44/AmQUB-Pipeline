@@ -1,17 +1,7 @@
 #!/bin/bash
-# See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-#This script expects to be given at least 4 arguments:
-#-d: a working directory, which contains one folder for each of your fastq files named by ID
-#-j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
-#-l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
-#-o: the name of your output directory
-
-#Optional arguments:
-#-m: number of mismatches, if using (again, this should have been specified from part1)
-#-n: change the minsize of the unoise3 algorithm (default is 8)
-
+# THIS IS A TEMPORARY PART 3 SCRIPT FOR RUNNING A DIFFERENT ALGORITHM (UPARSE) FOR ASV PICKING.
 # CODE FOLLOWS HERE #
 
 set -e
@@ -150,16 +140,11 @@ usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_di
 #make a subdirectory for the asvs
 mkdir -vp "${output_dir}/asvs"
 
-if [ -n "$MIN" ]; then
-    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with custom minsize
-    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -minsize "${MIN}" -zotus "${output_dir}/asvs/asvs.fa"
-else
-    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with default minsize (8)
-    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -zotus "${output_dir}/asvs/asvs.fa"
-fi
+# MODIFIED LINE - CLUSTERING at 100% IDENTITY
+usearch -cluster_smallmem "${output_dir}/uniques.fa" -id 1 -centroids "${output_dir}/asvs/asvs.fa"
 
-# Convert '>Zotu' to '>Asv' in the file
-sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
+# Convert headers
+sed 's/>Uniq\([0-9]*\);.*$/>Asv\1/' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
 
 # Check if the replacement was successful before overwriting
 if grep -q '>Asv' "${output_dir}/asvs/z.fa"; then

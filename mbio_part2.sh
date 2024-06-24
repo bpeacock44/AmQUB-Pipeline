@@ -1,41 +1,18 @@
 #!/bin/bash
 
 ### USAGE ###
-# This script expects to be given at least two aguments:
-# -d: a working directory, which contains the folder containing the fastq file you want to process.
-# -j: a single ID. This script must be run individually on your IDs 
-# (This is in contrast to part 1, which was run just once for all.)
+# See mbio_tutorial.md for further guidance!
 
-# Optional arguments:
-# -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
-# -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated
-# in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
-# -o: a subset ID - if you want to run further analyses on a subset of the samples in your data, 
-# you can create a mapping file in the same format as the original with the lines of unwanted 
-# samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be 
-# placed in the same ID folder as the other files are in.
+### USAGE ###
+#This script expects to be given at least two arguments:
+#-d: a working directory, which contains the folder containing the fastq file you want to process.
+#-j: a single ID. This script must be run individually on your IDs 
+#(This is in contrast to part 1, which was run just once for all.)
 
-# Examples:
-# mbio_part2.sh -d /path/to/dir -j JB141 
-# mbio_part2.sh -d /path/to/dir -j JB141 -s 137,148
-# mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 
-# mbio_part2.sh -d /path/to/dir -j JB141 -m 1
-# mbio_part2.sh -d /path/to/dir -j JB141 -o Nickels01 -m 1
-
-### INPUT ###
-# This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) has been run through part 1, 
-#       which is used to find and replace mismatched barcodes with perfect match barcodes. 
-
-# Each folder needs to contain the fastq files resulting from 1a, which are named by ID followed by 
-#       _A1P1.M#.fq and _A1P2.M#.fq, as well as a mapping file (either the original or a subset.)
-
-# So, as an example, your working directory might now include:
-#       Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
-#       (JB141_map.txt should also be present in folder if subset map isn't used.)
-
-# When this code is run, a new directory will be created for your output named either with the unique identifier
-#       for your subset, if given (e.g. JB141_Nickels01_output), or it will be named after your regular ID if no unique map 
-#       was provided (e.g. JB141_output) 
+#Optional arguments:
+#-m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
+#-s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
+#-o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
 
 # CODE FOLLOWS HERE #
 

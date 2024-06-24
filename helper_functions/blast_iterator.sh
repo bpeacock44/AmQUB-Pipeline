@@ -112,7 +112,7 @@ while criteria_met; do
 
     bout="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout"
     outfile="${DIR}/asvs/rep_set/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
-    ${HDIR}/reblast_check.pl ${bout} ${outfile}
+    reblast_check.pl ${bout} ${outfile}
     echo $bout 
     echo $outfile
 
