@@ -534,14 +534,18 @@ biomAddObservations ${output_dir}/asvs/${OTBL}.biom ${output_dir}/asvs/asv_table
 
 # create three additional taxonomic levels of ASV tables
 OTBL="asv_table_02_add_taxa"
-
+ 
 #Mario: Added -o flag which specifies the output directory location
 #http://qiime.org/scripts/summarize_taxa.html
 summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7 -o "${output_dir}/asvs"
 
-to_process=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "${OTBL}*.biom"))
-
-echo "$split_asv_table"
+# will need to chnage if we add more levels
+to_process=(
+    "${output_dir}/asvs/asv_table_02_add_taxa_L2.biom"
+    "${output_dir}/asvs/asv_table_02_add_taxa_L6.biom"
+    "${output_dir}/asvs/asv_table_02_add_taxa_L7.biom"
+    "${output_dir}/asvs/asv_table_02_add_taxa.biom"
+)
 
 for F in "${to_process[@]}"; do
     if [ ! -f "$F" ]; then
@@ -563,9 +567,9 @@ for F in "${to_process[@]}"; do
                 rm "${output_dir}/asvs/${NEW_OTBL}.txt"
             else
                 if [[ "${NEW_OTBL}" == *"_L"* ]]; then
-                    txt2biom_notax "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
+                    txt2biom_notax -f "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
                 else 
-                    txt2biom "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
+                    txt2biom -f "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
                 fi
                 biom_table_math_ops.py -i "${output_dir}/asvs/${NEW_OTBL}.biom" -o "${output_dir}/asvs/${NEW_OTBL}_norm.biom" --normalize2unity
                 biom2txt "${output_dir}/asvs/${NEW_OTBL}_norm.biom" "${output_dir}/asvs/${NEW_OTBL}_norm.txt"
@@ -601,6 +605,7 @@ for F in "${to_process2[@]}"; do
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
     Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/rep_set/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
 done
+echo
 
 if [ "$james_sum_file_gen" = true ]; then
     echo " - -- --- ---- ---- --- -- -"
@@ -623,12 +628,11 @@ if [ "$james_sum_file_gen" = true ]; then
 
 
 else
-    echo "No James Summary File Generated, as requested."
+    echo "No Borneman summary file generated, as requested."
 fi
 
 echo
-echo "All ASV tables have been generated. A summary file can be found here:" | tee /dev/tty
-echo $summary_file_name | tee /dev/tty
+echo "All ASV tables have been generated." | tee /dev/tty
 echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
 echo "Final Recommendations"  | tee /dev/tty
 echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
