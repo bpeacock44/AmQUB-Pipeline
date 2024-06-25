@@ -43,9 +43,9 @@ At least three tab-delimited columns:
 Other columns can include any characteristics you want to use later on to run differential analysis or correlation, etc.
 ```
 SampleID	BarcodeSequence	SampleType	PlatePosition	Library	TubeLabel	Contents	DateTaken
-B001.110	CTCGACTACTGA	SAMPLE	A1	JB110	1	Psyllid 1-6	2/28/19
-B002.110	TGACCAGTAGTC	SAMPLE	A2	JB110	2	Psyllid 7-12	2/28/19
-B003.110	GCGATTAGGTCG	IGNORE	A3	JB110	3	Psyllid 13-18	2/28/19
+B001.110	CTCGACTACTGA	SAMPLE	A1	JB110	1	Psyllid	1-6	2/28/19
+B002.110	TGACCAGTAGTC	SAMPLE	A2	JB110	2	Psyllid	7-12	2/28/19
+B003.110	GCGATTAGGTCG	IGNORE	A3	JB110	3	Psyllid	13-18	2/28/19
 PCR_CONTROL	ACATGGCCTAAT	CONTROL	A4	JB110	NA	NA	NA
 ```
 
@@ -180,9 +180,9 @@ The columns will be as follows, with a header: (Name, ID, Rank, and Action)
 - Action - whether you want to give preference to (keep) or reject this group.
 
 ```
-Name    ID    Rank    Action
-Bacteria    2    k    Keep
-Viridiplantae    33090    k    Reject
+Name	ID	Rank	Action
+Bacteria	2	k	Keep
+Viridiplantae	33090	k	Reject
 ```
 Note that rank is lowercase.
 
