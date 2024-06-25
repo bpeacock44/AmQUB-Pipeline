@@ -108,13 +108,23 @@ exec > "$output_file" 2>&1
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 3 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for Part 3 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
 Data IDs: ${JBS[@]}
 Trim Length: ${LEN}
-Output Directory: ${OUTDIR}
-Mismatches if specified: ${mmatchnum}
- - -- --- ---- ---- --- -- -"
+Output Directory: ${OUTDIR}"
+
+if [ "$mmatchnum" -eq 0 ]; then
+    continue
+else
+    echo "Mismatches specified: ${mmatchnum}"
+fi
+
+if [ -n "$MIN" ]; then
+    echo "UNOISE3 was run with minsize ${mmatchnum}"
+fi
+
+echo " - -- --- ---- ---- --- -- -"
 
 echo
 echo " - -- --- ---- ---- --- -- -"

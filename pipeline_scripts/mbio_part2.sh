@@ -95,19 +95,6 @@ else
         exit 1
     fi
 fi
-echo "File ${MAPFILE} is the mapping file you have selected."
-
-echo "Do you want to continue processing for $JB? (yes/no)"
-read response
-while [[ "$response" != "yes" && "$response" != "no" ]]; do
-    echo "Invalid response. Please enter 'yes' or 'no'."
-    read response
-done
-
-if [ "$response" == "no" ]; then
-    echo "Skipping $JB."
-    continue
-fi
 
 # initiate log
 timestamp="$(date +"%Y%m%d_%H:%M:%S")"
@@ -116,13 +103,25 @@ exec > "$output_file" 2>&1
 
 # create header for log file
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 2 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for Part 2 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
-Data ID: ${JB}
-Trim Lengths for Stats if specified: ${LENS[@]}
-Subset if specified: ${OPTION_O}
-Mismatches if specified: ${mmatchnum}
- - -- --- ---- ---- --- -- -"
+Data ID: ${JB}"
+if [ "$mmatchnum" -eq 0 ]; then
+    continue
+else
+    echo "Mismatches specified: ${mmatchnum}"
+fi
+
+if [ -n "$LENS" ]; then
+    echo "Stats for these trim lengths were generated: ${LENS[@]}"
+fi
+
+if [ -z "$OPTION_O" ]; then
+    echo "All samples were processed."
+else
+    echo "Subset ${OPTION_O} was processed."
+fi
+echo " - -- --- ---- ---- --- -- -"
 
 # make the output directory
 mkdir -vp ${ODIR}

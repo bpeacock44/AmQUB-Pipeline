@@ -74,7 +74,7 @@ exec > "$output_file" 2>&1
 
 # make log file header
 echo " - -- --- ---- ---- --- -- -
-Log file for Part 1 of the Microbiome Pipeline. Processing the following arguments:
+Log file for Part 1 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
 Data IDs: ${JBS[@]}
 Mismatches if specified: ${mmatchnum}

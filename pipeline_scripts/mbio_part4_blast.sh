@@ -112,11 +112,16 @@ exec > "$output_file" 2>&1
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 4 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for Part 4 of the Microbiome Pipeline. Processed the following arguments:
 Working directory: ${DIR}
 Output directory: ${OUTDIR}
-Email of user: "${EMAIL}"
-Filterfile if specified: ${FILTERFILE}"
+Email of user: ${EMAIL}"
+
+if [ -z "$FILTERFILE" ]; then
+    echo "No filter file provided."
+else
+    echo "Filter file used: ${FILTERFILE}"
+fi
 
 if [ "$skip_blast" = true ]; then
     echo "BLAST was skipped."
@@ -125,11 +130,11 @@ else
 fi
 
 if [ "$split_asv_table" = true ]; then
-    echo "Final ASV tables will be split into three domains of life since this is universal assay data."
+    echo "Final ASV tables were split into three domains of life (for universal assay data)"
 fi
 
 if [ "$james_sum_file_gen" = true ]; then
-    echo "A James Summary File will be generated at the end."
+    echo "A James Summary File was generated."
 fi
 
 echo " - -- --- ---- ---- --- -- -"

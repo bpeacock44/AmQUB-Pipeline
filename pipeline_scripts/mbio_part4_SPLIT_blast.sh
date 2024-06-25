@@ -78,7 +78,7 @@ exec > "$output_file" 2>&1
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 4 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for BLAST ONLY Part 4 of the Microbiome Pipeline. Processed the following arguments:
 Working directory: ${DIR}
 Output directory: ${OUTDIR}
 Blast run file: ${blast_file}
