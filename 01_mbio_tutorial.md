@@ -324,6 +324,10 @@ exit
 # re-define paths
 WDIR=/path/to/WDIR
 
+# save the scripts "mbio_part4_SPLIT_blast.sh" and "multi_blast_iterator.sh" to WDIR and make them executable.
+# add WDIR to path so these scripts can be run.
+export PATH="${WDIR}:${PATH}"
+
 # load modules required
 module load db-ncbi # this must be available locally
 module load seqkit # this must be available locally
