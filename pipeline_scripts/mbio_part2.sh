@@ -106,9 +106,7 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Log file for Part 2 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
 Data ID: ${JB}"
-if [ "$mmatchnum" -eq 0 ]; then
-    continue
-else
+if [ "$mmatchnum" -ne 0 ]; then
     echo "Mismatches specified: ${mmatchnum}"
 fi
 

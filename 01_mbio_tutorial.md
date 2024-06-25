@@ -192,6 +192,8 @@ When assigning taxonomy, decisions will be made based on bitscore. Highest bitsc
 
 NOTE: You will need ncbi blast and seqkit installed on your system to run this, since you will not be using the container!
 
+You will also want to have the scripts "mbio_part4_SPLIT_blast.sh" "reblast_check.pl" and "multi_blast_iterator.sh" in your path and executable. See example below for how I usually incorporate this.
+
 If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
 
 It has no optional arguments:
@@ -292,7 +294,8 @@ mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com 
 ## Example of Overall Pipeline with Split Blast:
 
 ```sh
-### A directory called sing_to_bind contains usearch.
+### A directory called sing_to_bind contains usearch, and the scripts "mbio_part4_SPLIT_blast.sh" "reblast_check.pl" and "multi_blast_iterator.sh", which are executable.
+
 ### WDIR contains sing_to_bind and the sif file, as well as your folders with data.
 
 # start an interactive session with some power.

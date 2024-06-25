@@ -114,9 +114,7 @@ Data IDs: ${JBS[@]}
 Trim Length: ${LEN}
 Output Directory: ${OUTDIR}"
 
-if [ "$mmatchnum" -eq 0 ]; then
-    continue
-else
+if [ "$mmatchnum" -ne 0 ]; then
     echo "Mismatches specified: ${mmatchnum}"
 fi
 

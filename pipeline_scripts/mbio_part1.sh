@@ -76,8 +76,10 @@ exec > "$output_file" 2>&1
 echo " - -- --- ---- ---- --- -- -
 Log file for Part 1 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
-Data IDs: ${JBS[@]}
-Mismatches if specified: ${mmatchnum}
+Data IDs: ${JBS[@]}"
+if [ "$mmatchnum" -ne 0 ]; then
+    echo "Mismatches specified: ${mmatchnum}"
+fi
  - -- --- ---- ---- --- -- -"
 echo 
 echo " - -- --- ---- ---- --- -- -
