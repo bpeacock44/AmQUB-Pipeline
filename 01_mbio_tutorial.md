@@ -51,6 +51,8 @@ PCR_CONTROL	ACATGGCCTAAT	CONTROL	A4	JB110	NA	NA	NA
 
 IMPORTANT NOTE: At this stage, the map file should contain the barcodes for ALL SAMPLES present in the fastq file or the results may contain undetected errors.
 
+If you are confused about the mapping file, there are some more notes [here](#more-mapping-file-details).
+
 ## Part 2
 
 ### USAGE
@@ -350,3 +352,12 @@ WDIR=/path/to/WDIR
 # part 4 (the rest)
 mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
 ```
+
+## More Mapping File Details
+When you demultiplex (part 1), mapping files must only contain the samples (and barcodes) from that specific fastq file. (And you want ALL the samples to be there as well so it demultiplexes properly!) So each data file you get should have it's own mapping file.
+
+The only time you alter a mapping file during the pipeline is if you want to make an ASV table from only a subset of the samples within a fastq file, which you can indicate at part 2 using the -o option. (For example, if you were sequencing the microbiomes of insects and your advisor asked if he could sneak a couple of mouse gut samples into the library as well, you probably don't want to include them - especially when you are picking ASVs! So in step 2 you would create a new mapping file without those mouse gut sample rows.)
+
+There is no reason to combine mapping files until you are doing analyses at the very end when you will be referencing metadata and your ASV table contains samples from multiple fastq files. At this point, it makes sense to merge all the rows from all the mapping files that represent the samples in the ASV table you will be analyzing.
+
+

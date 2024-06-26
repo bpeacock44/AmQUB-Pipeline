@@ -80,7 +80,7 @@ Data IDs: ${JBS[@]}"
 if [ "$mmatchnum" -ne 0 ]; then
     echo "Mismatches specified: ${mmatchnum}"
 fi
- - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -"
 echo 
 echo " - -- --- ---- ---- --- -- -
 Checking barcode collisions...

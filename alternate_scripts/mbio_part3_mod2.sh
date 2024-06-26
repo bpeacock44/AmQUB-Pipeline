@@ -1,7 +1,18 @@
 #!/bin/bash
+# See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-# THIS IS A TEMPORARY PART 3 SCRIPT FOR RUNNING A DIFFERENT ALGORITHM (UPARSE) FOR ASV PICKING.
+#This script expects to be given at least 4 arguments:
+#-d: a working directory, which contains one folder for each of your fastq files named by ID
+#-j: the folders created in the last part that you intend to process in a comma-delimited list 
+    #(ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
+#-l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
+#-o: the name of your output directory
+
+#Optional arguments:
+#-m: number of mismatches, if using (again, this should have been specified from part1)
+#-n: change the minsize of the unoise3 algorithm (default is 8)
+
 # CODE FOLLOWS HERE #
 
 set -e
@@ -16,7 +27,7 @@ error_handler() {
 trap 'error_handler "$BASH_COMMAND"' ERR
 
 # ARGUMENTS
-while getopts ":d:j:l:o:m:n:u:" opt; do
+while getopts ":d:j:l:o:m:n:a:" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -29,9 +40,9 @@ while getopts ":d:j:l:o:m:n:u:" opt; do
     m) mmatchnum="$OPTARG"
     ;;
     n) MIN="$OPTARG"
-    ;;   
-    u) UPER="$OPTARG"
-    ;;   
+    ;; 
+    a) ALPH="$OPTARG"
+    ;;     
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
   esac
@@ -39,7 +50,7 @@ done
 
 # Check for mandatory arguments
 if [ -z "$DIR" ] || [ -z "${JBS[*]}" ] || [ -z "$LEN" ] || [ -z "$OUTDIR" ]; then
-    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> -u <uparse % similarity for clustering ASVs> [-m <mismatch number> -n <min size for asv calling>]"
+    echo "Usage: $0 -d <directory_path> -j <comma-separated output directories> -l <trim length> -o <desired name of output dir> [-m <mismatch number> -n <min size for asv calling>]"
     exit 1
 fi
 
@@ -53,11 +64,27 @@ for ((i=0; i<${#JBS[@]}; i++)); do
   JBS[$i]=${JBS[$i]%%_output}
 done
 
-# Check uparse value
-if [[ ! $UPER =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-  echo "Error: -u must be a valid floating-point number."
-  exit 1
-fi
+# Check appropriateness fo the trim length.
+for JB in "${JBS[@]}"; do
+    file="${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq"
+
+    # Check if the file exists and is not empty
+    if [ -s "$file" ]; then
+        # Get the length of the first sequence in the FASTA file
+        first_sequence_length=$(head -n 2 "$file" | grep -v '^>' | tr -d '\n' | wc -c)
+
+        # Compare the length with $LEN
+        if [ "$first_sequence_length" -lt "$(($LEN - 5))" ]; then
+            echo "Your chosen trim length (-l) is inappropriate for the length of your reads."
+            exit 1
+        fi
+    else
+        echo "Error while attempting to check read length: File $file doesn't exist or is empty. This file needs to be present!"
+        exit 1
+    fi
+
+    break
+done
 
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
@@ -83,13 +110,21 @@ exec > "$output_file" 2>&1
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 3 of the Microbiome Pipeline. Processing the following arguments:
+echo "Log file for Part 3 of the Microbiome Pipeline. Processed the following arguments:
 Working Directory: ${DIR}
 Data IDs: ${JBS[@]}
 Trim Length: ${LEN}
-Output Directory: ${OUTDIR}
-Mismatches if specified: ${mmatchnum}
- - -- --- ---- ---- --- -- -"
+Output Directory: ${OUTDIR}"
+
+if [ "$mmatchnum" -ne 0 ]; then
+    echo "Mismatches specified: ${mmatchnum}"
+fi
+
+if [ -n "$MIN" ]; then
+    echo "UNOISE3 was run with minsize ${mmatchnum}"
+fi
+
+echo " - -- --- ---- ---- --- -- -"
 
 echo
 echo " - -- --- ---- ---- --- -- -"
@@ -148,13 +183,16 @@ usearch -fastx_uniques "${output_dir}/filtered.fa" -quiet -fastaout "${output_di
 #make a subdirectory for the asvs
 mkdir -vp "${output_dir}/asvs"
 
-echo usearch -cluster_smallmem "${output_dir}/uniques.fa" -id ${UPER} -centroids "${output_dir}/asvs/asvs.fa"
+if [ -n "$MIN" ]; then
+    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with custom minsize
+    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -minsize "${MIN}" -unoise_alpha ${ALPH} -zotus "${output_dir}/asvs/asvs.fa" 
+else
+    # Cluster unique sequences into ASVs using the UNOISE3 algorithm with default minsize (8)
+    usearch -unoise3 "${output_dir}/uniques.fa" -quiet -unoise_alpha ${ALPH} -zotus "${output_dir}/asvs/asvs.fa"
+fi
 
-# MODIFIED LINE - CLUSTERING at 100% IDENTITY
-usearch -cluster_smallmem "${output_dir}/uniques.fa" -id ${UPER} -centroids "${output_dir}/asvs/asvs.fa"
-
-# Convert headers
-sed 's/>Uniq\([0-9]*\);.*$/>Asv\1/' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
+# Convert '>Zotu' to '>Asv' in the file
+sed 's/>Zotu/>Asv/g' "${output_dir}/asvs/asvs.fa" > "${output_dir}/asvs/z.fa"
 
 # Check if the replacement was successful before overwriting
 if grep -q '>Asv' "${output_dir}/asvs/z.fa"; then
