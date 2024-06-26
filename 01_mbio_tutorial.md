@@ -147,19 +147,13 @@ mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.c
 ### INPUT 
 This script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
 
-For argument -b, you are going to want to make a blast script based on how you want to run blast locally or in a cluster environment. Here is an example of a cluster-based blast script:
-```
-#!/bin/bash 
-#SBATCH -p i128
-#SBATCH -c 128
-# any other parameters or modules needed
-module load blast-plus
+For argument -b, you are going to want to make a blast script. You will need to modify the NUMTHREADS below to match the number of threads you have available (whether on your local computer requested in your interactive session). 
 
-#<>#<>#<>#<>#<>
-# YOU MUST SET THESE:
-#<>#<>#<>#<>#<>
-DATABASE_PATH=/sw/dbs/blast_db_download/nt
-NUMTHREADS=128
+The NCBI nt database needs to be bound to the singularity container. This is described in [00_singularity_instructions.md](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/00_singularity_instructions.md) and shown in the [examples](#example-of-overall-pipeline) below. If you bind it to /database as shown in the example below, then the path indicated here should work.
+```
+#!/bin/bash
+DATABASE_PATH=/database/nt 
+NUMTHREADS=256
 
 #<>#<>#<>#<>#<>
 # GENERALLY DON'T CHANGE THESE:
@@ -167,11 +161,10 @@ NUMTHREADS=128
 OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
 TASK=blastn
 INFASTA=$1
-MAXTSEQS=$2  
+MAXTSEQS=$2
 EVAL=0.001
-blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
+blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS"
 ```
-If running a local blast, you could use the same format but do not include the SBATCH and module load lines.
 
 For argument -t, you can choose to include a filter file that will essentially indicate taxonomic groups you want to give preference for and reject outright in the taxonomic assignment process. For example, if I was running the analysis on bacterial ITS amplicon data taken a plant sample, then I might want to give preference to bacterial taxa and reject any plant taxa.
 
@@ -194,7 +187,7 @@ When assigning taxonomy, decisions will be made based on bitscore. Highest bitsc
 
 NOTE: You will need ncbi blast and seqkit installed on your system to run this, since you will not be using the container!
 
-You will also want to have the scripts "mbio_part4_SPLIT_blast.sh" "reblast_check.pl" and "multi_blast_iterator.sh" in your path and executable. See example below for how I usually incorporate this.
+You will also want to have the scripts "mbio_part4_SPLIT_blast.sh", "reblast_check.pl" and "multi_blast_iterator.sh" in your path and executable. See example below for how I usually incorporate this.
 
 If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
 
@@ -264,93 +257,98 @@ After you run mbio_part4_SPLIT_blast.sh, you will need to run mbio_part4_blast.s
 ## Example of Overall Pipeline:
 
 ```sh
-### A directory called sing_to_bind contains usearch.
-### WDIR contains sing_to_bind and the sif file, as well as your folders with data.
+### WDIR contains folders with your data and your blast script.
+WDIR=/path/to/WDIR
+cd ${WDIR}
 
-# start an interactive session with some power.
+# Start an interactive session with enough power to run BLAST if you are in a cluster environment.
 srun -c 128 --mem 300gb --pty bash -l
-
-# enter the singularity
-WDIR=/path/to/WDIR
 module load singularity
-singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.3.sif --cleanenv --no-home 
 
-# define paths
-WDIR=/path/to/WDIR
+# You are binding two directories to your container here - the one containing usearch and the one containing your ncbi nt database.
+# This command will start the singularity container.
+singularity shell --bind /path/to/usearch:/bind/ --bind /path/to/ncbi_database:/database /path/to/container.sif --cleanenv --no-home 
+
+# Define your WDIR path. It should be the directory you start in.
+WDIR=$(pwd)
 
 # part 1
 mbio_part1.sh -d ${WDIR} -j "ID1"
 
 # part 2
-mbio_part2.sh -d ${WDIR} -j "ID1" -o small
-mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+mbio_part2.sh -d ${WDIR} -j "ID1"
+mbio_part2.sh -d ${WDIR} -j "ID2"
 
 # part 3
 mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
 
 # part 4
-mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -b blast.sh -r slurm
+mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e email@email.com -b ${WDIR}/blast.sh
 
 ```
 
 ## Example of Overall Pipeline with Split Blast:
 
 ```sh
-### A directory called sing_to_bind contains usearch, and the scripts "mbio_part4_SPLIT_blast.sh" "reblast_check.pl" and "multi_blast_iterator.sh", which are executable.
-
-### WDIR contains sing_to_bind and the sif file, as well as your folders with data.
-
-# start an interactive session with some power.
-srun -c 128 --mem 300gb --pty bash -l
-
-# enter the singularity
+### WDIR contains folders with your data and your blast script.
 WDIR=/path/to/WDIR
+cd ${WDIR}
+
+# start an interactive session with some power. You won't run BLAST yet so no need to go crazy here.
+srun -c 8 --pty bash -l
 module load singularity
-singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.3.sif --cleanenv --no-home 
 
-# define paths
-WDIR=/path/to/WDIR
-SDIR=${WDIR}/sing_to_bind
+# you are binding only one directories to your container here - the one containing usearch.
+# this command will start the singularity container.
+singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleanenv --no-home 
+
+# define your WDIR path. It should be the directory you start in.
+WDIR=$(pwd)
 
 # part 1
 mbio_part1.sh -d ${WDIR} -j "ID1"
 
 # part 2
-mbio_part2.sh -d ${WDIR} -j "ID1" -o small
-mbio_part2.sh -d ${WDIR} -j "ID2" -o big
+mbio_part2.sh -d ${WDIR} -j "ID1"
+mbio_part2.sh -d ${WDIR} -j "ID2"
 
 # part 3
 mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
 
-# EXIT singularity and your interactive session because you want more resources for blast.
+# exit singularity 
 exit
+
+# exit your interactive session if you want more resources for BLAST
 exit 
 
-# re-define paths
+# make sure WDIR is still defined
 WDIR=/path/to/WDIR
 
-# save the scripts "mbio_part4_SPLIT_blast.sh" and "multi_blast_iterator.sh" to WDIR and make them executable.
+# save the scripts "mbio_part4_SPLIT_blast.sh", "reblast_check.pl", and "multi_blast_iterator.sh" to WDIR and make them executable.
+
 # add WDIR to path so these scripts can be run.
 export PATH="${WDIR}:${PATH}"
 
-# load modules required
-module load db-ncbi # this must be available locally
-module load seqkit # this must be available locally
+# Load modules required if you are in a cluster environment. 
+module load seqkit 
 
 # part 4 (just blast)
-mbio_part4_SPLIT_blast -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
+mbio_part4_SPLIT_blast.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
 
 # start another interactive session with some power
 srun -c 128 --mem 300gb --pty bash -l
 
-# start singularity as before and re-define paths
+# start singularity as before
 module load singularity
 WDIR=/path/to/WDIR
-singularity shell --bind ${WDIR}/sing_to_bind:/bind/ ${WDIR}/1.2.2.sif --cleanenv --no-home 
-WDIR=/path/to/WDIR
+cd ${WDIR}
+singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleanenv --no-home 
+
+# define your WDIR path. It should be the directory you start in.
+WDIR=$(pwd)
 
 # part 4 (the rest)
-mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e beth.b.peacock@gmail.com -s
+mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
 ```
 
 ## More Mapping File Details
