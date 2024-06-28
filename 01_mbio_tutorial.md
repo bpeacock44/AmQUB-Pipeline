@@ -147,9 +147,9 @@ mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.c
 ### INPUT 
 This script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
 
-For argument -b, you are going to want to make a blast script. You will need to modify the NUMTHREADS below to match the number of threads you have available (whether on your local computer requested in your interactive session). 
-
 The NCBI nt database needs to be bound to the singularity container. This is described in [00_singularity_instructions.md](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/00_singularity_instructions.md) and shown in the [examples](#example-of-overall-pipeline) below. If you bind it to /database as shown in the example below, then the path indicated here should work.
+
+For argument -b, you are going to want to make a blast script. You will need to modify the NUMTHREADS below to match the number of threads you have available (whether on your local computer requested in your interactive session). This needs to be executable.
 ```
 #!/bin/bash
 DATABASE_PATH=/database/nt 
@@ -267,7 +267,7 @@ module load singularity
 
 # You are binding two directories to your container here - the one containing usearch and the one containing your ncbi nt database.
 # This command will start the singularity container.
-singularity shell --bind /path/to/usearch:/bind/ --bind /path/to/ncbi_database:/database /path/to/container.sif --cleanenv --no-home 
+singularity shell --bind /path/to/usearch:/bind/ --bind /path/to/ncbi_database:/database/ /path/to/container.sif --cleanenv --no-home 
 
 # Define your WDIR path. It should be the directory you start in.
 WDIR=$(pwd)
