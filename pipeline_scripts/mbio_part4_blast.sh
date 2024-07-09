@@ -2,10 +2,9 @@
 # See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
-#This script expects to be given at least 5 arguments:
 #-d: a working directory, which contains one folder for each of your fastq files named by ID
 #-o: the name of your output directory
-#-b: the path to your blast script file
+#-b: the path to your blast script file (only if you are running blast)
 #-e: email of the user for NCBI purposes
 
 #Optional arguments:
@@ -511,6 +510,9 @@ fi
 rm *.xml
 
 deactivate
+
+# adding extra code to check for and replace non-ascii characters in taxonomies, as this can throw an error later on with the biom functions.
+nonascii_finder.py "${output_dir}/asvs/rep_set/assgntax/*seqs_chimera_filtered_tax_assignments.txt"
 
 echo
 echo " - -- --- ---- ---- --- -- -"
