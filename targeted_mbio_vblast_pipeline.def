@@ -49,10 +49,12 @@ From:ubuntu:22.04
 
   	mkdir -p /library
   	echo "R_LIBS_SITE=/library:\${R_LIBS_SITE}" >> /usr/lib/R/etc/Renviron.site
-	
 	Rscript -e 'install.packages("dplyr")'
 	Rscript -e 'install.packages("writexl")'
 	Rscript -e 'install.packages("readr")'
+	Rscript -e 'install.packages("optparse")'
+	Rscript -e 'install.packages("BiocManager")'
+	Rscript -e 'BiocManager::install("edgeR")'
 
 #Downloading and extracting BLAST+
 	wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.15.0+-x64-linux.tar.gz -P /tmp/ && tar -zxvf /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz -C /blast/ && rm -r /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz

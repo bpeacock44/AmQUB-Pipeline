@@ -1,77 +1,57 @@
 #!/bin/bash
 
-# Usage: ./asv_diff_abun_wrapper.sh <column> <factor 1> <factor 2>
-# Choose a column in your mapping file (the merged version from all your data) that contains factors you want to compare.
-# e.g. if I have a column "Tissue" and I want to compare "stems" to "leaves" in that column, I will run this script like this:
-# ./diff_test.sh Tissue stems leaves
-# Note that spelling and capitalization must be the same!
-
 set -e
 
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Checking arguments and samples"
 echo " - -- --- ---- ---- --- -- -"
+
+# Assign command line arguments to variables
+edgeR_option=
+DESeq2_option=
+
+while getopts ":t:m:c:v1:v2:RD" opt; do
+    case $opt in
+        t) asv="$OPTARG";;
+        m) map="$OPTARG";;
+        c) diff_col="$OPTARG";;
+        1) var_1="$OPTARG";;
+        2) var_2="$OPTARG";;
+        R) edgeR_option=1;;
+        D) DESeq2_option=1;;
+        \?) echo "Invalid option: -$OPTARG" >&2
+            exit 1;;
+        :) echo "Option -$OPTARG requires an argument." >&2
+            exit 1;;
+    esac
+done
+
+# Check if exactly one of -R or -D is provided
+#if [[ -z "$edgeR_option" && -z "$DESeq2_option" ]]; then
+    #echo "Error: Either -R (edgeR) or -D (DESeq2) must be specified." >&2
+    #exit 1
+#elif [[ -n "$edgeR_option" && -n "$DESeq2_option" ]]; then
+    #echo "Error: Only one of -R (edgeR) or -D (DESeq2) can be specified, not both." >&2
+    #exit 1
+#fi
+
+edgeR_option=1
+
 # Check if all required arguments are provided
-if [ "$#" -ne 5 ]; then
-    echo "Usage: $0 <asv_table> <mapping_file> <column> <factor 1> <factor 2>"
+if [[ -z "$asv" || -z "$map" || -z "$diff_col" || -z "$var_1" || -z "$var_2" ]]; then
+    echo "Error: Missing required arguments. Please provide -t, -m, -c, -1, -2." >&2
     exit 1
 fi
 
-# Assign command line arguments to variables
-asv="$1"
-map="$2"
-diff_col="$3"
-var_a="$4"
-var_b="$5"
 txtv="${asv%.biom}.txt"
 
-if [ ! -e "$txtv" ]; then
-    # Run biom2txt only if $txtv doesn't already exist
-    biom2txt "$asv" "$txtv"
-fi
-
-# Warn about missing samples
-
-# Extract the second row of txtv
-second_row=$(awk 'NR==2' "$txtv")
-
-# Compare each element of the second row with the first column of map
-IFS=$'\t' read -r -a elements <<< "$second_row"
-for element in "${elements[@]}"; do
-    if [[ -n $element && $element != "#ASV ID" && $element != "taxonomy" ]]; then
-        grep -q "^$element$" <(awk 'NR > 1 {print $1}' "$map")
-        if [[ $? -eq 1 ]]; then
-            echo "${element} is present in ${txtv} but not in ${map}. This means it will not be included in the analyis." 
-        fi
-    fi
-done
-# Compare each element of the first column of map with the elements of the second row of txtv
-while read -r element; do
-    if [[ -n $element ]]; then
-        grep -q "$element" <(echo "$second_row" | tr '\t' '\n')
-        if [[ $? -eq 1 ]]; then
-            echo "${element} is present in ${map} but not in ${txtv}. This means it will not be included in the analyis."
-        fi
-    fi
-done < <(tail -n +2 "$map" | awk '{print $1}')
-
-echo
-echo " - -- --- ---- ---- --- -- -"
-echo "Running differential abundance analysis"
-echo " - -- --- ---- ---- --- -- -"
 # Check if diff_col exists in the header of ${map}
-if awk -F'\t' -v dc="$diff_col" 'NR==1{for(i=1;i<=NF;i++) if($i==dc) {dc_flag=1}; if(dc_flag) exit 0; exit 1}' ${map}; then
-    # Check if both var_a and var_b are in diff_col
-    tissue_col=$(awk -F'\t' 'NR==1 {for(i=1; i<=NF; i++) {if($i=="Tissue") {print i; exit}}}' ${map})
-    if awk -F'\t' -v dc="$tissue_col" -v va="$var_a" -v vb="$var_b" 'BEGIN{found_a=0; found_b=0} {if($dc==va) found_a=1; if($dc==vb) found_b=1} END{if(found_a && found_b) exit 0; exit 1}' ${map}; then
-        # Run differential_abundance.py
-        echo "Running differential_abundance.py"
-        differential_abundance.py -i ${asv} -o diff_ASVs.txt -m ${map} -a DESeq2_nbinom -c "$diff_col" -x "$var_a" -y "$var_b" -d
-
-        # Run Rscript asv_diff.R
-        echo "Adding average normalized counts to the output."
-        Rscript asv_diff.R diff_ASVs.txt ${map} asv_table_02_add_taxa_norm.nc.txt "$diff_col" "$var_a" "$var_b"
+if awk -F'\t' -v dc="$diff_col" 'NR==1{for(i=1;i<=NF;i++) if($i==dc) {dc_flag=1}; if(dc_flag) exit 0; exit 1}' "${map}"; then
+    # Check if both var_1 and var_2 are in diff_col
+    tissue_col=$(awk -F'\t' 'NR==1 {for(i=1; i<=NF; i++) {if($i=="'"${diff_col}"'") {print i; exit}}}' "${map}")
+    if awk -F'\t' -v dc="$tissue_col" -v va="$var_1" -v vb="$var_2" 'BEGIN{found_a=0; found_b=0} {if($dc==va) found_a=1; if($dc==vb) found_b=1} END{if(found_a && found_b) exit 0; exit 1}' "${map}"; then
+        echo "Column and variables check passed."
     else
         echo "Error: One or both of the specified factors do not exist in $diff_col column of ${map}."
         exit 1
@@ -81,7 +61,23 @@ else
     exit 1
 fi
 
-echo
-echo " - -- --- ---- ---- --- -- -"
-echo "differential_abundance_results.txt and diff_ASVs_diagnostic_plots.pdf have been successfully generated using the differential_abundance.py program from Qiime1."
-echo " - -- --- ---- ---- --- -- -"
+if [[ -n "$edgeR_option" ]]; then
+    echo
+    echo " - -- --- ---- ---- --- -- -"
+    echo "Running edgeR differential abundance analysis"
+    echo " - -- --- ---- ---- --- -- -"
+
+    # Assuming edgeR_diff_abundance.py is your Python script for edgeR analysis
+    edgeR_diff_abundance.R -t "${txtv}" -o edgeR_${txtv}_${var_1}.v.${var_2}.txt -m "${map}" -d "${diff_col}" -v1 "${var_1}" -v2 "${var_2}"
+fi
+
+if [[ -n "$DESeq2_option" ]]; then
+    echo "DESeq2 not currently available for this container."
+    #echo
+    #echo " - -- --- ---- ---- --- -- -"
+    #echo "Running DESeq2 differential abundance analysis"
+    #echo " - -- --- ---- ---- --- -- -"
+#
+    ## Assuming differential_abundance.py is your script for DESeq2 analysis
+    #differential_abundance.py -i "${asv}" -o deseq2_${asv}_${var_1}.v.${var_2}.txt -m "${map}" -a DESeq2_nbinom -c "${diff_col}" -x "${var_1}" -y "${var_2}" -d
+fi
