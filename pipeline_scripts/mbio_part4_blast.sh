@@ -156,14 +156,11 @@ if [ "$skip_blast" = false ]; then
         sleep 1
     done
     
-    # Check the exit status of the BLAST script
-    blast_exit_status=$?
-    if [ $blast_exit_status -eq 0 ]; then
-        echo "BLAST successfully completed."
-    else
-        echo "BLAST failed with exit status $blast_exit_status."
-        exit 1
-    fi
+    # Check for final.blastout file
+    if [ ! -s "${output_dir}/asvs/rep_set/final.blastout" ]; then
+    echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
+    exit 1
+fi
 else
     echo "Skipping BLAST as per user instructions."
 fi
@@ -539,7 +536,7 @@ OTBL="asv_table_02_add_taxa"
  
 #Mario: Added -o flag which specifies the output directory location
 #http://qiime.org/scripts/summarize_taxa.html
-summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7 -o "${output_dir}/asvs"
+summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7 -o "${output_dir}/asvs" -a
 
 # will need to chnage if we add more levels
 to_process=(

@@ -6,20 +6,29 @@ To run them, you will need a merged mapping file containing all the samples in y
 
 All of them except the correlation analysis are from the Qiime1 program, as this is the version of Qiime1 included in our program.
 Keep in mind that the ASV tables created here can be used with Qiime2 for further analyes as well!
-First, specify your asv tables (both regular and normalized) and your merged mapping file.
+
+*Make sure you are within the container before you start.*
+
+Specify your asv tables (both regular and normalized) and your merged mapping file.
+
 ```sh 
 reg_asv_table=asv_table_02_add_taxa.biom
 norm_asv_table=asv_table_02_add_taxa_norm.biom
 mapping_file=merged_map.txt
 ```
 
+Note that when using the mapping file with Qiime1, it has to be formatted correctly. The following command can check for issues/errors with your mapping file before beginning:
+
+```sh
+validate_mapping_file.py -m ${mapping_file} -o validation_output/
+```
+
 ## SETUP
 Run the following to remove everything from your regular and normalized ASV tables except for those marked "SAMPLE" in the mapping file.
 ```sh 
-filter_samples_from_OTU_table.py -i ${reg_asv_table} -o nc.${reg_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
-filter_samples_from_OTU_table.py -i ${norm_asv_table} -o nc.${norm_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
+filter_samples_from_otu_table.py -i ${reg_asv_table} -o nc.${reg_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
+filter_samples_from_otu_table.py -i ${norm_asv_table} -o nc.${norm_asv_table} -m ${mapping_file} --valid_states "SampleType:SAMPLE"
 ```
-
 
 ## DIVERSITY ANALYSES
 ### BETA DIVERSITY (use raw counts)
@@ -29,14 +38,14 @@ First, create a metric parameter file.
 beta_diversity.py -s 
 # Add or removed desired metrics to the variable "MET" below. They must have commas between them. 
 B_MET="thellinger,abund_jaccard"
+# Create the file.
+echo -e 'beta_diversity:metrics\'${B_MET} > bd_parameters.txt # creates parameter file
 ```
 Now run the analysis. You can ignore the warning about "rank" being depreciated.
 ```sh 
-echo -e 'beta_diversity:metrics\'${B_MET} > bd_parameters.txt # creates parameter file
 beta_diversity_through_plots.py -p bd_parameters.txt -i nc.${reg_asv_table} -m ${mapping_file} -o bdivs.nc.${reg_asv_table} # runs analysis
-cd bdivs.nc.${reg_asv_table}
-condense_multiple_PCOA_plots
-cd ..
+source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; } # loads some helper functions
+cd bdivs.nc.${reg_asv_table}; condense_multiple_PCOA_plots; cd -
 ```
 
 ### ALPHA DIVERSITY (use raw counts)
@@ -52,23 +61,26 @@ Now run the analysis.
 alpha_diversity.py -m ${A_MET} -i nc.${reg_asv_table} -o adivs.nc.${reg_asv_table}.txt
 ```
 
-
 ## OTHER ANALYSES
 These next three require you to indicate which column of metadata in your mapping file you want to use to analyze the data. They must appear in the command exactly as they do in the mapping file, which must be called "merged_map.txt." (Capitalization, white space, etc.)
 ### DIFFERENTIAL ABUNDANCE (use raw counts)
 Run as: 
-asv_diff_abun_wrapper.sh [ASV table path] [mapping file] [column of factors] [factor1] [factor2]
+asv_diff_abun_wrapper.sh -t [ASV table path in biom format] -m [mapping file] -c [column of factors] -v1 [factor1] -v2 [factor2] 
 - column of factors - column containing traits you want to compare
 - factor1 and factor2 - the two traits you want to compare
 ```sh
-asv_diff_abun_wrapper.sh ${norm_asv_table} ${mapping_file} tissue stem_whole stem_scrapings
+# create a text version of your raw count table
+source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; } # loads some helper functions
+biom2txt "nc.${reg_asv_table}" "nc.${reg_asv_table%.biom}.txt"
+# run the analysis (edgeR)
+asv_diff_abun_wrapper.sh -t "nc.${reg_asv_table}" -m ${mapping_file} -c tissue -v1 stem_whole -v2 stem_scrapings 
 ```
 
 ## CORRELATION (use normalized counts)
 Run as: 
 asv_diff_abun_wrapper.sh [ASV table path] [mapping file] [column of measurements to correlate against]
 ```sh
-asv_pearson_corr_wrapper.sh ${norm_asv_table} ${mapping_file} rating
+asv_pearson_corr_wrapper.sh "nc.${norm_asv_table}" ${mapping_file} rating
 ```
 
 ## TAXA PRISM TABLE SUMMARY MAKER: (use normalized counts)
