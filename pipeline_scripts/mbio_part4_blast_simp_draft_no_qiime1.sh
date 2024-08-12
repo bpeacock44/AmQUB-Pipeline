@@ -131,7 +131,7 @@ if [ "$skip_blast" = false ]; then
     echo " - -- --- ---- ---- --- -- -"
     
     # Run BLAST script in the background
-    ./blast_iterator_repset.sh "${output_dir}" "${blast_file}" ${run_type} &
+    blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
     
     # Get the process ID of the last background command
     blast_pid=$!
@@ -164,12 +164,11 @@ source pymods.sh || { echo "Error: Unable to activate python-pip-modules environ
 grep -v -F -f "${DIR}/likely_environmental_accessions.txt" final.blastout > filtered.blastout
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-./blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+#blast_top_hit_parser.py -i "${output_dir}/asvs/blast/final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 
-# this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-./blast_top_hit_parser.py -i "${output_dir}/asvs/blast/final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 rm -f *.xml
-./assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
+assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
 
 if [ ! -f "${output_dir}/asvs/blast/tax_assignments.txt" ]; then
     echo "Error: Output file not found."

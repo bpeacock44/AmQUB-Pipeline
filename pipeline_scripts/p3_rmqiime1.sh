@@ -212,7 +212,7 @@ sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 qiime_table_sorter.py "${output_dir}/asvs/asv_table_00.txt" "${output_dir}/asvs/asv_table_01.txt"
 
 #add counts to ASV file
-./add_counts_to_fasta.py "${output_dir}/asvs/asv_table_01.txt" "${output_dir}/asvs/asvs.fa" "${output_dir}/asvs/asvs_counts.fa"
+add_counts_to_fasta.py "${output_dir}/asvs/asv_table_01.txt" "${output_dir}/asvs/asvs.fa" "${output_dir}/asvs/asvs_counts.fa"
 
 echo
 echo " - -- --- ---- ---- --- -- -"
