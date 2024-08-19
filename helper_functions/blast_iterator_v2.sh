@@ -116,10 +116,10 @@ while criteria_met; do
     echo $bout 
     echo $outfile
 
-    # Get the number of reads contributing to the biggest ASV
+    # Get the number of reads contributing to the biggest ASV. 
+    # Only ASVs that are at least 1% of the largest ASV will be re-blasted if they need it. 
     total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/asvs_counts.fa)
-    echo "Determining which ASVs are worth blasting."
-    echo ${total}
+    echo "Determining which ASVs are worth re-blasting."
 
     not_enough_hits_file="${DIR}/asvs/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
     big_ASVs_file="${DIR}/asvs/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.big_ASVs.txt"
