@@ -47,7 +47,6 @@ class ASV:
 
     def set_best_hits(self, hitList):
         if not hitList:
-            print("No hits found.")
             return
         best_bitscore = 0.0
         for hit in hitList:
@@ -433,7 +432,7 @@ def assign_taxonomy(opts, asv_list, taxonomy_dict):
  
 def main(args):
     opts = get_and_check_opts(args)
-    print("Parsed options:", opts)
+
     # Always tell NCBI who you are
     opts['email'] = opts['m']
     

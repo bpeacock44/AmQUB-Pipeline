@@ -83,6 +83,11 @@ fi
 echo " - -- --- ---- ---- --- -- -"
 echo 
 echo " - -- --- ---- ---- --- -- -
+Removing phiX Reads
+ - -- --- ---- ---- --- -- -"
+usearch -search_phix ${DIR}/${JB}/${JB}_L1P1.fq -notmatchedfq ${DIR}/${JB}/${JB}_L1P1.phix_clean.fq -alnout ${DIR}/${JB}/${JB}_L1P1.phiX_ids.txt
+
+echo " - -- --- ---- ---- --- -- -
 Checking barcode collisions...
  - -- --- ---- ---- --- -- -"
 
@@ -92,7 +97,7 @@ for JB in "${JBS[@]}"; do
     echo "$JB [${_BC_}]"
 
     # Check for barcode collisions
-    check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" 
+    check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_L1P1.phix_clean.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/uFQBC_${JB}_L1P1.fq_BC${_BC_}_M${mmatchnum}.txt" 
 done
 
 for JB in ${JBS[@]}; do
@@ -135,7 +140,7 @@ Converting mismatches to perfect matches
  - -- --- ---- ---- --- -- -"
 
     # Convert mismatches to perfect matches and extract barcodes
-    fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_L1P1.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" 
+    fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_L1P1.phix_clean.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" 
     extract_barcodes.go -f "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" 
 
     # Check if files are present

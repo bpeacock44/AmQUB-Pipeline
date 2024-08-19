@@ -85,13 +85,8 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 
-if [ ! -e "${output_dir}/asvs/blast/seqs_chimera_filtered_ASVs.fasta" ]; then
-    echo "${output_dir}/asvs/blast/seqs_chimera_filtered_ASVs.fasta not found!"
-    exit 1
-fi
-
-if [ ! -e "${output_dir}/asvs/asv_table_01.biom" ]; then
-    echo "${output_dir}/asvs/asv_table_01.biom not found!"
+if [ ! -e "${output_dir}/asvs/asvs_counts.fa" ]; then
+    echo "${output_dir}/asvs/asvs_counts.fa not found!"
     exit 1
 fi
 
@@ -123,6 +118,7 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
+mkdir -vp ${output_dir}/asvs/blast
 
 if [ "$skip_blast" = false ]; then
     echo
@@ -161,10 +157,10 @@ source pymods.sh || { echo "Error: Unable to activate python-pip-modules environ
 
 #TODO: ADD ACCESSIONS TO CONTAINER AND ADD STEP TO ADD ANY NEW ONES?
 # filter out any lines in the blast file that match the strings in the final.blastout file
-grep -v -F -f "${DIR}/likely_environmental_accessions.txt" final.blastout > filtered.blastout
+grep -v -F -f "${DIR}/likely_environmental_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+./blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 #blast_top_hit_parser.py -i "${output_dir}/asvs/blast/final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 
 rm -f *.xml
@@ -254,12 +250,12 @@ done
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
 
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa_norm.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs_norm.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
 
 to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
 
@@ -272,7 +268,7 @@ for F in "${to_process2[@]}"; do
     FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/seqs_chimera_filtered_ASVs.fasta', '$outfp')"
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
 done
 echo
 
