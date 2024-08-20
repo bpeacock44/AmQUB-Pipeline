@@ -65,13 +65,13 @@ echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 
 # show your fastq files 
-if [ ! -e "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" ]; then
-    echo "File ${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq not found!"
+if [ ! -e "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" ]; then
+    echo "File ${DIR}/${JB}/${JB}.M${mmatchnum}.fq not found!"
     exit 1
 fi
 
-if [ ! -e "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" ]; then
-    echo "File ${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq not found!"
+if [ ! -e "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" ]; then
+    echo "File ${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq not found!"
     exit 1
 fi
 
@@ -132,20 +132,18 @@ echo " - -- --- ---- ---- --- -- -"
 #This code helps you to understand the make-up of your reads
 # Extract fastq info and create individual directories for each JB inside fastq_info
 mkdir -vp "${ODIR}/fastq_info"
-usearch -fastx_info "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" -quiet -output "${ODIR}/fastq_info/${JB2}_A1P1.M${mmatchnum}.txt" || (echo "Error generating fastq info for ${JB}." && exit 1)
+usearch -fastx_info "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" -quiet -output "${ODIR}/fastq_info/${JB2}.M${mmatchnum}.txt" || (echo "Error generating fastq info for ${JB}." && exit 1)
 
 # Create barcodes.fa file for each JB
 grep -P "^[A-Z]" "${MAPFILE}" | awk '{print ">"$1"\n"$2}' > "${ODIR}/${JB2}_barcodes.fa"
 [[ ! -e "${ODIR}/${JB2}_barcodes.fa" ]] && echo "File ${ODIR}/${JB2}_barcodes.fa was not generated!" && exit 1
 
 # Demultiplexing
-usearch -fastx_demux "${DIR}/${JB}/${JB}_A1P1.M${mmatchnum}.fq" -quiet -index "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" -barcodes "${ODIR}/${JB2}_barcodes.fa" -fastqout "${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq" && echo "File ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq has been generated." || (echo "Error: File ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq was not generated." && exit 1)
-
-cp "${DIR}/${JB}/${JB}_A1P2.M${mmatchnum}.fq" "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq"
-[[ ! -e "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq" ]] && echo "File "${ODIR}/${JB2}_A1P2.M${mmatchnum}.fq" was not generated!" && exit 1
+usearch -fastx_demux "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" -quiet -index "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" -barcodes "${ODIR}/${JB2}_barcodes.fa" -fastqout "${ODIR}/${JB2}.M${mmatchnum}.demux.fq" && echo "File ${ODIR}/${JB2}.M${mmatchnum}.demux.fq has been generated." || (echo "Error: File ${ODIR}/${JB2}.M${mmatchnum}.demux.fq was not generated." && exit 1)
+ln -s "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" "${ODIR}/${JB2}_BC.M${mmatchnum}.fq"
 
 echo
-echo "General information about your data has been saved in ${ODIR}/fastq_info/${JB2}_A1P1.M${mmatchnum}.txt."  | tee /dev/tty
+echo "General information about your data has been saved in ${ODIR}/fastq_info/${JB2}.M${mmatchnum}.txt."  | tee /dev/tty
 
 # At this point, you need to decide if you should truncate the reads. 
 # This will print out some stats showing how many of the reads will remain 
@@ -163,15 +161,15 @@ Generating stats about the potential effects trimming and filtering will have on
  - -- --- ---- ---- --- -- -"
 
 # Calculate the maximum length of the first 100 reads
-MAX_LENGTH=$(head -n 400 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq | awk '{if(NR%4==2) print length($1)}' | sort -nr | head -n 1)
+MAX_LENGTH=$(head -n 400 "${ODIR}/${JB2}.M${mmatchnum}.demux.fq" | awk '{if(NR%4==2) print length($1)}' | sort -nr | head -n 1)
 
 # Set STARTAT based on the calculated max length
 STARTAT=$((MAX_LENGTH - 11))
 INC=1; # Increment value
 
-[[ -e ${ODIR}/all_eestats${STARTAT},${INC}.txt ]] && rm ${ODIR}/all_eestats${STARTAT},${INC}.txt
+[[ -e ${ODIR}/all_eestats${STARTAT},${INC}.txt ]] && rm "${ODIR}/all_eestats${STARTAT},${INC}.txt"
 
-usearch -fastq_eestats2 ${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt" -length_cutoffs ${STARTAT},*,${INC}
+usearch -fastq_eestats2 "${ODIR}/${JB2}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT}.inc_${INC}.txt" -length_cutoffs ${STARTAT},*,${INC}
 
 ## DO OPTIONAL STATS IF SPECIFIC REQUEST
 if [[ ! -z "$LENS" ]]; then
@@ -179,7 +177,7 @@ if [[ ! -z "$LENS" ]]; then
         echo ${STARTAT2} | tee /dev/tty
         STARTAT2_beg=$((STARTAT2 - 1))
         STARTAT2_end=$((STARTAT2 + 1))
-        usearch -fastq_eestats2 "${ODIR}/${JB2}_A1P1.M${mmatchnum}.fq" -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT2}.inc_${INC}.txt" -length_cutoffs "${STARTAT2_beg},${STARTAT2_end},${INC}"
+        usearch -fastq_eestats2 "${ODIR}/${JB2}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${JB2}.M${mmatchnum}_eestats.start_${STARTAT2}.inc_${INC}.txt" -length_cutoffs "${STARTAT2_beg},${STARTAT2_end},${INC}"
     done
 fi
 
