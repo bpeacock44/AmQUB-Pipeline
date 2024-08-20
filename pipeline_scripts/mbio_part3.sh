@@ -64,7 +64,7 @@ done
 
 # Check appropriateness fo the trim length.
 for JB in "${JBS[@]}"; do
-    file="${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq"
+    file="${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq"
 
     # Check if the file exists and is not empty
     if [ -s "$file" ]; then
@@ -90,13 +90,13 @@ echo " - -- --- ---- ---- --- -- -"
 
 # show your fastq files and map
 for JB in "${JBS[@]}"; do
-    if [ ! -e "${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq" ]; then
-        echo "File ${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq not found!"
+    if [ ! -e "${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq" ]; then
+        echo "File ${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq not found!"
         exit 1
     fi
 
-    if [ ! -e "${DIR}/${JB}_output/${JB}_A1P2.M${mmatchnum}.fq" ]; then
-        echo "File ${DIR}/${JB}_output/${JB}_A1P2.M${mmatchnum}.fq not found!"
+    if [ ! -e "${DIR}/${JB}_output/${JB}_BC.M${mmatchnum}.fq" ]; then
+        echo "File ${DIR}/${JB}_output/${JB}_BC.M${mmatchnum}.fq not found!"
         exit 1
     fi
 done
@@ -140,23 +140,23 @@ TAXDIR="${DIR}/${OUTDIR}/tax_dir"
 
 #truncate reads at LEN
 for JB in ${JBS[@]}; do
-  usearch -fastx_truncate "${DIR}/${JB}_output/${JB}_A1P1.M${mmatchnum}.fq" -quiet -trunclen ${LEN} -fastqout "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq"; # &
+  usearch -fastx_truncate "${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq" -quiet -trunclen ${LEN} -fastqout "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq"; # &
 done
 
 rm -f "${output_dir}/combined.fq"
 if [ ${#JBS[@]} -gt 1 ]; then
   #EITHER combine if you have multiple files
   for JB in ${JBS[@]}; do
-  cat "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" >> "${output_dir}/combined.fq"
+  cat "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq" >> "${output_dir}/combined.fq"
   done
 else
   #OR create a symlink if you have only one file
-  ln -s "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" "${output_dir}/combined.fq"
+  ln -s "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq" "${output_dir}/combined.fq"
 fi
 
 #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
 for JB in ${JBS[@]}; do
-  usearch -threads 1 -fastq_filter "${DIR}/${JB}_output/${JB}_A1P1_${LEN}bp.fq" -quiet -fastq_maxee 1.0 -fastaout "${DIR}/${JB}_output/${JB}.filtered.fa"
+  usearch -threads 1 -fastq_filter "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq" -quiet -fastq_maxee 1.0 -fastaout "${DIR}/${JB}_output/${JB}.filtered.fa"
 done
 echo
 echo " - -- --- ---- ---- --- -- -"
@@ -221,11 +221,11 @@ txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom
 #add counts to ASV file
 otblfp="${output_dir}/asvs/asv_table_01.txt"
 fastafp="${output_dir}/asvs/asvs.fa"
-outfp="${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta"
+outfp="${output_dir}/asvs/asvs_counts.fa"
 Rscript -e "source('/helper_functions/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
 
-mkdir -vp "${output_dir}/asvs/rep_set"
-mv -v "${output_dir}/asvs/seqs_chimera_filtered_ASVs.fasta" "${output_dir}/asvs/rep_set"
+mkdir -vp "${output_dir}/asvs/blast"
+mv -v "${output_dir}/asvs/asvs_counts.fa" "${output_dir}/asvs/blast"
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "It's time to assign taxonomy! You will either do this by BLAST-ing your sequences against a 

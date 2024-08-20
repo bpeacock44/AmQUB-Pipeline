@@ -181,7 +181,7 @@ add_sequences_to_asv_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
 }
 
 # Added by Beth Peacock
-process_data_and_write_excel <- function(file_path, file_path2, file_path3, file_path4, file_path_top10) {
+process_data_and_write_excel <- function(file_path, file_path3, file_path4, file_path_top10) {
     # Load required libraries
     library(dplyr)
     library(writexl)
@@ -196,13 +196,8 @@ process_data_and_write_excel <- function(file_path, file_path2, file_path3, file
     colnames(tax_df) <- c("ASV_ID", "taxonomy", "bitscore", "per_ID", "per_qcov", "size")
     df <- merge(df, tax_df[c(1:2,4:5)], by = "ASV_ID", all.x = TRUE)
     
-    # Read alternate taxonomy files
-    tax_df_alt <- read.table(file_path2, sep = "\t", comment.char = "", header = TRUE)
-    colnames(tax_df_alt) <- c("ASV_ID", "nf_taxonomy", "nf_bitscore", "nf_per_ID", "nf_per_qcov", "size")
-    df <- merge(df, tax_df_alt[c(1:2,4:5)], by = "ASV_ID", all.x = TRUE)
-    
     # Calculate mean abundance
-    excluded_columns <- c("ASV_ID", "nf_taxonomy", "nf_per_ID", "nf_per_qcov", "sequence", "taxonomy", "per_ID", "per_qcov")
+    excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "sequence")
     df$avg_abun <- rowMeans(df[, !names(df) %in% excluded_columns], na.rm = TRUE)
     
     # Flag ASVs with mixed families in top 10
@@ -213,7 +208,7 @@ process_data_and_write_excel <- function(file_path, file_path2, file_path3, file
     df$mixed_fam_top_10[matches] <- "yes"
     
     # Reorder columns
-    df <- df[, c(1, (length(df) - 8):length(df), 2:(length(df) - 9))]
+    df <- df[, c(1, (length(df) - 6):length(df), 2:(length(df) - 7))]
     
     # Add row with total raw counts
     raw <- read.table(file_path4, sep = "\t", comment.char = "", header = TRUE)
@@ -221,11 +216,12 @@ process_data_and_write_excel <- function(file_path, file_path2, file_path3, file
     raw$taxonomy <- NULL
     raw$sequence <- NULL
     sums <- colSums(raw)
-    nd_columns <- rep("nd", 10)
+    nd_columns <- rep("nd", 8)  # Adjusted length since fewer columns now
     new_vector <- c(nd_columns, sums)
-    names(new_vector)[1:10] <- colnames(df)[1:10]
+    names(new_vector)[1:8] <- colnames(df)[1:8]
     df <- rbind(new_vector, df)
     
     # Write dataframe to an Excel file
     write_xlsx(df, "ASV_summary_table.xlsx")
 }
+

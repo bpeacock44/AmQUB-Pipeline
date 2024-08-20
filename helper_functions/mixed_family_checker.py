@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-# Usage: python mixed_family_checker.py <blastout.file> --email <email>
-
-# This checks the first 10 blast results for each ASV that can return a family in it's taxonomic info
-# and checks if the families in that top 10 group are identical or not. If they are not, the ASV is written
-# to a new file called "mixed_family_checker_out.txt." This information may be helpful in assessing
-# the taxonomic assignment's quality.
 
 from collections import defaultdict
 from Bio import Entrez
@@ -12,7 +6,6 @@ from urllib.error import HTTPError
 import time
 import argparse
 
-# Function to parse BLAST output file
 def parse_blast_output(file_path):
     queries = defaultdict(list)
     current_query = None
@@ -20,75 +13,69 @@ def parse_blast_output(file_path):
         for line in file:
             if line.startswith("# Query:"):
                 if current_query:
-                    yield current_query, queries[current_query]  # Yield the current query and its tax IDs
-                    queries[current_query] = []  # Reset the tax IDs list
+                    yield current_query, queries[current_query]
+                    queries[current_query] = []
                 current_query = line.strip().split(":")[-1].strip().split()[0]
             elif not line.startswith("#") and current_query:
                 fields = line.strip().split("\t")
                 tax_id = fields[7].split(";")[0]
                 queries[current_query].append(tax_id)
     if current_query:
-        yield current_query, queries[current_query]  # Yield the last query and its tax IDs
+        yield current_query, queries[current_query]
 
-
-# Initialize tax_cache as an empty dictionary
+# Initialize tax_cache and failed_requests
 tax_cache = {}
-failed_requests = set()  # Track failed requests
+failed_requests = set()
 
-def fetch_taxonomy(tax_id, email):
+def fetch_taxonomy(tax_ids, email):
+    # Fetch multiple taxonomies at once
+    tax_ids = [tid for tid in tax_ids if tid not in tax_cache and tid not in failed_requests]
+    if not tax_ids:
+        return
+
+    Entrez.email = email
     try:
-        # If taxonomy for this tax_id is already fetched, return from cache
-        if tax_id in tax_cache:
-            # If the cached value is not None, return it directly
-            if tax_cache[tax_id] is not None:
-                return tax_cache[tax_id]
-        
-        # Check if this tax_id has previously failed
-        if tax_id in failed_requests:
-            return None  # Return None directly if it previously failed
-
-        Entrez.email = email  
-        handle = Entrez.efetch(db="taxonomy", id=tax_id, retmode="xml")
-        record = Entrez.read(handle)[0]
-        lineage = record.get('LineageEx', [])
-        for entry in lineage:
-            if entry.get('Rank') == 'family':
-                # Store fetched taxonomy in cache
-                tax_cache[tax_id] = entry['ScientificName']
-                return entry['ScientificName']
+        handle = Entrez.efetch(db="taxonomy", id=",".join(tax_ids), retmode="xml")
+        records = Entrez.read(handle)
+        for record in records:
+            tax_id = record['TaxId']
+            lineage = record.get('LineageEx', [])
+            family = next((entry['ScientificName'] for entry in lineage if entry['Rank'] == 'family'), None)
+            tax_cache[tax_id] = family
     except HTTPError as err:
         if 500 <= err.code <= 599 or err.code == 400:
-            print("Received error from server for tax_id {}: {}".format(tax_id, err))
-            failed_requests.add(tax_id)  # Add tax_id to failed requests
+            print("Received error from server for tax_ids {}: {}".format(tax_ids, err))
+            failed_requests.update(tax_ids)
         else:
-            print("Error from server for tax_id {}: {}".format(tax_id, err))
+            print("Error from server for tax_ids {}: {}".format(tax_ids, err))
     except Exception as e:
-        print("Error fetching taxonomy for tax_id {}: {}".format(tax_id, e))
-    
-    return None
+        print("Error fetching taxonomy for tax_ids {}: {}".format(tax_ids, e))
 
 def process_identifiers(identifiers, output_file, email):
-    first_family = None
-    family_count = 0
+    to_fetch = set()
+    for tax_ids in identifiers.values():
+        to_fetch.update(tax_ids)
     
+    fetch_taxonomy(to_fetch, email)  # Fetch taxonomy info in batch
+    
+    first_family = None
     with open(output_file, "a") as file:
-        for identifier, tax_id in identifiers.items():
-            for tax_id_sub in tax_id:
-                family = fetch_taxonomy(tax_id_sub, email)
+        for identifier, tax_ids in identifiers.items():
+            family_count = 0
+            for tax_id in tax_ids:
+                family = tax_cache.get(tax_id)
                 if family:
                     if first_family is None:
                         first_family = family
                         family_count = 1
                     elif family != first_family:
-                        file.write(identifier + "\n")  # Write directly to the file
-                        break  # No need to continue processing this identifier
+                        file.write(identifier + "\n")
+                        break
                     else:
                         family_count += 1
-                    
                     if family_count >= 10:
-                        break  # Exit the loop if the first family appears 10 times
+                        break
 
-# Main function
 def main():
     parser = argparse.ArgumentParser(description='Process BLAST output file.')
     parser.add_argument('blastout_file', type=str, help='Path to BLAST output file')

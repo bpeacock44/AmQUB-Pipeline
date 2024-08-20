@@ -193,57 +193,105 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Adding Taxa and Sequences to ASV Tables"
 echo " - -- --- ---- ---- --- -- -"
 
+## WHERE DID TAXA GO IN THE FILES AT THE END OF ALL THIS???
+
 #add taxa to ASV table
 OTBL=asv_table_01
 biomAddObservations "${output_dir}/asvs/${OTBL}.biom" "${output_dir}/asvs/asv_table_02_add_taxa.biom" "${output_dir}/asvs/blast/tax_assignments.txt"
 
 # create three additional taxonomic levels of ASV tables
 OTBL="asv_table_02_add_taxa"
- 
-#Mario: Added -o flag which specifies the output directory location
-#http://qiime.org/scripts/summarize_taxa.html
-summarize_taxa.py -i "${output_dir}/asvs/${OTBL}.biom" -L 2,6,7 -o "${output_dir}/asvs" -a
 
-# will need to chnage if we add more levels
+biom convert \
+  -i "${output_dir}/asvs/${OTBL}.biom" \
+  --to-json \
+  -o "${output_dir}/asvs/${OTBL}.v100.biom"
+
+mv "${output_dir}/asvs/${OTBL}.v100.biom" "${output_dir}/asvs/${OTBL}.biom"
+
+qiime tools import \
+  --input-path "${output_dir}/asvs/${OTBL}.biom" \
+  --type 'FeatureTable[Frequency]' \
+  --input-format BIOMV100Format \
+  --output-path "${output_dir}/asvs/${OTBL}.qza"
+
+tail -n +2 "${output_dir}/asvs/blast/tax_assignments.txt" | cut -f1,2 | sed '1s/^/#ASVID\tTaxon\n/' > temp.txt 
+
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --input-format HeaderlessTSVTaxonomyFormat \
+  --input-path temp.txt \
+  --output-path "${output_dir}/asvs/blast/taxonomy.qza"
+
+rm -rf temp.txt
+
 to_process=(
-    "${output_dir}/asvs/asv_table_02_add_taxa_L2.biom"
-    "${output_dir}/asvs/asv_table_02_add_taxa_L6.biom"
-    "${output_dir}/asvs/asv_table_02_add_taxa_L7.biom"
-    "${output_dir}/asvs/asv_table_02_add_taxa.biom"
+    "${output_dir}/asvs/asv_table_02_add_taxa_L2"
+    "${output_dir}/asvs/asv_table_02_add_taxa_L6"
+    "${output_dir}/asvs/asv_table_02_add_taxa_L7"
+    "${output_dir}/asvs/asv_table_02_add_taxa"
 )
 
-for F in "${to_process[@]}"; do
-    if [ ! -f "$F" ]; then
-        echo "Error: File $F not found."
-        exit 1
+for F in ${to_process[@]}; do
+    if [[ "$F" =~ _L([0-9]+) ]]; then
+        num="${BASH_REMATCH[1]}"
+        qiime taxa collapse \
+          --i-table "${output_dir}/asvs/asv_table_02_add_taxa.qza" \
+          --i-taxonomy "${output_dir}/asvs/blast/taxonomy.qza" \
+          --p-level ${num} \
+          --o-collapsed-table "${F}.qza"
     fi
+    # generate normalized version
+    qiime feature-table relative-frequency \
+      --i-table "${F}.qza" \
+      --o-relative-frequency-table "${F}.norm.qza"
+    # convert qza files to biom
+    qiime tools export \
+      --input-path "${F}.qza" \
+      --output-path "${output_dir}/asvs/tmp_dir"
+    mv "${output_dir}/asvs/tmp_dir/feature-table.biom" "${F}.biom"
+    qiime tools export \
+      --input-path "${F}.norm.qza" \
+      --output-path "${output_dir}/asvs/tmp_dir"
+    mv "${output_dir}/asvs/tmp_dir/feature-table.biom" "${F}.norm.biom"
+    rm -rf "${output_dir}/asvs/tmp_dir"
+done
 
-    FNAME=$(basename "$F" | sed 's|^asv_table_02_add_taxa||' | sed 's/.biom//')
-    ID=$(basename "$F" | sed 's/asv_table_02_add_taxa//' | sed 's/.biom//')
-
-    biom2txt "$F" "${output_dir}/asvs/${OTBL}${ID}.txt"
-
-    if [[ "$split_asv_table" == true ]]; then
+# split into 3 domains if indicated and normalize resulting tables
+if [[ "$split_asv_table" == true ]]; then
+    for F in "${to_process[@]}"; do
+        biom2txt "${F}.biom" "${F}.txt"
         KDOMS=("k__Archaea" "k__Bacteria" "k__Eukaryota")
         for K in "${KDOMS[@]}"; do
-            grep -P "(#|$K)" "${output_dir}/asvs/${OTBL}${ID}.txt" > "${output_dir}/asvs/${OTBL}${ID}.${K}.txt"
-            NEW_OTBL="${OTBL}${ID}.${K}"
-            if ! grep -q "$K" "${output_dir}/asvs/${NEW_OTBL}.txt"; then
-                rm "${output_dir}/asvs/${NEW_OTBL}.txt"
+            grep -P "(#|$K)" "${F}.txt" > "${F}.${K}.txt"
+            if [[ "$F" =~ _L([0-9]+) ]]; then
+                # Process files with _L in the name (no taxonomy metadata)
+                txt2biom_notax "${F}.${K}.txt" "${F}.${K}.biom"
             else
-                if [[ "${NEW_OTBL}" == *"_L"* ]]; then
-                    txt2biom_notax -f "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
-                else 
-                    txt2biom -f "${output_dir}/asvs/${NEW_OTBL}.txt" "${output_dir}/asvs/${NEW_OTBL}.biom"
-                fi
-                biom_table_math_ops.py -i "${output_dir}/asvs/${NEW_OTBL}.biom" -o "${output_dir}/asvs/${NEW_OTBL}_norm.biom" --normalize2unity
-                biom2txt "${output_dir}/asvs/${NEW_OTBL}_norm.biom" "${output_dir}/asvs/${NEW_OTBL}_norm.txt"
+                # Process files without _L in the name (include taxonomy metadata)
+                txt2biom "${F}.${K}.txt" "${F}.${K}.biom"
             fi
-        done
-    fi
+            qiime tools import \
+              --type 'FeatureTable[Frequency]' \
+              --input-path "${F}.${K}.biom" \
+              --output-path "${F}.${K}.qza"
+            qiime feature-table relative-frequency \
+              --i-table "${F}.${K}.qza" \
+              --o-relative-frequency-table "${F}.${K}.norm.qza"
+            qiime tools export \
+              --input-path "${F}.${K}.norm.qza" \
+              --output-path "${output_dir}/asvs/tmp_dir"
+            mv "${output_dir}/asvs/tmp_dir/feature-table.biom" "${F}.${K}.norm.biom"
+            rm -rf "${output_dir}/asvs/tmp_dir"
+        done  
+    done
+fi
 
-    biom_table_math_ops.py -i "$F" -o "${output_dir}/asvs/${OTBL}${ID}_norm.biom" --normalize2unity
-    biom2txt "${output_dir}/asvs/${OTBL}${ID}_norm.biom" "${output_dir}/asvs/${OTBL}${ID}_norm.txt"
+biomAddObservations "${output_dir}/asvs/asv_table_02_add_taxa.biom" "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/blast/tax_assignments.txt"
+mv "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/asv_table_02_add_taxa.biom"
+
+for F in "${output_dir}/asvs/"*.biom; do
+    biom2txt $F "${F%.biom}.txt"
 done
 
 # add seqs to L8 
@@ -252,8 +300,8 @@ outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
 
-otblfp="${output_dir}/asvs/asv_table_02_add_taxa_norm.txt"
-outfp="${output_dir}/asvs/asv_table_03_add_seqs_norm.txt"
+otblfp="${output_dir}/asvs/asv_table_02_add_taxa.norm.txt"
+outfp="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
 
 Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
 
