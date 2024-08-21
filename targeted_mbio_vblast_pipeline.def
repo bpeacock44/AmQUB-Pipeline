@@ -55,9 +55,9 @@ From: ubuntu:22.04
     Rscript -e 'BiocManager::install("edgeR")'
 
     # Download and install BLAST+
-    wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.15.0/ncbi-blast-2.15.0+-x64-linux.tar.gz -P /tmp/
-    tar -zxvf /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz -C /blast/
-    rm -r /tmp/ncbi-blast-2.15.0+-x64-linux.tar.gz
+    wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz -P /tmp/
+    tar -zxvf /tmp/ncbi-blast-2.16.0+-x64-linux.tar.gz  -C /blast/
+    rm -r /tmp/ncbi-blast-2.16.0+-x64-linux.tar.gz 
 
     # Setup NCBI E-utils
     echo "N" | sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
@@ -95,7 +95,7 @@ From: ubuntu:22.04
     export PATH="/bind:$PATH"
     export PATH="/helper_functions:$PATH"
     export PATH="/pipeline_scripts:$PATH"
-    export PATH="/blast/ncbi-blast-2.15.0+/bin:$PATH"
+    export PATH="/blast/ncbi-blast-*/bin:$PATH"  # Updated to use wildcard for blast directory
     export HDIR="/helper_functions"
     export PATH="/edirect:$PATH"
 
