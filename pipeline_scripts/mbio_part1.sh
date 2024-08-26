@@ -80,32 +80,28 @@ if [ "$mmatchnum" -ne 0 ]; then
 fi
 echo " - -- --- ---- ---- --- -- -"
 echo 
-echo " - -- --- ---- ---- --- -- -
-Removing phiX Reads
- - -- --- ---- ---- --- -- -"
-usearch -search_phix "${DIR}/${JB}/${JB}_raw.fq" -notmatchedfq "${DIR}/${JB}/${JB}.phix_clean.fq" -alnout "${DIR}/${JB}/${JB}.phiX_ids.txt"
 
 if [ "$mmatchnum" -ne 0 ]; then
 
-    echo " - -- --- ---- ---- --- -- -
-    Checking barcode collisions...
-     - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Checking barcode collisions...
+ - -- --- ---- ---- --- -- -"
 
     # Check barcode collisions
     for JB in "${JBS[@]}"; do
         _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
         echo "$JB [${_BC_}]"
     
-        check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}.phix_clean.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt"
+        check_barcode_collisions.pl -i "${DIR}/${JB}/${JB}_raw.fq" -m "${DIR}/${JB}/${JB}_map.txt" -M${mmatchnum} -C -o "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt"
     done
     
     for JB in "${JBS[@]}"; do
         _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
     
         echo 
-        echo " - -- --- ---- ---- --- -- -
-        Filtering barcode noncollisions
-        - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Filtering barcode noncollisions
+ - -- --- ---- ---- --- -- -"
         
         # Set option for mismatches based on previously selected mismatch value
         case $mmatchnum in
@@ -121,11 +117,11 @@ if [ "$mmatchnum" -ne 0 ]; then
         filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/uFQBC_${JB}_raw.fq_BC${_BC_}_M${mmatchnum}.txt" $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
         
         echo 
-        echo " - -- --- ---- ---- --- -- -
-        Converting mismatches to perfect matches 
-        - -- --- ---- ---- --- -- -"
+echo " - -- --- ---- ---- --- -- -
+Converting mismatches to perfect matches 
+ - -- --- ---- ---- --- -- -"
     
-        fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}.phix_clean.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" 
+        fastq_convert_mm2pm_barcodes.py -t read -i "${DIR}/${JB}/${JB}_raw.fq" -m "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" -o "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" 
         extract_barcodes.go -f "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" 
     
         # Check if files are present
@@ -134,11 +130,13 @@ if [ "$mmatchnum" -ne 0 ]; then
     done
 
 else
-    echo " - -- --- ---- ---- --- -- -
-    Skipping barcode collision check. 
-     - -- --- ---- ---- --- -- -"
-    extract_barcodes.go -f "${DIR}/${JB}/${JB}.phix_clean.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" 
-    ln -s "${DIR}/${JB}/${JB}.phix_clean.fq" "${DIR}/${JB}/${JB}.M${mmatchnum}.fq"       
+echo " - -- --- ---- ---- --- -- -
+Skipping barcode collision check. 
+ - -- --- ---- ---- --- -- -"
+    for JB in "${JBS[@]}"; do
+        extract_barcodes.go -f "${DIR}/${JB}/${JB}_raw.fq" && mv -v "${DIR}/${JB}/barcodes.fastq" "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" 
+        ln -sf "${DIR}/${JB}/${JB}_raw.fq" "${DIR}/${JB}/${JB}.M${mmatchnum}.fq"       
+    done
 fi
 
 # Print number of reads per barcode
@@ -149,11 +147,11 @@ for JB in "${JBS[@]}"; do
     _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
     grep tot "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt" | awk -v OFS='\t' '{print $6, $2, $3}' | sed '1i sample_ID\tbarcode\tread_count' > "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt"
     
-    echo "The number of reads per sample that resulted from this script for ${JB} can be found in this file: 
-    ${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt
+echo "The number of reads per sample that resulted from this script for ${JB} can be found in this file: 
+${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt
     
-    You should check this file, as it may indicate that you should remove or ignore certain samples downstream.
-    Here are the first few lines:" | tee /dev/tty
+You should check this file, as it may indicate that you should remove or ignore certain samples downstream.
+Here are the first few lines:" | tee /dev/tty
     
     head "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt" | tee /dev/tty
     echo " - -- --- ---- ---- --- -- -" | tee /dev/tty

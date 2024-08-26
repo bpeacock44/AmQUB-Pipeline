@@ -31,20 +31,21 @@ import http.client
 import argparse
 import xmltodict
  
+import re
+
 class ASV:
-    def __init__(self, asv, size):
+    def __init__(self, asv):
         self.id = str(asv)
-        self.size = int(size)
         self.hits = []
         self.best_hit_txIDS = []
         self.best_hit_bitscore = 0.0
         self.best_hit_pident = 0.0
         self.best_hit_qcov = 0.0
-
+ 
     def add_blast_hits(self, hitList):
         self.hits = hitList
         self.set_best_hits(hitList)
-
+ 
     def set_best_hits(self, hitList):
         if not hitList:
             return
@@ -63,7 +64,6 @@ class ASV:
             elif bitscore == best_bitscore:
                 self.best_hit_txIDS.append(taxID)
         self.best_hit_bitscore = best_bitscore
-
 
 def get_and_check_opts(args):
     parser = argparse.ArgumentParser(
@@ -111,30 +111,25 @@ def parse_asv_file(file_path):
                 except ValueError:
                     print(f"Skipping line due to incorrect format: {line}")
                     continue
-                asv_id_parts = asv_id.split('_')
-                if len(asv_id_parts) != 2:
-                    print(f"Invalid ASV ID format: {asv_id}")
-                    continue
-                asv_name, asv_size = asv_id_parts
-                try:
-                    asv_size = int(asv_size)
-                except ValueError:
-                    print(f"Invalid ASV size format: {asv_size}")
-                    continue
-                hit_data_str = hit_data_str.strip('[]()')
+                # No need to split the ASV ID or handle size
+                asv_name = asv_id
+                # Process the hit data string
+                hit_data_str = hit_data_str.strip('[]')
                 if hit_data_str == '':
                     hits = []
                 else:
                     hits = hit_data_str.split(') (')
                     hits = [hit.replace('(', '').replace(')', '') for hit in hits]
-                asv = ASV(asv_name, asv_size)
+                # Create an ASV instance and add the hits
+                asv = ASV(asv_name)
                 asv.add_blast_hits(hits)
-                asvs[asv_id] = asv
+                asvs[asv_name] = asv
     except FileNotFoundError:
         print(f"File not found: {file_path}")
     except IOError as e:
         print(f"Error reading file {file_path}: {e}")
     return asvs
+
  
 def parse_xml_file(taxa_xml_file):
     """
@@ -426,7 +421,7 @@ def assign_taxonomy(opts, asv_list, taxonomy_dict):
         # If no common taxonomy found, use 'Unassigned'
         if not lowest_common_taxa:
             lowest_common_taxa = ['k__Unassigned']
-        taxonomy = f"{asv.id}\t{';'.join(lowest_common_taxa)}\t{best_hit_bitscore}\t{best_hit_pident}\t{best_hit_qcov}\t{asv.size}"
+        taxonomy = f"{asv.id}\t{';'.join(lowest_common_taxa)}\t{best_hit_bitscore}\t{best_hit_pident}\t{best_hit_qcov}"
         assigned_taxonomy.append([taxonomy])
     return assigned_taxonomy
  
@@ -446,7 +441,7 @@ def main(args):
     assigned_taxonomy = assign_taxonomy(opts, asv_list, taxonomy_dict)
     
     # Define the header for the output file
-    header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov\tsize"
+    header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov"
     
     # Write the results to the output file
     with open(opts["o"], 'w') as outfile:
