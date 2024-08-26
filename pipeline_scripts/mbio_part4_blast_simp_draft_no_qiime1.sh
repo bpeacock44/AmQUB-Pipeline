@@ -13,6 +13,7 @@
     #steps etc. Note that if -s is enabled, -b is not required.
 #-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. 
     #Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
+#-c: indicate a classifier file you want to use to do assign taxonomy in addition to BLAST
 
 # CODE FOLLOWS HERE #
 
@@ -85,8 +86,8 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 
-if [ ! -e "${output_dir}/asvs/asvs_counts.fa" ]; then
-    echo "${output_dir}/asvs/asvs_counts.fa not found!"
+if [ ! -e "${output_dir}/asvs/blast/asvs_counts.fa" ]; then
+    echo "${output_dir}/asvs/blast/asvs_counts.fa not found!"
     exit 1
 fi
 
@@ -127,7 +128,7 @@ if [ "$skip_blast" = false ]; then
     echo " - -- --- ---- ---- --- -- -"
     
     # Run BLAST script in the background
-    blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+    ./blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
     
     # Get the process ID of the last background command
     blast_pid=$!
@@ -160,11 +161,11 @@ source pymods.sh || { echo "Error: Unable to activate python-pip-modules environ
 grep -v -F -f "${DIR}/likely_environmental_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-./blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 #blast_top_hit_parser.py -i "${output_dir}/asvs/blast/final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 
 rm -f *.xml
-assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
+./assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
 
 if [ ! -f "${output_dir}/asvs/blast/tax_assignments.txt" ]; then
     echo "Error: Output file not found."
@@ -298,12 +299,12 @@ done
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
 
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.norm.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
+Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
 
 to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
 
@@ -316,7 +317,7 @@ for F in "${to_process2[@]}"; do
     FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/asvs_counts.fa', '$outfp')"
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
 done
 echo
 
@@ -372,5 +373,4 @@ k__Eukaryota;p__unclassified_Eukaryota
 k__Bacteria_OR_k__unclassified_;Other
 k__Fungi_OR_k__unclassified_;Other
 k__Eukaryota_OR_k__unclassified_;Other
-k__Unassigned;Other
-" | tee /dev/tty
+k__Unassigned;Other" | tee /dev/tty

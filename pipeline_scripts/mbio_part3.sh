@@ -62,7 +62,7 @@ for ((i=0; i<${#JBS[@]}; i++)); do
   JBS[$i]=${JBS[$i]%%_output}
 done
 
-# Check appropriateness fo the trim length.
+# Check appropriateness of the trim length.
 for JB in "${JBS[@]}"; do
     file="${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq"
 
@@ -154,10 +154,15 @@ else
   ln -s "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq" "${output_dir}/combined.fq"
 fi
 
+for JB in "${JBS[@]}"; do
+    usearch -search_phix "${output_dir}/combined.fq" -notmatchedfq "${output_dir}/phiX_clean.combined.fq" -alnout "${output_dir}/phiX.combined.alnout"
+done
+
 #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
 for JB in ${JBS[@]}; do
   usearch -threads 1 -fastq_filter "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq" -quiet -fastq_maxee 1.0 -fastaout "${DIR}/${JB}_output/${JB}.filtered.fa"
 done
+
 echo
 echo " - -- --- ---- ---- --- -- -"
 echo "Pooling Samples and Creating ASVs"
@@ -205,7 +210,7 @@ echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
+usearch --otutab "${output_dir}/phiX_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 # Run python script to sort qiime table

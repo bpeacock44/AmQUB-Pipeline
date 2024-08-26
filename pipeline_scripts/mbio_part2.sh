@@ -140,7 +140,7 @@ grep -P "^[A-Z]" "${MAPFILE}" | awk '{print ">"$1"\n"$2}' > "${ODIR}/${JB2}_barc
 
 # Demultiplexing
 usearch -fastx_demux "${DIR}/${JB}/${JB}.M${mmatchnum}.fq" -quiet -index "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" -barcodes "${ODIR}/${JB2}_barcodes.fa" -fastqout "${ODIR}/${JB2}.M${mmatchnum}.demux.fq" && echo "File ${ODIR}/${JB2}.M${mmatchnum}.demux.fq has been generated." || (echo "Error: File ${ODIR}/${JB2}.M${mmatchnum}.demux.fq was not generated." && exit 1)
-ln -s "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" "${ODIR}/${JB2}_BC.M${mmatchnum}.fq"
+ln -sf "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" "${ODIR}/${JB2}_BC.M${mmatchnum}.fq"
 
 echo
 echo "General information about your data has been saved in ${ODIR}/fastq_info/${JB2}.M${mmatchnum}.txt."  | tee /dev/tty

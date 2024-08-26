@@ -52,7 +52,7 @@ while criteria_met; do
     echo "Starting first batch of jobs..."
 
     if "$first_run"; then
-        input_file="${DIR}/asvs/asvs_counts.fa"
+        input_file="${DIR}/asvs/blast/asvs_counts.fa"
     else
         input_file="${DIR}/asvs/blast/${reblast_iteration}.fasta"
     fi
@@ -113,12 +113,10 @@ while criteria_met; do
     bout="${DIR}/asvs/blast/${maxseqs}.${reblast_iteration}.blastout"
     outfile="${DIR}/asvs/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
     reblast_check.pl ${bout} ${outfile}
-    echo $bout 
-    echo $outfile
 
     # Get the number of reads contributing to the biggest ASV. 
     # Only ASVs that are at least 1% of the largest ASV will be re-blasted if they need it. 
-    total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/asvs_counts.fa)
+    total=$(awk 'NR==1{print $NF}' ${DIR}/asvs/blast/asvs_counts.fa)
     echo "Determining which ASVs are worth re-blasting."
 
     not_enough_hits_file="${DIR}/asvs/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
@@ -128,7 +126,7 @@ while criteria_met; do
     # Check if the not_enough_hits_file is empty
     if [ -s "$not_enough_hits_file" ]; then
         # Proceed with grep and subsequent commands
-        grep -w -f "$not_enough_hits_file" ${DIR}/asvs/asvs_counts.fa | \
+        grep -w -f "$not_enough_hits_file" ${DIR}/asvs/blast/asvs_counts.fa | \
         awk -v total="$total" '{
             # Remove ">" from the first column
             gsub(">", "", $1)
@@ -144,7 +142,7 @@ while criteria_met; do
         awk '$3 > 0.01' > "$big_ASVs_file"
     
         # Additional commands
-        awk '/^>/{sub(/ .*/, "");}1' "${DIR}/asvs/asvs_counts.fa" > ${DIR}/asvs/blast/modified_seqs.fasta
+        awk '/^>/{sub(/ .*/, "");}1' "${DIR}/asvs/blast/asvs_counts.fa" > ${DIR}/asvs/blast/modified_seqs.fasta
     
         echo "Extracting reblast seqs."
         # Extract the fasta sequences needing a reblast
