@@ -144,8 +144,7 @@ echo | tee /dev/tty
 
 for JB in "${JBS[@]}"; do
     echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
-    _BC_=$(grep -cP "^[A-Z]" "${DIR}/${JB}/${JB}_map.txt")
-    grep tot "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt" | awk -v OFS='\t' '{print $6, $2, $3}' | sed '1i sample_ID\tbarcode\tread_count' > "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt"
+    bc_counter.py "${DIR}/${JB}/${JB}_map.txt" "${DIR}/${JB}/${JB}_BC.M${mmatchnum}.fq" "${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt"
     
 echo "The number of reads per sample that resulted from this script for ${JB} can be found in this file: 
 ${DIR}/${JB}/${JB}_read_counts_M${mmatchnum}.txt

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 
 def filter_blast_output(env_accessions_file, blast_input_file, blast_output_file):

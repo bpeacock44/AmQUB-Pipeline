@@ -155,7 +155,7 @@ else
 fi
 
 for JB in "${JBS[@]}"; do
-    usearch -search_phix "${output_dir}/combined.fq" -notmatchedfq "${output_dir}/phiX_clean.combined.fq" -alnout "${output_dir}/phiX.combined.alnout"
+    usearch -search_phix "${output_dir}/combined.fq" -notmatchedfq "${output_dir}/phix_clean.combined.fq" -alnout "${output_dir}/phix.combined.alnout"
 done
 
 #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
@@ -210,7 +210,7 @@ echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/phiX_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
+usearch --otutab "${output_dir}/phix_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 # Run python script to sort qiime table

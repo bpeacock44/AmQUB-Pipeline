@@ -173,10 +173,10 @@ echo " - -- --- ---- ---- --- -- -"
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
 # filter out any lines in the blast file that match the strings in the final.blastout file
-grep -v -F -f "likely_env_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
+grep -v -F -f "/helper_functions/likely_env_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
 
 # filter out likely environmental taxonomic IDs
-python likely_env_remove.py likely_env_taxids.txt "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
+likely_env_remove.py "/helper_functions/likely_env_taxids.txt" "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
 blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
