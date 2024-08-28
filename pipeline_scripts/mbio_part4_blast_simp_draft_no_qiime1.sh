@@ -11,9 +11,9 @@
 #-u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 #-s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment 
     #steps etc. Note that if -s is enabled, -b is not required.
-#-j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. 
+#-j: this flag creates a specialized excel summary output with more detail about the taxonomic assignments.
     #Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
-#-c: indicate a classifier file you want to use to do assign taxonomy in addition to BLAST
+#-c: indicate a Qiime2 classifier file you want to use for generating alternative taxonomy.
 
 # CODE FOLLOWS HERE #
 
@@ -33,9 +33,9 @@ trap 'error_handler "$BASH_COMMAND"' ERR
 # ARGUMENTS
 split_asv_table=false
 skip_blast=false
-james_sum_file_gen=false
+final_sum_file_gen=false
 
-while getopts ":d:o:b:e:t:usj" opt; do
+while getopts ":d:o:b:e:c:usj" opt; do
   case $opt in
     d) DIR="$OPTARG"
     ;;
@@ -45,11 +45,13 @@ while getopts ":d:o:b:e:t:usj" opt; do
     ;;
     e) EMAIL="$OPTARG"
     ;;  
+    c) CFIER="$OPTARG"
+    ;; 
     u) split_asv_table=true
     ;;
     s) skip_blast=true
     ;;
-    j) james_sum_file_gen=true
+    j) final_sum_file_gen=true
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
     ;;
@@ -62,6 +64,16 @@ shift $((OPTIND -1))
 if [ -z "$DIR" ] || [ -z "$OUTDIR" ] || [ -z "$EMAIL" ]; then
     echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -e <email@email.com> [-b <blast parameter file> -t <filtertax_file> -u -s -j]"
     exit 1
+fi
+
+# Check if the classifier is a valid QIIME 2 classifier
+if [[ "${CFIER}" ]]; then
+    if qiime tools peek "${CFIER}" | grep -q 'TaxonomicClassifier'; then
+        echo "Qiime2 classifier appears to be correct."
+    else
+        echo "The classifier doesn't appear to be a valid QIIME 2 classifier."
+        exit 1
+    fi
 fi
 
 # If blast is not skipped, check for the blast_file arguments
@@ -113,8 +125,12 @@ if [ "$split_asv_table" = true ]; then
     echo "Final ASV tables were split into three domains of life (for universal assay data)"
 fi
 
-if [ "$james_sum_file_gen" = true ]; then
-    echo "A James Summary File was generated."
+if [ "$final_sum_file_gen" = true ]; then
+    echo "A Final Summary File was generated."
+fi
+
+if [[ "${CFIER}" ]]; then
+    echo "${CFIER} will also be used to assign taxonomy. These assignments will be saved in ${output_dir}/asvs/classifier_output. They will also be included in the Final Summary File if generated." 
 fi
 
 echo " - -- --- ---- ---- --- -- -"
@@ -128,7 +144,7 @@ if [ "$skip_blast" = false ]; then
     echo " - -- --- ---- ---- --- -- -"
     
     # Run BLAST script in the background
-    ./blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+    blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
     
     # Get the process ID of the last background command
     blast_pid=$!
@@ -156,16 +172,18 @@ echo " - -- --- ---- ---- --- -- -"
 #for the next steps.
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-#TODO: ADD ACCESSIONS TO CONTAINER AND ADD STEP TO ADD ANY NEW ONES?
 # filter out any lines in the blast file that match the strings in the final.blastout file
-grep -v -F -f "${DIR}/likely_environmental_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
+grep -v -F -f "likely_env_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
+
+# filter out likely environmental taxonomic IDs
+python likely_env_remove.py likely_env_taxids.txt "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
-#blast_top_hit_parser.py -i "${output_dir}/asvs/blast/final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 
 rm -f *.xml
-./assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
+
+assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
 
 if [ ! -f "${output_dir}/asvs/blast/tax_assignments.txt" ]; then
     echo "Error: Output file not found."
@@ -321,29 +339,57 @@ for F in "${to_process2[@]}"; do
 done
 echo
 
-##TODO: FIX JAMES SUM FILE GEN - ONLY ONE SET OF TAX ASSIGNMENTS NOW. Also IMPROVE MIXED_FAMILY_CHECKER.PY
-if [ "$james_sum_file_gen" = true ]; then
+# if classifier selected, conduct taxonomic classification of asvs using Qiime2
+if [[ "${CFIER}" ]]; then
+    qiime tools import \
+      --type 'FeatureData[Sequence]' \
+      --input-path "${output_dir}/asvs/asvs.fa" \
+      --output-path "${output_dir}/asvs/asvs.qza"
+    qiime feature-classifier classify-sklearn \
+      --i-classifier ${CFIER} \
+      --i-reads "${output_dir}/asvs/asvs.qza" \
+      --o-classification "${output_dir}/asvs/tax_assign_v_classifier.qza" 
+    # Export the final classification to a text file
+    qiime tools export \
+      --input-path "${output_dir}/asvs/tax_assign_v_classifier.qza" \
+      --output-path "${output_dir}/asvs/classifier_output"
+fi
+
+if [ "$final_sum_file_gen" = true ]; then
     echo " - -- --- ---- ---- --- -- -"
     echo "Creating Summary File"
     echo " - -- --- ---- ---- --- -- -"
 
     source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-    # Error check for mixed_family_checker.py
+    rm -rf "${output_dir}/asvs/blast/mixed_family_checker_out.txt"
+    # Run the mixed_family_checker.py script with error checking
     mixed_family_checker.py "${output_dir}/asvs/blast/final.blastout" --email "${EMAIL}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
 
-    # Move output file with error check
+    # Move the output file with error checking
     mv mixed_family_checker_out.txt "${output_dir}/asvs/blast/" || { echo "Error: Unable to move mixed_family_checker_out.txt"; exit 1; }
 
-    # Error check for Rscript
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_excel('${output_dir}/asvs/asv_table_03_add_seqs_norm.txt', '${output_dir}/asvs/blast/tax_assignments.txt', ${output_dir}/asvs/asv_table_03_add_seqs.txt', '${output_dir}/asvs/blast/mixed_family_checker_out.txt')" || { echo "Error: Rscript failed"; exit 1; }
+    # Define file paths
+    norm_file="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
+    raw_file="${output_dir}/asvs/asv_table_03_add_seqs.txt"
+    tax_file="${output_dir}/asvs/blast/tax_assignments.txt"
+    tax_c_file="${output_dir}/asvs/classifier_output/taxonomy.tsv"
+    mixed_file="${output_dir}/asvs/blast/mixed_family_checker_out.txt"
+
+    rm -rf ASV_summary_table.tsv "${output_dir}/asvs/ASV_summary_table.tsv"
+
+    # Run the R script with all arguments
+    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', '${tax_c_file}', '${mixed_file}')"
    
-    #Move generated ASVSumamry file
-    mv ASV_summary* ${output_dir}/asvs
+    if [ ! -f "ASV_summary_table.tsv" ]; then
+        echo "'ASV_summary_table.tsv' was not successfully created."
+        exit 1
+    fi
 
-
+    # Move the generated ASV summary file with error checking
+    mv ASV_summary_table.tsv "${output_dir}/asvs" 
 else
-    echo "No Borneman summary file generated, as requested."
+    echo "No Final Summary File generated, as requested."
 fi
 
 echo

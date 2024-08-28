@@ -181,47 +181,66 @@ add_sequences_to_asv_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
 }
 
 # Added by Beth Peacock
-process_data_and_write_excel <- function(file_path, file_path3, file_path4, file_path_top10) {
+process_data_and_write_summary <- function(norm, raw, tax, tax_c = NULL, mixed) {
     # Load required libraries
     library(dplyr)
-    library(writexl)
     
     # Read the main data file
-    df <- read.table(file_path, sep = "\t", comment.char = "", header = TRUE)
+    df <- read.table(norm, sep = "\t", comment.char = "", header = TRUE)
     colnames(df)[1] <- "ASV_ID"
     df$taxonomy <- NULL
     
     # Read primary taxonomy file
-    tax_df <- read.table(file_path3, sep = "\t", comment.char = "", header = TRUE)
-    colnames(tax_df) <- c("ASV_ID", "taxonomy", "bitscore", "per_ID", "per_qcov", "size")
-    df <- merge(df, tax_df[c(1:2,4:5)], by = "ASV_ID", all.x = TRUE)
+    tax_df <- read.table(tax, sep = "\t", comment.char = "", header = TRUE)
+    colnames(tax_df) <- c("ASV_ID", "taxonomy", "bitscore", "per_ID", "per_qcov")
+    df <- merge(df, tax_df[c(1:2, 4:5)], by = "ASV_ID", all.x = TRUE)
+
+    # Check if tax_c is provided and process it if available
+    if (!is.null(tax_c)) {
+        # Read classifier taxonomy file if given
+        tax_df_C <- read.table(tax_c, sep = "\t", comment.char = "", header = TRUE)
+        colnames(tax_df_C) <- c("ASV_ID", "c_taxonomy", "confidence")
+        df <- merge(df, tax_df_C, by = "ASV_ID", all.x = TRUE)
+        
+        # Include c_taxonomy and confidence in excluded columns
+        excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "c_taxonomy", "confidence", "sequence")
+    } else {
+        # Exclude c_taxonomy and confidence if tax_c is not provided
+        excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "sequence")
+    }
     
     # Calculate mean abundance
-    excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "sequence")
     df$avg_abun <- rowMeans(df[, !names(df) %in% excluded_columns], na.rm = TRUE)
     
     # Flag ASVs with mixed families in top 10
-    top10_df <- read.table(file_path_top10)
-    df <- mutate(df, mixed_fam_top_10 = "no")
+    top10_df <- read.table(mixed, sep = "\t", comment.char = "", header = TRUE)
+    df$mixed <- "no"
     top10_identifiers <- top10_df[[1]]
     matches <- df$ASV_ID %in% top10_identifiers
-    df$mixed_fam_top_10[matches] <- "yes"
+    df$mixed[matches] <- "yes"
     
     # Reorder columns
-    df <- df[, c(1, (length(df) - 6):length(df), 2:(length(df) - 7))]
+    if (!is.null(tax_c)) {
+        df <- df[, c(1, (length(df) - 7):length(df), 2:(length(df) - 8))]
+    } else {
+        df <- df[, c(1, (length(df) - 5):length(df), 2:(length(df) - 6))]
+    }
     
     # Add row with total raw counts
-    raw <- read.table(file_path4, sep = "\t", comment.char = "", header = TRUE)
+    raw <- read.table(raw, sep = "\t", comment.char = "", header = TRUE)
     raw[,1] <- NULL
     raw$taxonomy <- NULL
     raw$sequence <- NULL
     sums <- colSums(raw)
-    nd_columns <- rep("nd", 8)  # Adjusted length since fewer columns now
+    if (!is.null(tax_c)) {
+        nd_columns <- rep("nd", 9)
+    } else {
+        nd_columns <- rep("nd", 7)
+    }
     new_vector <- c(nd_columns, sums)
-    names(new_vector)[1:8] <- colnames(df)[1:8]
     df <- rbind(new_vector, df)
     
     # Write dataframe to an Excel file
-    write_xlsx(df, "ASV_summary_table.xlsx")
+    write.table(df, "ASV_summary_table.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
 }
 

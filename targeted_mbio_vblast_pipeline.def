@@ -51,7 +51,7 @@ From: ubuntu:22.04
     mkdir -p /library
     echo "R_LIBS_SITE=/library:\${R_LIBS_SITE}" >> /usr/lib/R/etc/Renviron.site
 
-    Rscript -e 'install.packages(c("dplyr", "writexl", "readr", "optparse", "BiocManager"))'
+    Rscript -e 'install.packages(c("dplyr", "readr", "optparse", "BiocManager"))'
     Rscript -e 'BiocManager::install("edgeR")'
 
     # Download and install BLAST+

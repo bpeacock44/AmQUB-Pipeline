@@ -14,67 +14,56 @@ def parse_blast_output(file_path):
             if line.startswith("# Query:"):
                 if current_query:
                     yield current_query, queries[current_query]
-                    queries[current_query] = []
                 current_query = line.strip().split(":")[-1].strip().split()[0]
+                queries[current_query] = []
             elif not line.startswith("#") and current_query:
                 fields = line.strip().split("\t")
                 tax_id = fields[7].split(";")[0]
-                queries[current_query].append(tax_id)
+                if len(queries[current_query]) < 10:
+                    queries[current_query].append(tax_id)
     if current_query:
         yield current_query, queries[current_query]
 
-# Initialize tax_cache and failed_requests
-tax_cache = {}
-failed_requests = set()
-
-def fetch_taxonomy(tax_ids, email):
-    # Fetch multiple taxonomies at once
-    tax_ids = [tid for tid in tax_ids if tid not in tax_cache and tid not in failed_requests]
-    if not tax_ids:
-        return
-
+def fetch_taxonomy(tax_ids, email, batch_size=200):
+    # Filter out invalid or empty tax_ids
+    tax_ids = [tid for tid in tax_ids if tid]
     Entrez.email = email
-    try:
-        handle = Entrez.efetch(db="taxonomy", id=",".join(tax_ids), retmode="xml")
-        records = Entrez.read(handle)
-        for record in records:
-            tax_id = record['TaxId']
-            lineage = record.get('LineageEx', [])
-            family = next((entry['ScientificName'] for entry in lineage if entry['Rank'] == 'family'), None)
-            tax_cache[tax_id] = family
-    except HTTPError as err:
-        if 500 <= err.code <= 599 or err.code == 400:
-            print("Received error from server for tax_ids {}: {}".format(tax_ids, err))
-            failed_requests.update(tax_ids)
-        else:
-            print("Error from server for tax_ids {}: {}".format(tax_ids, err))
-    except Exception as e:
-        print("Error fetching taxonomy for tax_ids {}: {}".format(tax_ids, e))
+    tax_cache = {}
+    attempts = 3
 
-def process_identifiers(identifiers, output_file, email):
-    to_fetch = set()
-    for tax_ids in identifiers.values():
-        to_fetch.update(tax_ids)
-    
-    fetch_taxonomy(to_fetch, email)  # Fetch taxonomy info in batch
-    
-    first_family = None
-    with open(output_file, "a") as file:
+    for i in range(0, len(tax_ids), batch_size):
+        batch = tax_ids[i:i + batch_size]
+        while attempts > 0:
+            try:
+                handle = Entrez.efetch(db="taxonomy", id=",".join(batch), retmode="xml")
+                records = Entrez.read(handle)
+                for record in records:
+                    tax_id = record['TaxId']
+                    lineage = record.get('LineageEx', [])
+                    family = next((entry['ScientificName'] for entry in lineage if entry['Rank'] == 'family'), None)
+                    tax_cache[tax_id] = family
+                break  # Exit the loop if successful
+            except HTTPError as err:
+                if 500 <= err.code <= 599:
+                    attempts -= 1
+                    time.sleep(2 ** (3 - attempts))  # Exponential backoff
+                else:
+                    break
+            except Exception as e:
+                break
+    return tax_cache
+
+def process_identifiers(identifiers, tax_cache, output_file):
+    with open(output_file, "w") as file:
         for identifier, tax_ids in identifiers.items():
-            family_count = 0
+            families = set()
             for tax_id in tax_ids:
                 family = tax_cache.get(tax_id)
                 if family:
-                    if first_family is None:
-                        first_family = family
-                        family_count = 1
-                    elif family != first_family:
-                        file.write(identifier + "\n")
-                        break
-                    else:
-                        family_count += 1
-                    if family_count >= 10:
-                        break
+                    families.add(family)
+                if len(families) > 1:
+                    file.write(identifier + "\n")
+                    break
 
 def main():
     parser = argparse.ArgumentParser(description='Process BLAST output file.')
@@ -85,8 +74,19 @@ def main():
 
     blast_output_file = args.blastout_file
     email = args.email
+
+    # Step 1: Parse BLAST output and collect Tax IDs
+    identifiers = {}
     for query, tax_ids in parse_blast_output(blast_output_file):
-        process_identifiers({query: tax_ids}, output_file, email)
+        identifiers[query] = tax_ids
+
+    # Step 2: Fetch taxonomy data
+    all_tax_ids = {tax_id for tax_ids in identifiers.values() for tax_id in tax_ids}
+    tax_cache = fetch_taxonomy(all_tax_ids, email)
+
+    # Step 3: Process identifiers to identify queries with multiple families
+    process_identifiers(identifiers, tax_cache, output_file)
 
 if __name__ == "__main__":
     main()
+
