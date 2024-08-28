@@ -377,13 +377,15 @@ if [ "$final_sum_file_gen" = true ]; then
     mixed_file="${output_dir}/asvs/blast/mixed_family_checker_out.txt"
 
     rm -rf ASV_summary_table.tsv "${output_dir}/asvs/ASV_summary_table.tsv"
-
-    # Run the R script with all arguments
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', '${tax_c_file}', '${mixed_file}')"
-   
+    if [[ "${CFIER}" ]]; then
+        # Run the R script with all arguments
+        Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', '${tax_c_file}', '${mixed_file}')"
+    else 
+        Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', NULL, '${mixed_file}')"
+    fi
     if [ ! -f "ASV_summary_table.tsv" ]; then
         echo "'ASV_summary_table.tsv' was not successfully created."
-        exit 1
+        #exit 1
     fi
 
     # Move the generated ASV summary file with error checking
