@@ -299,7 +299,7 @@ exit
 # make sure WDIR is still defined
 WDIR=/path/to/WDIR
 
-# save the scripts "mbio_part4_blast_only.sh", "reblast_check.pl", and "multi_blast_iterator.sh" to WDIR and make them executable.
+# save the scripts "mbio_part4_blast_only.sh", "reblast_check.pl", and "blast_iterator.sh" to WDIR and make them executable.
 
 # add WDIR to path so these scripts can be run.
 export PATH="${WDIR}:${PATH}"
@@ -308,10 +308,10 @@ export PATH="${WDIR}:${PATH}"
 module load seqkit 
 
 # part 4 (just blast)
-mbio_part4_blast_only.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
+mbio_part4_blast_only.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 
 
 # start another interactive session with some power
-srun -c 128 --mem 300gb --pty bash -l
+srun -c 60 --pty bash -l
 
 # start singularity as before
 module load singularity
@@ -322,14 +322,14 @@ singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleane
 # define your WDIR path. It should be the directory you start in.
 WDIR=$(pwd)
 
-# part 4 (the rest)
+# part 4 (the rest, but skip blast with -s flag!)
 mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
 ```
 
 ## More Mapping File Details
 When you demultiplex (part 1), mapping files must only contain the samples (and barcodes) from that specific fastq file. (And you want ALL the samples to be there as well so it demultiplexes properly!) So each data file you get should have it's own mapping file.
 
-The only time you alter a mapping file during the pipeline is if you want to make an ASV table from only a subset of the samples within a fastq file, which you can indicate at part 2 using the -o option. (For example, if you were sequencing the microbiomes of insects and your advisor asked if he could sneak a couple of mouse gut samples into the library as well, you probably don't want to include them - especially when you are picking ASVs! So in step 2 you would create a new mapping file without those mouse gut sample rows.)
+The only time you alter a mapping file during the pipeline is if you want to make an ASV table from only a subset of the samples within a fastq file, which you can indicate at part 2 using the -o option. (For example, if you were sequencing the microbiomes of insects and your advisor asked if he could add a couple of mouse gut samples into the library as well, you probably don't want to include them - especially when you are picking ASVs! So in step 2 you would create a new mapping file without those mouse gut sample rows.)
 
 There is no reason to combine mapping files until you are doing analyses at the very end when you will be referencing metadata and your ASV table contains samples from multiple fastq files. At this point, it makes sense to merge all the rows from all the mapping files that represent the samples in the ASV table you will be analyzing.
 
