@@ -333,4 +333,3 @@ The only time you alter a mapping file during the pipeline is if you want to mak
 
 There is no reason to combine mapping files until you are doing analyses at the very end when you will be referencing metadata and your ASV table contains samples from multiple fastq files. At this point, it makes sense to merge all the rows from all the mapping files that represent the samples in the ASV table you will be analyzing.
 
-
