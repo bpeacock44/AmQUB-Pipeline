@@ -8,7 +8,7 @@ This pipeline is in four parts. Each part should be run sequentially.
 
 [Part 3:](#part-3) This part will use usearch trim and filter your reads in preparating for ASV picking. (Note that filtered reads will be used for ASV picking, but all your reads will be used in the final ASV table.) It will then pick your ASVs and create your ASV table. 
 
-[Part 4:](#part-4) This part is optional, as you may want to use other methods for assigning taxonomy to your ASVs. But Part 4 uses BLAST to assign taxonomy to your ASVs using the NCBI nt database. This is useful for any kind of targeted analyses where you do not have a good curated database available for assignment. (e.g. a universal assay) This pipeline can be manipulated in various ways to try to improve taxonomic assignments, given that the NCBI nt database is not curated. Rather than assigning taxonomy using the top hit, it finds all hits that have the highest bitscore and finds the least common ancestor (LCA) among them, giving preference to non-environmental samples and taxonomic groups that you may or may not choose to indicate.
+[Part 4:](#part-4) This part is optional, as you may want to use other methods for assigning taxonomy to your ASVs. But Part 4 uses BLAST to assign taxonomy to your ASVs using the NCBI nt database. This is useful for any kind of targeted analyses where you do not have a good curated database available for assignment. (e.g. bacterial ITS) Rather than assigning taxonomy using the top hit, it finds all hits that have the highest bitscore and finds the least common ancestor (LCA) among them.
 
 There are some [examples](#example-of-overall-pipeline) of how this might be run overall at the end. 
 
@@ -30,15 +30,14 @@ mbio_part1.sh -d /path/to/dir -j ID1,ID2 -m 1
 ```
 
 ### INPUT
-Each folder needs to contain a fastq file named by ID followed by "\_L1P1.fq" and an appropriately formatted mapping file followed by "\_map.txt"
-For example, the directory indicated contains a folder called JB141 and it contains the files "JB141_L1P1.fq" and "JB141_map.txt."
+Each folder needs to contain a fastq file named by ID followed by "\_raw.fq" and an appropriately formatted mapping file followed by "\_map.txt"
+For example, the directory indicated contains a folder called JB141 and it contains the files "JB141_raw.fq" and "JB141_map.txt."
 
 Your mapping file should be formatted in the same way that the Qiime program uses:
 
 At least three tab-delimited columns:
 1) SampleID (with a # before as in #SampleID) - these are the IDs you associate with each sample
 2) BarcodeSequence - the barcodes for each sample
-3) SampleType - you can use this to filter later on - e.g. removing controls before data analysis, removing samples that aren't relevant, etc.
 
 Other columns can include any characteristics you want to use later on to run differential analysis or correlation, etc.
 ```
@@ -64,7 +63,7 @@ This script expects to be given at least two arguments:
 Optional arguments:
 - -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
 - -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
-- -o: a subset ID - if you want to run further analyses on a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subsetID.txt (e.g. JB141_map.Nickels01.txt) and be placed in the same ID folder as the other files are in.
+- -o: a subset ID - if you want to pick ASVs from and further analyze only a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subset_name.txt (e.g. JB141_map.florida.txt) and be placed in the same ID folder as the other files are in.
 
 Examples:
 ```sh
@@ -75,15 +74,15 @@ mbio_part2.sh -d /path/to/dir -j ID1 -m 1
 mbio_part2.sh -d /path/to/dir -j ID1 -o sub1 -m 1
 ```
 ### INPUT
-This script can only be run once the original fastq file (e.g. JB141_L1P1.fq) has been run through part 1, which is used to find and replace mismatched barcodes with perfect match barcodes. 
+This script can only be run once the original fastq file (e.g. JB141_raw.fq) has been run through part 1. 
 
-Each folder needs to contain the fastq files resulting from 1a, which are named by ID followed by \_A1P1.M#.fq and \_A1P2.M#.fq, as well as a mapping file (either the original or a subset.)
+Each folder needs to contain the fastq files resulting from part 1, which are named by ID followed by .M#.fq and \_BC.M#.fq, as well as a mapping file (either the original or the subset.)
 
 So, as an example, your working directory might now include:
-- Folder JB141 (containing JB141_A1P1.M0.fq, JB141_A1P2.M0.fq, and JB141_map.Nickels01.txt)
+- Folder JB141 (containing JB141.M0.fq, JB141_BC.M0.fq, and JB141_map.Nickels01.txt)
 - JB141_map.txt should also be present in folder if subset map isn't used.
 
-When this code is run, a new directory will be created for your output named either with the unique identifier for your subset, if given (e.g. JB141_Nickels01_output), or it will be named after your regular ID if no unique map was provided (e.g. JB141_output) 
+When this code is run, a new directory will be created for your output named either with the name of your subset (e.g. JB141_Nickels01_output), or with your regular ID if no unique map was provided (e.g. JB141_output) 
 
 ## Part 3
 
@@ -102,46 +101,40 @@ Examples:
 ```sh
 mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test1_out
 mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test2_out -m 1
-mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 8
+mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 7
 ```
 
 ### INPUT ###
 This script follows part 2, which must be completed first. You will look at your trim stats, determine what length you want to trim to, and run this code to finish the analysis.
 
-So, as an example, your working directory might now include:
-- Folder JB141_Nickels01_output and directory JB143_output, both containing output of part2.
-
-When this code is run, a new directory named as you indicated will be created for analysis output. 
+When this code is run, a new directory named as indicated by -o will be created for analysis output. 
 
 ## Part 4
 
-This part can be run a few different ways, depending on how you want to run BLAST. 
+This part involves using BLAST and it can be run in two different ways:
 
-1) Run within the singularity as an interactive session on a cluster (request the resources you will need for BLAST)
-2) Run locally on your computer within the singularity
-3) If you have a very large ASV file, you may want to split it up and run on separate resources. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below. For both 1 and 2, the following applies.
+1) Within the continer. (If you are on a cluster, you will want to request resources before you begin the container!)
+3) Initially outside of the container (if you have a very large ASV file and you want to split it up and run each part in parallel to speed up the process) and then finishing inside the container. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below for details on this.
 
 ### USAGE 
 This script expects to be given at least 5 arguments:
 - -d: a working directory, which contains one folder for each of your fastq files named by ID
 - -o: the name of your output directory
-- -b: the path to your blast script file
 - -e: email of the user for NCBI purposes
 
 Optional arguments:
-- -t This is a filter file - it will have four tab-delimited columns. 
-Include any taxonomic groups that you want to preferentially keep or reject as well as their taxonomic ID. 
-ALL taxonomies included under these taxonomic IDs will be treated accordingly so check NCBI
-and make sure. If you are doing a universal assay, do not include the -t flag and DO include the -u flag.
-- -u: universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
-- -s: skip the blast - skips the blast portion - useful for troubleshooting or re-running taxonomy assignment steps etc. Note that if -s is enabled, -b is not required.
-- -j: this flag creates a specialized excel summary output that Dr. Borneman specifically requested. Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
+- -b: path to your blast script file (required if you don't use the -s option)
+- -s: skip the blast - skips the blast and uses blast output already there (required if you don't use the -b option)
+
+- -u: universal assay - causes final ASV tables to be split into 3 domains
+- -j: create a detailed summary file with extra detail for assessing taxonomic assignments. Runtime will increase slightly, as it generates an analysis examining the top 10 blast hits for each ASV.
+- -c: path to a Qiime2 classifier file you want to use for generating alternative taxonomic assignments
 
 Examples:
 ```sh
-mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com -t filterfile.txt 
-mbio_part4.sh -d /path/to/dir -o test3_out -e email@email.com -s
-mbio_part4.sh -d /path/to/dir -o test4_out -b /path/to/blast.sh -e email@email.com -u -j
+mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com
+mbio_part4.sh -d /path/to/dir -o test2_out -e email@email.com -s
+mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -u -j -c unite_ver10_99_04.04.2024-Q2-2024.5.qza
 ```
 
 ### INPUT 
@@ -166,37 +159,19 @@ EVAL=0.001
 blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS"
 ```
 
-For argument -t, you can choose to include a filter file that will essentially indicate taxonomic groups you want to give preference for and reject outright in the taxonomic assignment process. For example, if I was running the analysis on bacterial ITS amplicon data taken a plant sample, then I might want to give preference to bacterial taxa and reject any plant taxa.
+## Part 4 Split (note: mbio_part4_blast_only.sh is not written yet)
 
-The columns will be as follows, with a header: (Name, ID, Rank, and Action)
-- Name - the taxonomic name on NCBI
-- ID - the taxonomic ID on NCBI
-- Rank - the rank of the taxonomic group (Note that this doesn't have to match NCBI, as seen here with bacteria, which is listed as a superkingdom on NCBI. It is primarily for your information.)
-- Action - whether you want to give preference to (keep) or reject this group.
+NOTE: You will need [ncbi blast](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html) and [seqkit](https://bioinf.shenwei.me/seqkit/) installed on your system to run this, since you will not be using the container.
 
-```
-Name	ID	Rank	Action
-Bacteria	2	k	Keep
-Viridiplantae	33090	k	Reject
-```
-Note that rank is lowercase.
+You will also want to have the scripts ["mbio_part4_blast_only.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/pipeline_scripts/mbio_part4_blast_only.sh), ["reblast_check.pl"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/reblast_check.pl) and ["blast_iterator.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/blast_iterator.sh) in your path and executable. 
 
-When assigning taxonomy, decisions will be made based on bitscore. Highest bitscore results among non-rejected taxonomic groups will contribute to the taxonomic assignment. If the highest bitscores are in your "keep" group or the the highest bitscore is shared between groups, then your taxonomic assignment will be from the "keep" group. However, if the bitscore is higher in environmental samples of the "keep" group OR, secondarily, if it is higher in unspecified groups (taxonomies not listed in your filter file) then those will be used instead.
-
-## Part 4 Split
-
-NOTE: You will need [ncbi blast](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html) and [seqkit](https://bioinf.shenwei.me/seqkit/) installed on your system to run this, since you will not be using the container!
-
-You will also want to have the scripts ["mbio_part4_SPLIT_blast.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/pipeline_scripts/mbio_part4_SPLIT_blast.sh), ["reblast_check.pl"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/reblast_check.pl) and ["multi_blast_iterator.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/multi_blast_iterator.sh) in your path and executable. 
-
-If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_SPLIT_blast.sh", which is a truncated version of mbio_part4_blast.sh.
+If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_blast_only.sh", which is a truncated version of mbio_part4.sh.
 
 It has no optional arguments:
 - -d: a working directory, which contains one folder for each of your fastq files named by ID
 - -o: the name of your output directory
 - -b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
 - -n: number of different jobs you want to run
-- -r: the type of blast run you want to do (local or slurm)
 
 ### INPUT 
 As before, this script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
@@ -252,7 +227,7 @@ EVAL=0.001
 blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
 ```
 
-After you run mbio_part4_SPLIT_blast.sh, you will need to run mbio_part4_blast.sh as usual - just make sure to run with the -s flag so it doesn't run BLAST all over again!
+After you run mbio_part4_blast_only.sh, you will need to run mbio_part4.sh as usual - just make sure to run with the -s flag so it doesn't run BLAST all over again!
 
 ## Example of Overall Pipeline:
 
@@ -283,7 +258,7 @@ mbio_part2.sh -d ${WDIR} -j "ID2"
 mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
 
 # part 4
-mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e email@email.com -b ${WDIR}/blast.sh
+mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -b ${WDIR}/blast.sh
 
 ```
 
@@ -324,7 +299,7 @@ exit
 # make sure WDIR is still defined
 WDIR=/path/to/WDIR
 
-# save the scripts "mbio_part4_SPLIT_blast.sh", "reblast_check.pl", and "multi_blast_iterator.sh" to WDIR and make them executable.
+# save the scripts "mbio_part4_blast_only.sh", "reblast_check.pl", and "multi_blast_iterator.sh" to WDIR and make them executable.
 
 # add WDIR to path so these scripts can be run.
 export PATH="${WDIR}:${PATH}"
@@ -333,7 +308,7 @@ export PATH="${WDIR}:${PATH}"
 module load seqkit 
 
 # part 4 (just blast)
-mbio_part4_SPLIT_blast.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
+mbio_part4_blast_only.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 -r slurm
 
 # start another interactive session with some power
 srun -c 128 --mem 300gb --pty bash -l
@@ -348,7 +323,7 @@ singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleane
 WDIR=$(pwd)
 
 # part 4 (the rest)
-mbio_part4_blast.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
+mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
 ```
 
 ## More Mapping File Details

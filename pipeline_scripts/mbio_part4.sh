@@ -15,10 +15,7 @@
     #Runtime will increase, as it requires an analysis examining the top 10 blast hits for each ASV.
 #-c: indicate a Qiime2 classifier file you want to use for generating alternative taxonomy.
 
-# CODE FOLLOWS HERE #
-
-#!/bin/bash
-
+# Set error handling
 set -e
 
 # Custom error handler function
@@ -81,6 +78,9 @@ if [ "$skip_blast" = false ]; then
     if [ -z "$blast_file" ]; then
         echo "Usage: $0 -d <directory_path> -o <desired name of output dir> -b <blast parameter file> -e <email@email.com> [-t <filtertax_file> -u -s -j]"
         exit 1
+    elif [ ! -f "$blast_file" ]; then
+        echo "Error: BLAST file '$blast_file' does not exist."
+        exit 1
     fi
 fi
 
@@ -99,7 +99,7 @@ echo "Checking for input files"
 echo " - -- --- ---- ---- --- -- -"
 
 if [ ! -e "${output_dir}/asvs/blast/asvs_counts.fa" ]; then
-    echo "${output_dir}/asvs/blast/asvs_counts.fa not found!"
+    echo "${output_dir}/asvs/blast/asvs_counts.fa not found! Part 3 was not completed."
     exit 1
 fi
 
@@ -144,7 +144,7 @@ if [ "$skip_blast" = false ]; then
     echo " - -- --- ---- ---- --- -- -"
     
     # Run BLAST script in the background
-    blast_iterator_v2.sh "${output_dir}" "${blast_file}" ${run_type} &
+    blast_iterator.sh "${output_dir}" "${blast_file}" ${run_type} &
     
     # Get the process ID of the last background command
     blast_pid=$!
@@ -158,7 +158,6 @@ if [ "$skip_blast" = false ]; then
     if [ ! -s "${output_dir}/asvs/blast/final.blastout" ]; then
     echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
     exit 1
-fi
 else
     echo "Skipping BLAST as per user instructions."
 fi
@@ -366,7 +365,6 @@ for F in "${to_process2[@]}"; do
         echo "Error: File $F not found."
         exit 1
     fi
-
     FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
