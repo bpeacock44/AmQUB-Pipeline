@@ -184,7 +184,7 @@ add_sequences_to_asv_table <- function(tblfp=NULL, fastafp=NULL, outfp=NULL) {
 process_data_and_write_summary <- function(norm, raw, tax, tax_c = NULL, mixed) {
     # Load required libraries
     library(dplyr)
-    
+
     # Read the main data file
     df <- read.table(norm, sep = "\t", comment.char = "", header = TRUE)
     colnames(df)[1] <- "ASV_ID"
@@ -195,8 +195,10 @@ process_data_and_write_summary <- function(norm, raw, tax, tax_c = NULL, mixed) 
     colnames(tax_df) <- c("ASV_ID", "taxonomy", "bitscore", "per_ID", "per_qcov")
     df <- merge(df, tax_df[c(1:2, 4:5)], by = "ASV_ID", all.x = TRUE)
 
+
     # Check if tax_c is provided and process it if available
     if (!is.null(tax_c)) {
+
         # Read classifier taxonomy file if given
         tax_df_C <- read.table(tax_c, sep = "\t", comment.char = "", header = TRUE)
         colnames(tax_df_C) <- c("ASV_ID", "c_taxonomy", "confidence")
@@ -205,6 +207,7 @@ process_data_and_write_summary <- function(norm, raw, tax, tax_c = NULL, mixed) 
         # Include c_taxonomy and confidence in excluded columns
         excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "c_taxonomy", "confidence", "sequence")
     } else {
+
         # Exclude c_taxonomy and confidence if tax_c is not provided
         excluded_columns <- c("ASV_ID", "taxonomy", "per_ID", "per_qcov", "sequence")
     }
@@ -225,7 +228,6 @@ process_data_and_write_summary <- function(norm, raw, tax, tax_c = NULL, mixed) 
     } else {
         df <- df[, c(1, (length(df) - 5):length(df), 2:(length(df) - 6))]
     }
-    
     # Add row with total raw counts
     raw <- read.table(raw, sep = "\t", comment.char = "", header = TRUE)
     raw[,1] <- NULL

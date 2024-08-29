@@ -172,11 +172,39 @@ echo " - -- --- ---- ---- --- -- -"
 #for the next steps.
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-# filter out any lines in the blast file that match the strings in the final.blastout file
-grep -v -F -f "/helper_functions/likely_env_accessions.txt" "${output_dir}/asvs/blast/final.blastout" > "${output_dir}/asvs/blast/filtered.blastout"
+# generate a list of likely environmental taxonomic IDs to exclude from the blast file.
+retrieve_taxonomy() {
+    local query="$1"
+    local output_file="$2"
+
+    local max_attempts=3
+    local attempt=1
+    local success=false
+
+    while [ $attempt -le $max_attempts ]; do
+        echo "Attempt $attempt: Retrieving taxonomy for $output_file"
+        esearch -db taxonomy -query "$query" | efetch -format uid > "$output_file"
+        if [ $? -eq 0 ]; then
+            success=true
+            break
+        else
+            echo "Attempt $attempt failed. Retrying in 5 seconds..."
+            sleep 5
+            ((attempt++))
+        fi
+    done
+
+    if ! $success; then
+        echo "Failed to retrieve taxonomy for $output_file after $max_attempts attempts. This may be because you're requesting too many in quick succession. Run part 4 again with the s flag to skip the BLAST."
+        exit 1
+    fi
+}
+
+FILE="${output_dir}/likely_env_taxids_removed.txt"
+retrieve_taxonomy "\"environmental samples\"[subtree] OR \"Environmental Samples\"[subtree] OR \"unclassified\"[subtree] OR \"Unclassified\"[subtree] OR \"uncultured\"[subtree] OR \"Uncultured\"[subtree]" "$FILE"
 
 # filter out likely environmental taxonomic IDs
-likely_env_remove.py "/helper_functions/likely_env_taxids.txt" "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
+likely_env_remove.py "${output_dir}/likely_env_taxids_removed.txt" "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
 blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
@@ -212,8 +240,6 @@ echo " - -- --- ---- ---- --- -- -"
 echo "Adding Taxa and Sequences to ASV Tables"
 echo " - -- --- ---- ---- --- -- -"
 
-## WHERE DID TAXA GO IN THE FILES AT THE END OF ALL THIS???
-
 #add taxa to ASV table
 OTBL=asv_table_01
 biomAddObservations "${output_dir}/asvs/${OTBL}.biom" "${output_dir}/asvs/asv_table_02_add_taxa.biom" "${output_dir}/asvs/blast/tax_assignments.txt"
@@ -221,11 +247,11 @@ biomAddObservations "${output_dir}/asvs/${OTBL}.biom" "${output_dir}/asvs/asv_ta
 # create three additional taxonomic levels of ASV tables
 OTBL="asv_table_02_add_taxa"
 
+# first, convert tables to qza format
 biom convert \
   -i "${output_dir}/asvs/${OTBL}.biom" \
   --to-json \
   -o "${output_dir}/asvs/${OTBL}.v100.biom"
-
 mv "${output_dir}/asvs/${OTBL}.v100.biom" "${output_dir}/asvs/${OTBL}.biom"
 
 qiime tools import \
@@ -236,14 +262,15 @@ qiime tools import \
 
 tail -n +2 "${output_dir}/asvs/blast/tax_assignments.txt" | cut -f1,2 | sed '1s/^/#ASVID\tTaxon\n/' > temp.txt 
 
+# convert taxonomy assignment file to qza format
 qiime tools import \
   --type 'FeatureData[Taxonomy]' \
   --input-format HeaderlessTSVTaxonomyFormat \
   --input-path temp.txt \
   --output-path "${output_dir}/asvs/blast/taxonomy.qza"
-
 rm -rf temp.txt
 
+# generate levels
 to_process=(
     "${output_dir}/asvs/asv_table_02_add_taxa_L2"
     "${output_dir}/asvs/asv_table_02_add_taxa_L6"
@@ -264,17 +291,25 @@ for F in ${to_process[@]}; do
     qiime feature-table relative-frequency \
       --i-table "${F}.qza" \
       --o-relative-frequency-table "${F}.norm.qza"
-    # convert qza files to biom
+    # convert raw qza files to biom
     qiime tools export \
       --input-path "${F}.qza" \
       --output-path "${output_dir}/asvs/tmp_dir"
     mv "${output_dir}/asvs/tmp_dir/feature-table.biom" "${F}.biom"
+    # repeat with norm
     qiime tools export \
       --input-path "${F}.norm.qza" \
       --output-path "${output_dir}/asvs/tmp_dir"
     mv "${output_dir}/asvs/tmp_dir/feature-table.biom" "${F}.norm.biom"
     rm -rf "${output_dir}/asvs/tmp_dir"
 done
+
+# re-add observations if necessary
+biomAddObservations "${output_dir}/asvs/asv_table_02_add_taxa.biom" "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/blast/tax_assignments.txt"
+mv "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/asv_table_02_add_taxa.biom"
+
+biomAddObservations "${output_dir}/asvs/asv_table_02_add_taxa.norm.biom" "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/blast/tax_assignments.txt"
+mv "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/asv_table_02_add_taxa.norm.biom"
 
 # split into 3 domains if indicated and normalize resulting tables
 if [[ "$split_asv_table" == true ]]; then
@@ -306,11 +341,11 @@ if [[ "$split_asv_table" == true ]]; then
     done
 fi
 
-biomAddObservations "${output_dir}/asvs/asv_table_02_add_taxa.biom" "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/blast/tax_assignments.txt"
-mv "${output_dir}/asvs/temp.tmp" "${output_dir}/asvs/asv_table_02_add_taxa.biom"
-
 for F in "${output_dir}/asvs/"*.biom; do
-    biom2txt $F "${F%.biom}.txt"
+    txt_file="${F%.biom}.txt"
+    if [ ! -f "$txt_file" ]; then
+        biom2txt "$F" "$txt_file"
+    fi
 done
 
 # add seqs to L8 
