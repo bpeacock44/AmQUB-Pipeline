@@ -156,8 +156,9 @@ if [ "$skip_blast" = false ]; then
     
     # Check for final.blastout file
     if [ ! -s "${output_dir}/asvs/blast/final.blastout" ]; then
-    echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
-    exit 1
+        echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
+        exit 1
+    fi
 else
     echo "Skipping BLAST as per user instructions."
 fi
