@@ -172,42 +172,11 @@ echo " - -- --- ---- ---- --- -- -"
 #for the next steps.
 source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-# generate a list of likely environmental taxonomic IDs to exclude from the blast file.
-retrieve_taxonomy() {
-    local query="$1"
-    local output_file="$2"
-
-    local max_attempts=3
-    local attempt=1
-    local success=false
-
-    while [ $attempt -le $max_attempts ]; do
-        echo "Attempt $attempt: Retrieving taxonomy for $output_file"
-        esearch -db taxonomy -query "$query" | efetch -format uid > "$output_file"
-        if [ $? -eq 0 ]; then
-            success=true
-            break
-        else
-            echo "Attempt $attempt failed. Retrying in 5 seconds..."
-            sleep 5
-            ((attempt++))
-        fi
-    done
-
-    if ! $success; then
-        echo "Failed to retrieve taxonomy for $output_file after $max_attempts attempts. This may be because you're requesting too many in quick succession. Run part 4 again with the s flag to skip the BLAST."
-        exit 1
-    fi
-}
-
-FILE="${output_dir}/likely_env_taxids_removed.txt"
-retrieve_taxonomy "\"environmental samples\"[subtree] OR \"Environmental Samples\"[subtree] OR \"unclassified\"[subtree] OR \"Unclassified\"[subtree] OR \"uncultured\"[subtree] OR \"Uncultured\"[subtree]" "$FILE"
-
-# filter out likely environmental taxonomic IDs
-likely_env_remove.py "${output_dir}/likely_env_taxids_removed.txt" "${output_dir}/asvs/blast/filtered.blastout" "${output_dir}/asvs/blast/filtered.final.blastout"
+# generate a list of likely environmental taxonomic IDs to exclude from the blast file and filter 
+likely_env_remove.py ${EMAIL} "${output_dir}/asvs/blast/final.blastout" "${output_dir}/asvs/blast/filtered.blastout"
 
 # this step parses the blastout into a summary file, keeping only the top bitscore hits. 
-blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.final.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
+blast_top_hit_parser.py -i "${output_dir}/asvs/blast/filtered.blastout" -o "${output_dir}/asvs/blast/top_hit_summary.txt"
 
 rm -f *.xml
 
