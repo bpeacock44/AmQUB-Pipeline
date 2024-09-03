@@ -101,7 +101,7 @@ From: ubuntu:22.04
 
 %labels
     author mcuay001@ucr.edu
-    version 1.2.2
+    version 2.1.2
 
 %help
     Singularity container for the Borneman lab.
