@@ -10,8 +10,14 @@
 
 set -e
 
-# Set strict mode
-set -euo pipefail
+# error handling function
+error_handler() {
+    local error_message=$1
+    echo "Error on line $error_message" | tee /dev/tty
+}
+
+# Trap errors and call the error handler
+trap 'error_handler "$BASH_COMMAND"' ERR
 
 # Define initial values
 reblast_iteration="rb0"
@@ -22,7 +28,7 @@ BLAST_FILE=$2
 RUN_TYPE=$3
 
 timestamp="$(date +"%Y%m%d_%H:%M:%S")"
-output_file="${DIR}/blast.${timestamp}.log"
+output_file="$(dirname "$DIR")/blast.${timestamp}.log"
 exec > "$output_file" 2>&1
 
 first_run=true  # Add a flag for the first run
@@ -170,4 +176,7 @@ if [ -e "${DIR}/asvs/blast/30000.rb1.blastout" ]; then
 fi
 
 echo "# BLAST processed" >> ${DIR}/asvs/blast/final.blastout 
+
+rm -f ${DIR}/asvs/blast/5000.rb0.blastout* ${DIR}/asvs/blast/30000.rb0.blastout* ${DIR}/asvs/blast/rb1.fasta  
+
 

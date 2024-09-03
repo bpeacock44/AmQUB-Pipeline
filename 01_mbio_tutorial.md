@@ -48,8 +48,6 @@ B003.110	GCGATTAGGTCG	IGNORE	A3	JB110	3	Psyllid	13-18	2/28/19
 PCR_CONTROL	ACATGGCCTAAT	CONTROL	A4	JB110	NA	NA	NA
 ```
 
-IMPORTANT NOTE: At this stage, the map file should contain the barcodes for ALL SAMPLES present in the fastq file or the results may contain undetected errors.
-
 If you are confused about the mapping file, there are some more notes [here](#more-mapping-file-details).
 
 ## Part 2
@@ -232,20 +230,29 @@ After you run mbio_part4_blast_only.sh, you will need to run mbio_part4.sh as us
 ## Example of Overall Pipeline:
 
 ```sh
-### WDIR contains folders with your data and your blast script.
-WDIR=/path/to/WDIR
-cd ${WDIR}
-
 # Start an interactive session with enough power to run BLAST if you are in a cluster environment.
 srun -c 128 --mem 300gb --pty bash -l
 module load singularity
 
-# You are binding two directories to your container here - the one containing usearch and the one containing your ncbi nt database.
-# This command will start the singularity container.
-singularity shell --bind /path/to/usearch:/bind/ --bind /path/to/ncbi_database:/database/ /path/to/container.sif --cleanenv --no-home 
+# Set these paths. You are binding these directories to your container.
+programs="/path/to/programs" # this is where the .sif and usearch are stored 
+blast_db="/path/to/blast/database" 
+WDIR="/path/to/your/data"
 
-# Define your WDIR path. It should be the directory you start in.
-WDIR=$(pwd)
+# Start the container
+singularity shell --containall \
+    --bind ${programs}:/programs/ \
+    --bind ${blast_db}:/database/ \
+    --bind ${WDIR}:/home/ \
+    ${programs}/2.1.1.sif
+
+#### NOW YOU ARE IN THE CONTAINER	
+# Add the programs file to your path so it can find usearch.
+export PATH="/programs/:$PATH"
+
+# Set your working directory and go there.
+WDIR=/home
+cd ${WDIR}
 
 # part 1
 mbio_part1.sh -d ${WDIR} -j "ID1"
@@ -256,6 +263,8 @@ mbio_part2.sh -d ${WDIR} -j "ID2"
 
 # part 3
 mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+
+# Note - your blast.sh file should point to /database/nt 
 
 # part 4
 mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -b ${WDIR}/blast.sh
@@ -327,7 +336,7 @@ mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
 ```
 
 ## More Mapping File Details
-When you demultiplex (part 1), mapping files must only contain the samples (and barcodes) from that specific fastq file. (And you want ALL the samples to be there as well so it demultiplexes properly!) So each data file you get should have it's own mapping file.
+When you demultiplex (part 1), mapping files must only contain the samples (and barcodes) from that specific fastq file. So at that stage, each data file you process should have it's own mapping file.
 
 The only time you alter a mapping file during the pipeline is if you want to make an ASV table from only a subset of the samples within a fastq file, which you can indicate at part 2 using the -o option. (For example, if you were sequencing the microbiomes of insects and your advisor asked if he could add a couple of mouse gut samples into the library as well, you probably don't want to include them - especially when you are picking ASVs! So in step 2 you would create a new mapping file without those mouse gut sample rows.)
 

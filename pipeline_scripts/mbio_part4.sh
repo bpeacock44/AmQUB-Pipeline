@@ -136,6 +136,7 @@ fi
 echo " - -- --- ---- ---- --- -- -"
 
 mkdir -vp ${output_dir}/asvs/blast
+TMPDIR=${output_dir}
 
 if [ "$skip_blast" = false ]; then
     echo
@@ -365,19 +366,16 @@ if [ "$final_sum_file_gen" = true ]; then
 
     source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-    rm -rf "${output_dir}/asvs/blast/mixed_family_checker_out.txt"
+    rm -rf "${output_dir}/asvs/blast/mixed_family_output.txt"
     # Run the mixed_family_checker.py script with error checking
-    mixed_family_checker.py "${output_dir}/asvs/blast/final.blastout" --email "${EMAIL}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
-
-    # Move the output file with error checking
-    mv mixed_family_checker_out.txt "${output_dir}/asvs/blast/" || { echo "Error: Unable to move mixed_family_checker_out.txt"; exit 1; }
+    mixed_family_checker.py "${output_dir}/asvs/blast/final.blastout" --email "${EMAIL}" --output "${output_dir}/asvs/blast/mixed_family_output.txt" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
 
     # Define file paths
     norm_file="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
     raw_file="${output_dir}/asvs/asv_table_03_add_seqs.txt"
     tax_file="${output_dir}/asvs/blast/tax_assignments.txt"
     tax_c_file="${output_dir}/asvs/classifier_output/taxonomy.tsv"
-    mixed_file="${output_dir}/asvs/blast/mixed_family_checker_out.txt"
+    mixed_file="${output_dir}/asvs/blast/mixed_family_output.txt"
 
     rm -rf ASV_summary_table.tsv "${output_dir}/asvs/ASV_summary_table.tsv"
     if [[ "${CFIER}" ]]; then

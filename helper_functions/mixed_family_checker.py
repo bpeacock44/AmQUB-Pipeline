@@ -25,7 +25,6 @@ def parse_blast_output(file_path):
         yield current_query, queries[current_query]
 
 def fetch_taxonomy(tax_ids, email, batch_size=200):
-    # Filter out invalid or empty tax_ids
     tax_ids = [tid for tid in tax_ids if tid]
     Entrez.email = email
     tax_cache = {}
@@ -42,11 +41,11 @@ def fetch_taxonomy(tax_ids, email, batch_size=200):
                     lineage = record.get('LineageEx', [])
                     family = next((entry['ScientificName'] for entry in lineage if entry['Rank'] == 'family'), None)
                     tax_cache[tax_id] = family
-                break  # Exit the loop if successful
+                break
             except HTTPError as err:
                 if 500 <= err.code <= 599:
                     attempts -= 1
-                    time.sleep(2 ** (3 - attempts))  # Exponential backoff
+                    time.sleep(2 ** (3 - attempts))
                 else:
                     break
             except Exception as e:
@@ -69,11 +68,12 @@ def main():
     parser = argparse.ArgumentParser(description='Process BLAST output file.')
     parser.add_argument('blastout_file', type=str, help='Path to BLAST output file')
     parser.add_argument('--email', type=str, help='Your email address for Entrez')
+    parser.add_argument('--output', type=str, default="mixed_family_checker_out.txt", help='Path to output file (default: mixed_family_checker_out.txt)')
     args = parser.parse_args()
-    output_file = "mixed_family_checker_out.txt"
 
     blast_output_file = args.blastout_file
     email = args.email
+    output_file = args.output
 
     # Step 1: Parse BLAST output and collect Tax IDs
     identifiers = {}
@@ -89,4 +89,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
