@@ -322,12 +322,12 @@ done
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
+add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
 
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.norm.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
 
-Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
+add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
 
 to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
 
@@ -339,7 +339,7 @@ for F in "${to_process2[@]}"; do
     FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
-    Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); add_sequences_to_asv_table('$otblfp', '${output_dir}/asvs/blast/asvs_counts.fa', '$outfp')"
+    add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
 done
 echo
 
@@ -395,7 +395,6 @@ else
 fi
 
 echo
-echo "All ASV tables have been generated." | tee /dev/tty
 echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
 echo "Final Recommendations"  | tee /dev/tty
 echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty

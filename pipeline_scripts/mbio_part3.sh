@@ -227,7 +227,7 @@ txt2biom_notax "${output_dir}/asvs/${OTBL}.txt" "${output_dir}/asvs/${OTBL}.biom
 otblfp="${output_dir}/asvs/asv_table_01.txt"
 fastafp="${output_dir}/asvs/asvs.fa"
 outfp="${output_dir}/asvs/asvs_counts.fa"
-Rscript -e "source('/helper_functions/pipeline_helper_functions.R'); add_counts_to_fasta_sequences('$otblfp', '$fastafp', '$outfp')"
+add_counts_to_fasta.py ${otblfp} ${fastafp} ${outfp}
 
 mkdir -vp "${output_dir}/asvs/blast"
 mv -v "${output_dir}/asvs/asvs_counts.fa" "${output_dir}/asvs/blast"
