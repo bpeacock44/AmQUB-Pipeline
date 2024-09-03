@@ -65,7 +65,7 @@ From: ubuntu:22.04
 
     # Create Python virtual environment
     python3 -m venv /python-venvs/python-pip-modules
-    /python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U wheel docopt biopython xmltodict
+    /python-venvs/python-pip-modules/bin/python -m pip install --no-cache-dir -U wheel docopt biopython xmltodict pandas
 
     # Install Miniconda
     wget https://repo.anaconda.com/miniconda/Miniconda3-py312_24.3.0-0-Linux-x86_64.sh -O /miniconda.sh

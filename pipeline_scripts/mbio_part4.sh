@@ -376,21 +376,20 @@ if [ "$final_sum_file_gen" = true ]; then
     tax_file="${output_dir}/asvs/blast/tax_assignments.txt"
     tax_c_file="${output_dir}/asvs/classifier_output/taxonomy.tsv"
     mixed_file="${output_dir}/asvs/blast/mixed_family_output.txt"
+    sum_output="${output_dir}/asvs/ASV_summary_table.tsv"
 
-    rm -rf ASV_summary_table.tsv "${output_dir}/asvs/ASV_summary_table.tsv"
+    rm -rf "${output_dir}/asvs/ASV_summary_table.tsv"
     if [[ "${CFIER}" ]]; then
-        # Run the R script with all arguments
-        Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', '${tax_c_file}', '${mixed_file}')"
+        # Run the R script with all arguments (### REMOVE output_dir here!)
+        summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} ${tax_c_file} ${mixed_file} ${sum_output}
     else 
-        Rscript -e "source('${HDIR}/pipeline_helper_functions.R'); process_data_and_write_summary('${norm_file}', '${raw_file}', '${tax_file}', NULL, '${mixed_file}')"
+        summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} NULL ${mixed_file} ${sum_output}
     fi
-    if [ ! -f "ASV_summary_table.tsv" ]; then
+    if [ ! -f ${sum_output} ]; then
         echo "'ASV_summary_table.tsv' was not successfully created."
         #exit 1
     fi
 
-    # Move the generated ASV summary file with error checking
-    mv ASV_summary_table.tsv "${output_dir}/asvs" 
 else
     echo "No Final Summary File generated, as requested."
 fi
