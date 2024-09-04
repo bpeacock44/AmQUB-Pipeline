@@ -36,7 +36,7 @@ def process_data_and_write_summary(norm, raw, tax, tax_c, mixed, output_file):
     if tax_c and tax_c.lower() != 'null':
         df = df.iloc[:, [0] + list(range(len(df.columns) - 8, len(df.columns))) + list(range(1, len(df.columns) - 8))]
     else:
-        df = df.iloc[:, [0] + list(range(len(df.columns) - 6, len(df.columns))) + list(range(1, len(df.columns) - 8))]
+        df = df.iloc[:, [0] + list(range(len(df.columns) - 6, len(df.columns))) + list(range(1, len(df.columns) - 6))]
 
     # Add row with total raw counts
     rawdf = pd.read_csv(raw, sep='\t', comment=None, header=0)
