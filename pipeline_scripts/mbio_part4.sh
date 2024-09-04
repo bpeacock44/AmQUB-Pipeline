@@ -183,6 +183,10 @@ rm -f *.xml
 
 assign_LCA_via_blast.py -i "${output_dir}/asvs/blast/top_hit_summary.txt" -m ${EMAIL} -o "${output_dir}/asvs/blast/tax_assignments.txt"
 
+awk -F'\t' 'BEGIN {OFS="\t"} {sub(/_[0-9]+$/, "", $1); print}' "${output_dir}/asvs/blast/tax_assignments.txt" > "${output_dir}/asvs/blast/temp.txt"
+
+mv "${output_dir}/asvs/blast/temp.txt" "${output_dir}/asvs/blast/tax_assignments.txt"
+
 if [ ! -f "${output_dir}/asvs/blast/tax_assignments.txt" ]; then
     echo "Error: Output file not found."
     exit 1
@@ -230,7 +234,7 @@ qiime tools import \
   --input-format BIOMV100Format \
   --output-path "${output_dir}/asvs/${OTBL}.qza"
 
-tail -n +2 "${output_dir}/asvs/blast/tax_assignments.txt" | cut -f1,2 | sed '1s/^/#ASVID\tTaxon\n/' > temp.txt 
+tail -n +2 "${output_dir}/asvs/blast/tax_assignments.txt" | cut -d ' ' -f1,2 > temp.txt
 
 # convert taxonomy assignment file to qza format
 qiime tools import \
@@ -238,7 +242,7 @@ qiime tools import \
   --input-format HeaderlessTSVTaxonomyFormat \
   --input-path temp.txt \
   --output-path "${output_dir}/asvs/blast/taxonomy.qza"
-rm -rf temp.txt
+#rm -rf temp.txt
 
 # generate levels
 to_process=(
@@ -322,12 +326,12 @@ done
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.txt"
 
-add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
+add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/asvs.fa ${outfp}
 
 otblfp="${output_dir}/asvs/asv_table_02_add_taxa.norm.txt"
 outfp="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
 
-add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
+add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/asvs.fa ${outfp}
 
 to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
 
@@ -339,7 +343,7 @@ for F in "${to_process2[@]}"; do
     FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
-    add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/blast/asvs_counts.fa ${outfp}
+    add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/asvs.fa ${outfp}
 done
 echo
 
