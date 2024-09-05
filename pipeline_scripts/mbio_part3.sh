@@ -134,10 +134,6 @@ output_dir="${DIR}/${OUTDIR}"
 mkdir -vp "${DIR}/${OUTDIR}"
 echo "This folder contains the results of ${JBS[@]} trimmed at ${LEN}." > "${output_dir}/summary.txt"
 
-# make tax directory
-mkdir -vp "${DIR}/${OUTDIR}/tax_dir"
-TAXDIR="${DIR}/${OUTDIR}/tax_dir"
-
 #truncate reads at LEN
 for JB in ${JBS[@]}; do
   usearch -fastx_truncate "${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq" -quiet -trunclen ${LEN} -fastqout "${DIR}/${JB}_output/${JB}.M${mmatchnum}_${LEN}bp.fq"; # &

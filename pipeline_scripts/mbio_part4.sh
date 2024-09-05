@@ -136,7 +136,6 @@ fi
 echo " - -- --- ---- ---- --- -- -"
 
 mkdir -vp ${output_dir}/asvs/blast
-TMPDIR=${output_dir}
 
 if [ "$skip_blast" = false ]; then
     echo
