@@ -332,16 +332,17 @@ outfp="${output_dir}/asvs/asv_table_03_add_seqs.norm.txt"
 
 add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/asvs.fa ${outfp}
 
-to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "*taxa.k*txt"))
+to_process2=($(find "${output_dir}/asvs" -maxdepth 1 -type f -name "asv_table_02*taxa.k*txt"))
 
 for F in "${to_process2[@]}"; do
     if [ ! -f "$F" ]; then
         echo "Error: File $F not found."
-        exit 1
+        #exit 1
     fi
-    FNAME=$(basename "$F" | sed 's|^./asv_table_02_add_taxa||')
+    FNAME=$(basename "$F" | sed 's|^asv_table_02_add_taxa||')
     otblfp="${F}"
     outfp="${output_dir}/asvs/asv_table_03_add_seqs${FNAME}"
+    echo $outfp
     add_sequences_to_asv.py ${otblfp} ${output_dir}/asvs/asvs.fa ${outfp}
 done
 echo
