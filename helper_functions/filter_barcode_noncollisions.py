@@ -87,8 +87,7 @@ class Barcode:
         return self.all_fastq_counts
 
     def get_mmbcs(self):
-        #return sorted so diff checks in different runs show real diffs (not diffs due to order)
-        return sorted(self.mmbcs)
+        return self.mmbcs
 #
 
 

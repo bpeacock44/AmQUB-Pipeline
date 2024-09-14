@@ -114,7 +114,7 @@ Filtering barcode noncollisions
         esac
         
         # Filter barcode non-collisions
-        filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt" -m $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
+        filter_barcode_noncollisions.py -k -i "${DIR}/${JB}/${JB}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${DIR}/${JB}/${JB}_M${mmatchnum}.fbncs" 
         
         echo 
 echo " - -- --- ---- ---- --- -- -
