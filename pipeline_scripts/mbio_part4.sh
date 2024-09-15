@@ -241,7 +241,7 @@ qiime tools import \
   --input-format HeaderlessTSVTaxonomyFormat \
   --input-path temp.txt \
   --output-path "${output_dir}/asvs/blast/taxonomy.qza"
-#rm -rf temp.txt
+rm -rf temp.txt
 
 # generate levels
 to_process=(
