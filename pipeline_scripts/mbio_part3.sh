@@ -94,11 +94,6 @@ for JB in "${JBS[@]}"; do
         echo "File ${DIR}/${JB}_output/${JB}.M${mmatchnum}.demux.fq not found!"
         exit 1
     fi
-
-    if [ ! -e "${DIR}/${JB}_output/${JB}_BC.M${mmatchnum}.fq" ]; then
-        echo "File ${DIR}/${JB}_output/${JB}_BC.M${mmatchnum}.fq not found!"
-        exit 1
-    fi
 done
 
 # initiate log
@@ -206,7 +201,7 @@ echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/phix_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
+usearch --otutab "${output_dir}/phix_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt" -mapout
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 # Run python script to sort qiime table

@@ -61,7 +61,7 @@ This script expects to be given at least two arguments:
 Optional arguments:
 - -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
 - -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
-- -o: a subset ID - if you want to pick ASVs from and further analyze only a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subset_name.txt (e.g. JB141_map.florida.txt) and be placed in the same ID folder as the other files are in.
+- -o: a subset ID - if you want to pick ASVs from and further analyze only a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subset_name.txt (e.g. JB141_map.sub1.txt) and be placed in the same ID folder as the other files are in.
 
 Examples:
 ```sh
@@ -77,10 +77,10 @@ This script can only be run once the original fastq file (e.g. JB141_raw.fq) has
 Each folder needs to contain the fastq files resulting from part 1, which are named by ID followed by .M#.fq and \_BC.M#.fq, as well as a mapping file (either the original or the subset.)
 
 So, as an example, your working directory might now include:
-- Folder JB141 (containing JB141.M0.fq, JB141_BC.M0.fq, and JB141_map.Nickels01.txt)
+- Folder JB141 (containing JB141.M0.fq, JB141_BC.M0.fq, and JB141_map.sub1.txt)
 - JB141_map.txt should also be present in folder if subset map isn't used.
 
-When this code is run, a new directory will be created for your output named either with the name of your subset (e.g. JB141_Nickels01_output), or with your regular ID if no unique map was provided (e.g. JB141_output) 
+When this code is run, a new directory will be created for your output named either with the name of your subset (e.g. JB141_sub1_output), or with your regular ID if no unique map was provided (e.g. JB141_output) 
 
 ## Part 3
 
