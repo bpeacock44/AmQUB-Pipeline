@@ -201,7 +201,7 @@ echo "Creating Initial ASV Table"
 echo " - -- --- ---- ---- --- -- -"
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
-usearch --otutab "${output_dir}/phix_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt" -mapout
+usearch --otutab "${output_dir}/phix_clean.combined.fq" -quiet -zotus "${output_dir}/asvs/asvs.fa" -otutabout "${output_dir}/asvs/asv_table_00.txt"
 sed -i 's/#OTU/#ASV/g' "${output_dir}/asvs/asv_table_00.txt"
 
 # Run python script to sort qiime table
