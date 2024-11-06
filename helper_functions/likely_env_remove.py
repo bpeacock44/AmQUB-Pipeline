@@ -2,6 +2,7 @@
 
 import sys
 import time
+import os
 from Bio import Entrez
 
 def retrieve_taxonomy(query, output_file, email, max_attempts=3, retmax=100000):
@@ -89,7 +90,12 @@ if __name__ == "__main__":
     email = sys.argv[1]
     blast_input_file = sys.argv[2]
     blast_output_file = sys.argv[3]
-    env_accessions_file = "likely_env_taxids_removed.txt"  # Output file for taxonomy retrieval
+
+    # Determine the directory of the BLAST input file
+    blast_input_dir = os.path.dirname(blast_input_file)
+
+    # Path to the output file for taxonomy retrieval in the same directory as the BLAST input file
+    env_accessions_file = os.path.join(blast_input_dir, "likely_env_taxids_removed.txt")
 
     # Define the query
     query = "\"environmental samples\"[subtree] OR \"Environmental Samples\"[subtree] OR " \
