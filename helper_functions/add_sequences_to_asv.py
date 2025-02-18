@@ -50,7 +50,7 @@ def add_sequences_to_asv_table(tbl_fp, fasta_fp, out_fp):
 
     # Check if row names agree
     if not all(tbl.index == fS.index):
-        raise ValueError("Row names of ASV table and FASTA sequences do not match.")
+        raise ValueError("Row names of table and FASTA sequences do not match.")
 
     # Update sequence identifiers to remove any abundances, if necessary
     fS['ID'] = fS.index
@@ -65,10 +65,10 @@ def add_sequences_to_asv_table(tbl_fp, fasta_fp, out_fp):
     tbl.to_csv(out_fp, sep='\t', index=True, header=True, quoting=0)
 
 def main():
-    parser = argparse.ArgumentParser(description="Add sequences from a FASTA file to an ASV table.")
-    parser.add_argument('tbl_fp', type=str, help='Path to the ASV table file')
+    parser = argparse.ArgumentParser(description="Add sequences from a FASTA file to a table.")
+    parser.add_argument('tbl_fp', type=str, help='Path to the table file')
     parser.add_argument('fasta_fp', type=str, help='Path to the FASTA file')
-    parser.add_argument('out_fp', type=str, help='Output file path for the resulting ASV table with sequences')
+    parser.add_argument('out_fp', type=str, help='Output file path for the resulting table with sequences')
     
     args = parser.parse_args()
     

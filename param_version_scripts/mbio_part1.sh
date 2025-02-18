@@ -191,20 +191,21 @@ for i in "${!FQ_ARRAY[@]}"; do
     # Log initialization
     timestamp="$(date +"%Y%m%d_%H:%M:%S")"
     output_file="${OUTDIR}/part1_${timestamp}.log"
-    exec > "$output_file" 2>&1
-echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
+    exec > "$output_file"
+    exec 2> >(tee -a "$output_file" >&2)
+    echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
  . . . . . " | tee /dev/tty
 
     # Run main pipeline commands
-    usearch -search_phix "${FQ}" -quiet -notmatchedfq "${OUTDIR}/${BASE}.phix_clean.fq" -alnout "${OUTDIR}/${BASE}.phix_clean.alnout"
+    usearch -search_phix "${FQ}" -quiet -notmatchedfq "${OUTDIR}/${BASE}.phiX_clean.fq" -alnout "${OUTDIR}/${BASE}.phiX_clean.alnout"
 
     if [ "$mmatchnum" -ne 0 ]; then
         echo "Processing barcode mismatches..."
 
         _BC_=$(grep -cP "^[A-Z]" "${MAPF}")
-        check_barcode_collisions.pl -i "${OUTDIR}/${BASE}.phix_clean.fq" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
+        check_barcode_collisions.pl -i "${OUTDIR}/${BASE}.phiX_clean.fq" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
         filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
-        fastq_convert_mm2pm_barcodes.py -t read -i "${OUTDIR}/${BASE}.phix_clean.fq" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+        fastq_convert_mm2pm_barcodes.py -t read -i "${OUTDIR}/${BASE}.phiX_clean.fq" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
         extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
 
         # Check if files were generated
@@ -212,20 +213,20 @@ echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatch
         [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
 
     else
-        extract_barcodes.go -f "${OUTDIR}/${BASE}.phix_clean.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
-        ln -sf "${BASE}.phix_clean.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+        extract_barcodes.go -f "${OUTDIR}/${BASE}.phiX_clean.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+        ln -sf "${BASE}.phiX_clean.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
     fi
 
     echo "Generating fastq info file..."
     usearch -fastx_info "${OUTDIR}/${BASE}.M${mmatchnum}.fq" -quiet -output "${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt"
 
     echo "Counting reads per barcode..."
-    bc_counter.py "${MAPF}" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" "${OUTDIR}/${BASE}_read_counts_M${mmatchnum}.txt"
+    bc_counter.py "${MAPF}" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt"
     echo "Output files are stored in this directory:
 ${OUTDIR}
 
 The number of reads per sample that resulted from this script for ${BASE} can be found in this file: 
-${OUTDIR}/${BASE}_read_counts_M${mmatchnum}.txt
+${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt
 You should check this file, as it may indicate that you should remove or ignore certain samples downstream.
 
 There is also a file describing the makeup of your reads here:

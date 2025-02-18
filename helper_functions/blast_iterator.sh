@@ -28,8 +28,8 @@ BLAST_FILE=$2
 RUN_TYPE=$3
 TAX_TYPE=$4
 
-timestamp="$(date +"%Y%m%d_%H:%M:%S")"
-output_file="$(dirname "$DIR")/blast.${timestamp}.log"
+timestamp="$(date +"%y%m%d_%H:%M")"
+output_file="${DIR}/blast.${timestamp}.log"
 exec > "$output_file" 2>&1
 
 first_run=true  # Add a flag for the first run
@@ -124,10 +124,10 @@ while criteria_met; do
     # Get the number of reads contributing to the biggest ASV. 
     # Only ASVs that are at least 1% of the largest ASV will be re-blasted if they need it. 
     total=$(awk 'NR==1{print $NF}' ${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa)
-    echo "Determining which ASVs are worth re-blasting."
+    echo "Determining which taxonomic units are worth re-blasting."
 
     not_enough_hits_file="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
-    big_ASVs_file="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.big_ASVs.txt"
+    big_ASVs_file="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.big_TUs.txt"
     reblast_seqs_file="${DIR}/${TAX_TYPE}s/blast/${next_value}.fasta"
     
     # Check if the not_enough_hits_file is empty
@@ -161,7 +161,7 @@ while criteria_met; do
 
     case $reblast_iteration in
         "rb0") maxseqs=30000; reblast_iteration="rb1" ;;
-        "rb1") echo "Completed all reblast iterations. Any ASVs that may require further reBLASTing are stored in ${DIR}/${TAX_TYPE}s/blast/${next_value}.fasta"; exit 0 ;;
+        "rb1") echo "Completed all reblast iterations. Any taxonomic units that may require further reBLASTing are stored in ${DIR}/${TAX_TYPE}s/blast/${next_value}.fasta"; exit 0 ;;
     esac
 
     first_run=false

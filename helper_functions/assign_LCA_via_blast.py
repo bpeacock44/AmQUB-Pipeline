@@ -83,12 +83,12 @@ def get_and_check_opts(args):
  
     # Validate the email format
     if not re.match(r"[^@]+@[^@]+\.[^@]+", opts.m):
-        print("Invalid email format", file=sys.stderr)
+        print("Invalid email format")
         optionsFail = True
     
     # Validate file paths
     if not os.path.isfile(opts.i):
-        print(f"Input file '{opts.i}' does not exist", file=sys.stderr)
+        print(f"Input file '{opts.i}' does not exist")
         optionsFail = True
  
     # Exit if any validation fails
@@ -141,18 +141,18 @@ def parse_xml_file(taxa_xml_file):
     taxa_level_prefix = "k__ p__ c__ o__ f__ g__ s__ u__".split()
     ranks = "superkingdom phylum class order family genus species".split()  # Removed subspecies
     if not os.path.isfile(taxa_xml_file):
-        print(f":  ** File not found: [{taxa_xml_file}] **", file=sys.stderr)
+        print(f":  ** File not found: [{taxa_xml_file}] **")
         return d    
     try:
         with open(taxa_xml_file) as fh:
             rootD = xmltodict.parse(fh.read())
     except Exception as e:
-        print(f":  ** Error reading file [{taxa_xml_file}]: {e} **", file=sys.stderr)
+        print(f":  ** Error reading file [{taxa_xml_file}]: {e} **")
         return d
     if isinstance(rootD, dict) and isinstance(rootD.get('TaxaSet', {}), dict):
         taxon_objectsL = rootD['TaxaSet'].get('Taxon', [])
     else:
-        print(f":  ** Nothing to parse in [{taxa_xml_file}] **", file=sys.stderr)
+        print(f":  ** Nothing to parse in [{taxa_xml_file}] **")
         return d    
     if isinstance(taxon_objectsL, dict):
         taxon_objectsL = [taxon_objectsL]    
@@ -214,7 +214,7 @@ def epost_taxonIDs(opts, new_taxonIDs_list):
     opts['count'] = len(new_taxonIDs_list)
  
     if opts['count'] > 0:
-        print(":  ",str(opts['count'])+" taxIDs will be ePost'ed to NCBI", file=sys.stderr)
+        print(":  ",str(opts['count'])+" taxIDs will be ePost'ed to NCBI")
         #epost taxon ID list
         opts['db'] = "taxonomy";
         Entrez.email = opts['email']
@@ -251,7 +251,7 @@ def download_eposted_taxonIDs_to_XML(opts):
             attempt = 1
             
             while attempt <= opts['max_attempts']:
-                print(f": Efetching taxa. Attempt {attempt}", file=sys.stderr)
+                print(f": Efetching taxa. Attempt {attempt}")
                 try:
                     fetch_handle = Entrez.efetch(
                         db="taxonomy",
@@ -274,19 +274,19 @@ def download_eposted_taxonIDs_to_XML(opts):
                     out_handle.write(data.decode('utf-8'))
                     opts['xml_files'].append(out_file)
                     idx += 1
-                    print(f": Taxa fetched successfully for {num2fetch} taxa.", file=sys.stderr)
+                    print(f": Taxa fetched successfully for {num2fetch} taxa.")
                     break
                 
                 except (HTTPError, http.client.IncompleteRead) as err:
-                    print(f": Received error from server {err}", file=sys.stderr)
+                    print(f": Received error from server {err}")
                     attempt += 1
                     time.sleep(15 * attempt)
                 
                 except Exception as e:
-                    print(f": Error occurred: {e}", file=sys.stderr)
+                    print(f": Error occurred: {e}")
                     raise
  
-    print(f": XML files downloaded: {', '.join(opts['xml_files'])}", file=sys.stderr)
+    print(f": XML files downloaded: {', '.join(opts['xml_files'])}")
  
 def get_taxonomies_from_XML_files(opts):
     """
@@ -298,13 +298,13 @@ def get_taxonomies_from_XML_files(opts):
     all_new_taxonomies_dict = {}
     
     for out_file in opts['xml_files']:
-        print(f": Parsing XML file [{out_file}]", file=sys.stderr)
+        print(f": Parsing XML file [{out_file}]")
         try:
             # Parse the XML file and update the taxonomy dictionary
             new_taxIDs_dict = parse_xml_file(out_file)
             all_new_taxonomies_dict.update(new_taxIDs_dict)
         except Exception as e:
-            print(f"** Error parsing file [{out_file}]: {e} **", file=sys.stderr)
+            print(f"** Error parsing file [{out_file}]: {e} **")
     
     return all_new_taxonomies_dict
  
@@ -416,7 +416,7 @@ def assign_taxonomy(opts, asv_list, taxonomy_dict):
                 if txid in taxonomy_dict:
                     taxonomies_list.append(taxonomy_dict[txid].split(";"))
                 else:
-                    print(f"txid[{txid}] NOT in taxonomy_dict!", file=sys.stderr)
+                    print(f"txid[{txid}] NOT in taxonomy_dict!")
             lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, asv)
         # If no common taxonomy found, use 'Unassigned'
         if not lowest_common_taxa:
@@ -441,7 +441,7 @@ def main(args):
     assigned_taxonomy = assign_taxonomy(opts, asv_list, taxonomy_dict)
     
     # Define the header for the output file
-    header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov"
+    header = "#ID\ttaxonomy\tbitscore\tper_id\tper_qcov"
     
     # Write the results to the output file
     with open(opts["o"], 'w') as outfile:

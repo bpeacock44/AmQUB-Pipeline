@@ -18,7 +18,7 @@ singletKaccns = {}
 
 def usage():
     x = r"""
-Create lists of non-contaminating (target) and contaminating (non-target) ASVs by parsing local BLAST results of your sequences against the nt database
+Create lists of non-contaminating (target) and contaminating (non-target) TUs by parsing local BLAST results of your sequences against the nt database
 
 Usage: perl $0 [OPTIONS]
 
@@ -37,7 +37,7 @@ Usage: perl $0 [OPTIONS]
    -x <regex>          # Report results by groups found in ASV names with Regular Expression <regex>
                           Special use cases only. Eg.,  Velvet or PFOR2 contigs that have modified fasta names containing SampleIDs
                           The regex should find the SampleID and contig lengths. Eg: 'denovoA10contig.14_0_149'=~/denovo(\w\d+)\S+_(\d+)/
-   -N                  # Reject all ASVs with [N]o BLAST hits. See related option -d. (Default: Keep)
+   -N                  # Reject all TUs with [N]o BLAST hits. See related option -d. (Default: Keep)
    -f                  # Force overwrite of output files (including log)
    -v                  # Print version and exit
    -h                  # This help
@@ -62,15 +62,15 @@ IMPORTANT: Before using this script you must download/create information from NC
     -e Bacteria__k_txid2_AND_Environmental_Samples.txt,Archaea__k_txid2157_AND_Environmental_Samples.txt \\
     -r Mouse__f_txid10066_NOT_Environmental_Samples.txt
     -t ~/path/to/directory
-   The script will output 4 files: [ASVs2keep.txt], [ASVs2reject.txt], [ASVs2withNohits.txt] and [ASVs2filter.log]
+   The script will output 4 files: [TUs2keep.txt], [TUs2reject.txt], [TUs2withNohits.txt] and [TUs2filter.log]
 6) Use QIIME filtering scripts to remove/keep the contaminating/non-contaminating reads from your files. Example command:
-    filter_otus_from_otu_table.py -i original_asv_table.biom -o filtered_asv_table.biom --otu_ids_to_exclude_fp ASVs2reject.txt
+    filter_otus_from_otu_table.py -i original_asv_table.biom -o filtered_asv_table.biom --otu_ids_to_exclude_fp TUs2reject.txt
 
 ** IMPORTANT: Providing a new <merge.dmp> file SHOULD BE CONSIDERED MANDATORY if the taxIDs files are newer than the BLAST db **
    LIKEWISE, ensure that the downloaded taxIDs ARE NOT OLDER than the BLAST db
    NCBI's taxonomy is not curated. To prevent sequences with dubiously assigned taxonomy from confounding your filtering results, add
     their ACCN.ver IDs to a file named [AccnsWithDubiousTaxAssigns.txt] in the same directory as the TaxonID files
-   Lastly, note that ASVs with blast hits to the PhiX taxonID (10847) are automatically rejected
+   Lastly, note that TUs with blast hits to the PhiX taxonID (10847) are automatically rejected
 """
     print(x)
 #
@@ -367,7 +367,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
                     failed = True
                     
     if failed:
-        print("Error: Could not find an 'asv' and/or 'size' in this line:", file=sys.stderr)
+        print("Error: Could not find an 'asv/otu' and/or 'size' in this line:", file=sys.stderr)
         print(blasthit[0], file=sys.stderr)
         print("(From func: parse_blast_hit)", file=sys.stderr)
         sys.exit(0)
@@ -439,7 +439,7 @@ def parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns):
     
     if(0):
         if len(lol) > 1:
-            print("ASV", asv)
+            print("taxonomic_unit", asv)
             print("size", size)
             print('\n'.join(str(' '.join(str(x) for x in v)) for v in lol))
             sys.exit(0)
@@ -472,7 +472,7 @@ def get_Fields(opts):
 def parse_options(argv):
     #create an ArgumentParser object
     parser = argparse.ArgumentParser(
-        description="Create lists of non-contaminating (target) and contaminating (non-target) ASVs by parsing local BLAST results of your sequences against the nt database.")
+        description="Create lists of non-contaminating (target) and contaminating (non-target) TUs by parsing local BLAST results of your sequences against the nt database.")
     
     #add arguments
     requiredArg = parser.add_argument_group('required arguments')
@@ -484,7 +484,7 @@ def parse_options(argv):
     requiredArg.add_argument("-t", "--taxassndir", help="The directory that AccnsWithDubiousTaxAssigns.txt is or will be created in. Usually where USEARCH is located.")
     
     #parser.add_argument("-o", "--output_dir", help="The directory to save output files. Default: current directory")
-    parser.add_argument("-p", "--prefix", help="Prefix to use for [ASVs2keep.txt] and [ASVs2filter.log]. Eg., 'CLas.CACCGG'")
+    parser.add_argument("-p", "--prefix", help="Prefix to use for [TUs2keep.txt] and [TUs2filter.log]. Eg., 'CLas.CACCGG'")
     parser.add_argument("-n", "--num_hits", help="Number of hits to process (to terminate early)")
     parser.add_argument("-f", "--force_overwrite", help="Force overwrite of output files (including log).",
                         action='store_true')
@@ -865,7 +865,7 @@ def tabulate_results_summary(bh, des_summary):
     #tabulate results summary
     init_des = ''.join(bh.init_des)
     final_des = ''.join(bh.final_des)
-    des_summary[init_des][final_des]['ASVs'] += 1
+    des_summary[init_des][final_des]['TUs'] += 1
     des_summary[init_des][final_des]['Reads'] += int(bh.size)
 #
 
@@ -874,7 +874,7 @@ def save_designation_summary(outf4, des_summary):
     with open(outf4, "w") as sumfh:
         d = json.loads(json.dumps(des_summary))
         initial_designators = sorted(d.keys())
-        sumfh.write(('{:^7}|{:^8}|{:^12}|{:^10}|{:^10}'.format("Dsgntr","ASVs","Reads","Rd/ASV","newDsgntr")))
+        sumfh.write(('{:^7}|{:^8}|{:^12}|{:^10}|{:^10}'.format("Dsgntr","TUs","Reads","Rd/ASV","newDsgntr")))
         sumfh.write("\n")
         tot_num_asvsK = 0
         tot_num_asvsR = 0
@@ -885,7 +885,7 @@ def save_designation_summary(outf4, des_summary):
         for init_des in initial_designators:
             finaldes = sorted(d[init_des].keys())
             for final_des in finaldes:
-                num_asvs  = d[init_des][final_des]['ASVs']
+                num_asvs  = d[init_des][final_des]['TUs']
                 num_reads = d[init_des][final_des]['Reads']
                 reads_per_asv = int(round(num_reads / num_asvs))
                 sumfh.write(('{:<7}|{:>7} |{:>11} |{: >9} |{: ^10}'.format(init_des, num_asvs, num_reads, reads_per_asv, final_des)))
@@ -973,10 +973,10 @@ def main(argv):
     parser = ParseBlastout(opts.input_fp)
     
     #prep output filenames
-    outf1 = "ASVs2filter.log"
-    outf2 = "ASVs2keep.txt"
-    outf3 = "ASVs2reject.txt"
-    outf4 = "ASVs2summary.txt"
+    outf1 = "TUs2filter.log"
+    outf2 = "TUs2keep.txt"
+    outf3 = "TUs2reject.txt"
+    outf4 = "TUs2summary.txt"
     outf5 = "bad_accns.txt"
     if opts.prefix:
         if opts.prefix[-1] != ".":
@@ -999,7 +999,7 @@ def main(argv):
             (asv, size, hitlines) = parse_blast_hit(blasthit, indexOf, accnsWithDubiousTaxAssigns)
             
             if asv in asvs:
-                #we've got a concatenated blastout file with re-blasted ASVs
+                #we've got a concatenated blastout file with re-blasted TUs
                 #TODO add/use this info instead of skipping?
                 # unecessary IF we put the deeper/better blasts at the top. if not, we're tossing good info
                 # but for now, we'll skip

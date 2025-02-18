@@ -9,10 +9,10 @@ It adds the total count for each ASV to the FASTA header, sorts the sequences by
 and optionally modifies the headers with a custom prefix and counter.
 
 Usage:
-    python update_fasta_headers.py <asv_table> <fasta_file> <output_file> [--modify-headers] [--typ <prefix>]
+    python update_fasta_headers.py <table> <fasta_file> <output_file> [--modify-headers] [--typ <prefix>]
 
 Arguments:
-    asv_table      - Path to the ASV table file containing counts for each ASV.
+    table      - Path to the table file containing counts for each taxonomic unit.
     fasta_file     - Path to the input FASTA file with sequence records.
     output_file    - Path where the updated FASTA file will be saved.
     --modify-headers  (optional) - If set, modifies the headers with a custom prefix and counter.
@@ -71,7 +71,7 @@ def update_fasta_headers(fasta_fp, asv_counts_fp, updated_fasta_fp, modify_heade
 
 def main():
     parser = argparse.ArgumentParser(description="Add total counts to FASTA headers and optionally modify headers.")
-    parser.add_argument('asv_table', type=str, help='Path to the ASV table file')
+    parser.add_argument('table', type=str, help='Path to the table file')
     parser.add_argument('fasta_file', type=str, help='Path to the FASTA file')
     parser.add_argument('output_file', type=str, help='Path to the output FASTA file')
     parser.add_argument('--modify-headers', action='store_true', help="Modify headers with a prefix and number")

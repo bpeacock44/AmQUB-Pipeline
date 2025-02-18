@@ -331,7 +331,8 @@ for i in "${!OUTF_ARRAY[@]}"; do
 
     # initiate log
     output_file="${ODIR}/part2.log"
-    exec > "$output_file" 2>&1
+    exec > "$output_file"
+    exec 2> >(tee -a "$output_file" >&2)
 
     # create header for log file
     echo "Processing ${OUTF} with mapping file ${MAPFILE}, allowing ${mmatchnum} mismatches.
