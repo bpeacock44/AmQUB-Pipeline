@@ -4,8 +4,8 @@
 ### USAGE ###
 # This script accepts two types of input:
 # 1. Direct command-line arguments:
-#    ./mbio_part2.sh -f ID1_raw_output -p ID1_map.txt -m 2 -r 200-301 -i 10 
-#    ./mbio_part2.sh -f ID2_raw_output -p ID2_map.subset.txt
+#    AmQUB_part2.sh -f ID1_raw_output -p ID1_map.txt -m 2 -r 200-301 -i 10 
+#    AmQUB_part2.sh -f ID2_raw_output -p ID2_map.subset.txt
 
 ## Required Flags
 # -f Part 1 output folder you want to further process
@@ -17,8 +17,8 @@
 # -i Trim length stats interval (default is every 25 and the highest 5)
 
 # 2. A parameter template file:
-#    ./mbio_part2.sh params.txt
-#    Where params.txt contains the following 3 rows, comma delimited, no white space between.
+#    AmQUB_part2.sh params.csv
+#    Where params.csv contains the following 3 rows, comma delimited, no white space between.
 #    The labels at the beginning of each row should be the same as below.
 #        Part 1 Output Folder,ID1_raw_output,ID2_raw_output
 #        Mapping File,ID1_map.txt,ID2_map.subset.txt 
@@ -197,8 +197,8 @@ fi
 # Ensure at least one dataset is provided
 if [[ ${#OUTF_ARRAY[@]} -eq 0 || ${#MAPF_ARRAY[@]} -eq 0 ]]; then
     echo "Error: No valid input provided."
-    echo "Usage: ./mbio_part2.sh -f <part 1 output folder> -p <mapping file> [-m <mismatches>] [-r <range>] [-i <interval>]"
-    echo "OR use a parameter file: ./mbio_part2.sh params.txt"
+    echo "Usage: AmQUB_part2.sh -f <part 1 output folder> -p <mapping file> [-m <mismatches>] [-r <range>] [-i <interval>]"
+    echo "OR use a parameter file: AmQUB_part2.sh params.csv"
     exit 1
 fi
 
@@ -321,7 +321,7 @@ for i in "${!OUTF_ARRAY[@]}"; do
     timestamp="$(date +"%y%m%d_%H:%M")"
     ODIR=${OUTF#part1_}
     ODIR=${ODIR#part2_}
-    ODIR=part2_${ODIR}_${timestamp}
+    ODIR=part2_${ODIR}
 
     # make the output directory
     if ! mkdir -p "${ODIR}"; then
@@ -330,14 +330,15 @@ for i in "${!OUTF_ARRAY[@]}"; do
     fi
 
     # initiate log
-    output_file="${ODIR}/part2.log"
+    timestamp="$(date +"%y%m%d_%H:%M")"
+    output_file="${ODIR}/part2_${timestamp}.log"
     exec > "$output_file"
     exec 2> >(tee -a "$output_file" >&2)
 
     # create header for log file
     echo "Processing ${OUTF} with mapping file ${MAPFILE}, allowing ${mmatchnum} mismatches.
 Range and Interval of Stats: ${BEG}-${FIN}, every ${INV} bases.
- . . . . ." | tee /dev/tty
+ - -- --- ---- ---- --- -- -" | tee /dev/tty
 
     # Create barcodes.fa file for each JB
     grep -P "^[A-Z]" "${MAPFILE}" | awk '{print ">"$1"\n"$2}' > "${ODIR}/barcodes.fa"
@@ -368,15 +369,17 @@ Range and Interval of Stats: ${BEG}-${FIN}, every ${INV} bases.
         tail -n +7 "${ODIR}/${BASE1}.M${mmatchnum}_eestats.temp.txt" >> "${ODIR}/${BASE1}.M${mmatchnum}_eestats.txt"
     fi
 
-    # final message - what is next
-    echo "Stats ready. Please view this file and select your trim length accordingly:" | tee /dev/tty
+    echo " - -- --- ---- ---- --- -- -
+Final Recommendations
+ - -- --- ---- ---- --- -- -
+Stats ready. Please view this file and select your trim length accordingly:" | tee /dev/tty
     if [[ ! -z "$BEG" ]]; then
         echo "${ODIR}/${BASE1}.M${mmatchnum}_eestats.start_${BEG}.inc_${INV}.txt"  | tee /dev/tty
     else
         echo "${ODIR}/${BASE1}.M${mmatchnum}_eestats.txt"  | tee /dev/tty
     fi
-    echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
+    echo " - -- --- ---- ---- --- -- -
+" | tee /dev/tty
 
-    exec > /dev/tty 2>&1
 done
 

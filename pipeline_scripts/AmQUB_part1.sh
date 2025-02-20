@@ -4,8 +4,8 @@
 ### USAGE ###
 # This script accepts input in two ways:
 # 1. Direct command-line arguments:
-#    ./mbio_part1.sh -f ID1_raw.fq -p ID1_map.txt -m 2
-#    ./mbio_part1.sh -f ID2_raw.fq -p ID2_map.txt
+#    AmQUB_part1.sh -f ID1_raw.fq -p ID1_map.txt -m 2
+#    AmQUB_part1.sh -f ID2_raw.fq -p ID2_map.txt
 
 ## Required Flags
 # -f Fastq file for your flowcell
@@ -15,8 +15,8 @@
 # -m The number of allowed mismatches. This can be 1-5. Default is 0.
 
 # 2. A parameter template file:
-#    ./mbio_part1.sh params.txt
-#    Where params.txt contains the following 3 rows, comma delimited.
+#    AmQUB_part1.sh params.csv
+#    Where params.csv contains the following 3 rows, comma delimited.
 #    The labels at the beginning of each row should be the same as below.
 #        Raw Fastq File,ID1_raw.fq,ID2_raw.fq
 #        Mapping File,ID1_map.txt,ID2_map.txt
@@ -28,15 +28,6 @@
 
 
 set -e  # Exit on error
-
-# Error handling function
-error_handler() {
-    local error_message=$1
-    echo "Error: Issue encountered with '$error_message'" | tee /dev/tty
-}
-
-# Trap errors and call the error handler
-trap 'error_handler "$BASH_COMMAND"' ERR
 
 # Arrays to hold multiple sets of inputs
 declare -a FQ_ARRAY MAPF_ARRAY MMATCH_ARRAY
@@ -134,8 +125,8 @@ fi
 # Ensure at least one dataset is provided
 if [[ ${#FQ_ARRAY[@]} -eq 0 || ${#MAPF_ARRAY[@]} -eq 0 ]]; then
     echo "Error: No valid input provided."
-    echo "Usage: ./mbio_part1.sh -f <raw fastq file> -p <mapping file> [-m <mismatches>]"
-    echo "OR use a parameter file: ./mbio_part1.sh params.txt"
+    echo "Usage: AmQUB_part1.sh -f <raw fastq file> -p <mapping file> [-m <mismatches>]"
+    echo "OR use a parameter file: AmQUB_part1.sh params.csv"
     exit 1
 fi
 
@@ -189,12 +180,12 @@ for i in "${!FQ_ARRAY[@]}"; do
     mkdir -p "$OUTDIR"
 
     # Log initialization
-    timestamp="$(date +"%Y%m%d_%H:%M:%S")"
+    timestamp="$(date +"%y%m%d_%H:%M")"
     output_file="${OUTDIR}/part1_${timestamp}.log"
     exec > "$output_file"
     exec 2> >(tee -a "$output_file" >&2)
     echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
- . . . . . " | tee /dev/tty
+ - -- --- ---- ---- --- -- -" | tee /dev/tty
 
     # Run main pipeline commands
     usearch -search_phix "${FQ}" -quiet -notmatchedfq "${OUTDIR}/${BASE}.phiX_clean.fq" -alnout "${OUTDIR}/${BASE}.phiX_clean.alnout"
@@ -222,14 +213,20 @@ for i in "${!FQ_ARRAY[@]}"; do
 
     echo "Counting reads per barcode..."
     bc_counter.py "${MAPF}" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt"
-    echo "Output files are stored in this directory:
+
+echo " - -- --- ---- ---- --- -- -
+Final Recommendations
+ - -- --- ---- ---- --- -- -
+Output files are stored in this directory:
 ${OUTDIR}
 
-The number of reads per sample that resulted from this script for ${BASE} can be found in this file: 
-${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt
-You should check this file, as it may indicate that you should remove or ignore certain samples downstream.
+The number of reads per sample that resulted from this script for ${BASE} can be found 
+in this file: ${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt
+You should check this file, as it may indicate that you should remove or ignore certain 
+samples downstream.
 
 There is also a file describing the makeup of your reads here:
-${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt"  | tee /dev/tty
-echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
+${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt
+ - -- --- ---- ---- --- -- -
+"  | tee /dev/tty
 done

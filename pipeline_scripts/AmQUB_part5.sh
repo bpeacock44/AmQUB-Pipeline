@@ -4,8 +4,8 @@
 ### USAGE ###
 # This script accepts two types of input:
 # 1. Direct command-line arguments:
-#    ./mbio_part5.sh -i output_dir -k to_keep.txt
-#    ./mbio_part5.sh -i output_dir -k to_keep.txt -u -c -d -m  
+#    AmQUB_part5.sh -i output_dir -k to_keep.txt
+#    AmQUB_part5.sh -i output_dir -k to_keep.txt -u -c -d -m  
 
 ## Required Flags
 # -i: The output directory generated in part 3 that you also ran part 4 on.
@@ -20,13 +20,13 @@
 	# more closely. Note that runtime will increase as this is a more intensive analysis. 
 
 # 2. A parameter template file:
-#    ./mbio_part4.sh params.txt
-#    Where params.txt contains the following rows, comma delimited, no white space between.
+#    AmQUB_part4.sh params.csv
+#    Where params.csv contains the following rows, comma delimited, no white space between.
 #    The labels at the beginning of each row should be the same as below.
 #    The following shows what all possible rows:
 
 #        Part 3 Output Folder To Process,output_dir
-#        Taxonomic Units to Keep,to_keep.txt
+#        Taxonomic Units to Keep File,to_keep.txt
 #        Universal Assay,true
 #        Classifier Assignments Primary,true
 #        Detailed Informational OTU/ASV Table,true
@@ -135,6 +135,8 @@ if [ "$MIX" = true ]; then
     echo "The mixed family analysis will be done." | tee /dev/tty
 fi
 
+echo " - -- --- ---- ---- --- -- -"
+
 # detect if STRATEGY 3 and STRATEGY 2 were made and process if they are present.
 STR2=false
 STR3=false
@@ -162,12 +164,11 @@ fi
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
 
 # remove taxonomic units as indicated
-KEEP=simp_UPARSE_to_keep.txt
 OTBL=${typ}_table_01
 biom subset-table \
   -i "${output_dir}/${typ}s/${OTBL}.biom" \
   -a observation \
-  -s simp_UPARSE_to_keep.txt \
+  -s ${KEEP} \
   -o "${output_dir}/${typ}s/${typ}_table_02_TUs_removed.biom"
 
 #add taxa to ASV table
@@ -340,11 +341,15 @@ if [ "$DET" = true ]; then
 fi
 
 echo
-echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
-echo "Final Recommendations"  | tee /dev/tty
-echo " - -- --- ---- ---- --- -- -"  | tee /dev/tty
-echo "Sometimes taxonomic units can be primarily associated with your controls (likely a source of contamination,
-which may be from other samples or even from the individual building the library in the first place). Make sure 
-to check your tables for these units - just look at your control columns and see if any of the units are 
-relatively high in them and not present in the regular samples. These units should be removed before further 
-analysis." | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -
+Final Recommendations
+ - -- --- ---- ---- --- -- -
+The basic pipeline is complete. You now have both normalized and raw count tables for your 
+taxonomic units. 
+
+Note: Sometimes taxonomic units can be primarily associated with your controls (likely a 
+source of contamination, which may be from other samples or even from the individual building 
+the library in the first place). Make sure to check your tables for these units - just look at 
+your control columns and see if any of the units are relatively high in them and not present 
+in the regular samples. These units should probably be removed before further analysis.
+" | tee /dev/tty

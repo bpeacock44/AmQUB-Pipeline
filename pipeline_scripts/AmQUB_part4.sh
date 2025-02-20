@@ -4,10 +4,10 @@
 ### USAGE ###
 # This script accepts two types of input:
 # 1. Direct command-line arguments:
-#    ./mbio_part4.sh -i output_dir -t 256 -e email@email.com
-#    ./mbio_part4.sh  -i output_dir -t 256 -e email@email.com \
+#    AmQUB_part4.sh -i output_dir -t 256 -e email@email.com
+#    AmQUB_part4.sh  -i output_dir -t 256 -e email@email.com \
 #        -b mega-blast -v 0.005 -c classifier.qza -f 0.8 --strategy2 --strategy3 
-#    ./mbio_part4.sh  -o output_dir -t 256 -e email@email.com \
+#    AmQUB_part4.sh  -o output_dir -t 256 -e email@email.com \
 #        -c classifier.qza -f disable --strategy2 --strategy3 -s \
            
 ## Required Flags
@@ -25,8 +25,8 @@
 # --strategy3 Also assign taxonomy to OTUs/ASVs generated via Strategy 3 in part 3. 
 
 # 2. A parameter template file:
-#    ./mbio_part4.sh params.txt
-#    Where params.txt contains the following rows, comma delimited, no white space between.
+#    AmQUB_part4.sh params.csv
+#    Where params.csv contains the following rows, comma delimited, no white space between.
 #    The labels at the beginning of each row should be the same as below.
 #    The following shows what all possible rows:
 
@@ -79,13 +79,12 @@ skip_blast=false
 ██╔══██║██║╚██╔╝██║██║   ██║██║   ██║██╔══██╗
 ██║  ██║██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██████╔╝
 ╚═╝  ╚═╝╚═╝     ╚═╝ ╚════██╗ ╚═════╝ ╚═════╝  
-PART 4:Taxonomy          ╚═╝
- - -- --- ---- ---- --- -- -"
+PART 4:Taxonomy          ╚═╝"
 
 # Check if the first argument is a parameter file
 if [[ -f "$1" ]]; then
-    echo "Reading parameters from file: $1
- - -- --- ---- ---- --- -- -"
+    echo " - -- --- ---- ---- --- -- -
+Reading parameters from file: $1 "
     parse_parameter_file "$1"
     shift  # Remove the parameter file argument
 else
@@ -378,9 +377,9 @@ process_output_dir() {
     rm -rf "${sum_output}"
     if [[ "${CFIER}" ]]; then
         # Run the R script with all arguments (### REMOVE output_dir here!)
-        ./mini_summary_file_generator.py ${norm_file} ${tax_file} ${tax_c_file} ${sum_output}
+        mini_summary_file_generator.py ${norm_file} ${tax_file} ${tax_c_file} ${sum_output}
     else 
-        ./mini_summary_file_generator.py ${norm_file} ${tax_file} NULL ${sum_output}
+        mini_summary_file_generator.py ${norm_file} ${tax_file} NULL ${sum_output}
     fi
     if [ ! -f ${sum_output} ]; then
         echo "'taxonomy_summary_table.tsv' was not successfully created."
@@ -403,16 +402,16 @@ fi
 
 echo
 echo " - -- --- ---- ---- --- -- -
-Final Notes
+Final Recommendations
  - -- --- ---- ---- --- -- -
 Taxonomic assignments ready. A summary file was generated: ${sum_output}. 
 
-Before continuing, look over this file to examine your taxonomic assignments.
+Before continuing, look over this file to examine your taxonomic assignments. Note that it 
+contains assignments from BLAST and from the classifier if you elected to generate them. 
+By DEFAULT, the BLAST assignments are considered the primary assignments in step 5. 
+You can opt to use the classifier assignments instead so keep that in mind as you examine 
+your summary.
 
-Note that it contains assignments from BLAST and from the classifier if you elected to generate them. 
-However, the BLAST assignments are by default considered the primary assignments in step 5. You can 
-opt to use the classifier assignments instead so keep that in mind as you examine your summary.
-
-Use the summary file to create a file with list of all the taxonomic units you want to KEEP in your final tables. 
-
-See tutorial for more guidance." | tee /dev/tty
+You must use the summary file to create a file with list of all the taxonomic units you 
+want to KEEP in your final tables before continuing. See tutorial for more guidance.
+" | tee /dev/tty
