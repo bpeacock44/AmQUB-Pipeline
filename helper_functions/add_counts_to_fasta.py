@@ -83,7 +83,7 @@ def main():
         print("Error: --typ is required when using --modify-headers")
         exit(1)
 
-    update_fasta_headers(args.fasta_file, args.asv_table, args.output_file, modify_headers=args.modify_headers, typ=args.typ)
+    update_fasta_headers(args.fasta_file, args.table, args.output_file, modify_headers=args.modify_headers, typ=args.typ)
 
 if __name__ == '__main__':
     main()

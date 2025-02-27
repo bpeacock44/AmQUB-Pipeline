@@ -283,7 +283,7 @@ for i in "${!OUTF_ARRAY[@]}"; do
     FIN="${FIN_ARRAY[$i]}"
     FIN=$(echo "$FIN" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     if [[ "$FIN" == "DEFAULT" ]]; then
-        FIN="${MAX_LENGTH}"
+        FIN=$((MAX_LENGTH - 5))
     fi
 
     INV="${INTERVAL_ARRAY[$i]}"
@@ -337,7 +337,7 @@ for i in "${!OUTF_ARRAY[@]}"; do
 
     # create header for log file
     echo "Processing ${OUTF} with mapping file ${MAPFILE}, allowing ${mmatchnum} mismatches.
-Range and Interval of Stats: ${BEG}-${FIN}, every ${INV} bases.
+Range and Interval of Stats: ${BEG}-${MAX_LENGTH}, every ${INV} bases.
  - -- --- ---- ---- --- -- -" | tee /dev/tty
 
     # Create barcodes.fa file for each JB
@@ -352,33 +352,21 @@ Range and Interval of Stats: ${BEG}-${FIN}, every ${INV} bases.
     cp "${BC}" "${ODIR}/${BASE1}_BC.M${mmatchnum}.fq"
 
     # Stats
-    if [[ ! -z "$BEG" ]]; then
-        usearch -fastq_eestats2 "${ODIR}/${BASE1}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${BASE1}.M${mmatchnum}_eestats.start_${BEG}.inc_${INV}.txt" -length_cutoffs "${BEG},${FIN},${INV}"
-    else
-        # Set STARTAT based on the calculated max length
-        END=$((MAX_LENGTH - 5))
-        INC=25; # Increment value
-        [[ -e ${ODIR}/all_eestats${STARTAT},${INC}.txt ]] && rm "${ODIR}/all_eestats${STARTAT},${INC}.txt"
-        usearch -fastq_eestats2 "${ODIR}/${BASE1}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${BASE1}.M${mmatchnum}_eestats.txt" -length_cutoffs 1,${END},${INC}
-        # Generate the final 5 stats
-        STARTAT=$((MAX_LENGTH - 4))
-        INC=1; # Increment value
-        [[ -e ${ODIR}/all_eestats${STARTAT},${INC}.txt ]] && rm "${ODIR}/all_eestats${STARTAT},${INC}.txt"
-        usearch -fastq_eestats2 "${ODIR}/${BASE1}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${BASE1}.M${mmatchnum}_eestats.temp.txt" -length_cutoffs ${STARTAT},*,${INC}
-        # Merge the two
-        tail -n +7 "${ODIR}/${BASE1}.M${mmatchnum}_eestats.temp.txt" >> "${ODIR}/${BASE1}.M${mmatchnum}_eestats.txt"
-    fi
+    usearch -fastq_eestats2 "${ODIR}/${BASE1}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${BASE1}.M${mmatchnum}.eestats.txt" -length_cutoffs "${BEG},${FIN},${INV}"
+    # Generate the final 5 stats
+    STARTAT=$((MAX_LENGTH - 5))
+    INC=1; # Increment value
+    usearch -fastq_eestats2 "${ODIR}/${BASE1}.M${mmatchnum}.demux.fq" -quiet -output "${ODIR}/${BASE1}.M${mmatchnum}.eestats.temp.txt" -length_cutoffs ${STARTAT},*,${INC}
+    # Merge the two
+    tail -n +7 "${ODIR}/${BASE1}.M${mmatchnum}.eestats.temp.txt" >> "${ODIR}/${BASE1}.M${mmatchnum}.eestats.txt"
+    rm -rf "${ODIR}/${BASE1}.M${mmatchnum}.eestats.temp.txt"
 
     echo " - -- --- ---- ---- --- -- -
 Final Recommendations
  - -- --- ---- ---- --- -- -
-Stats ready. Please view this file and select your trim length accordingly:" | tee /dev/tty
-    if [[ ! -z "$BEG" ]]; then
-        echo "${ODIR}/${BASE1}.M${mmatchnum}_eestats.start_${BEG}.inc_${INV}.txt"  | tee /dev/tty
-    else
-        echo "${ODIR}/${BASE1}.M${mmatchnum}_eestats.txt"  | tee /dev/tty
-    fi
-    echo " - -- --- ---- ---- --- -- -
+Stats ready. Please view this file and select your trim length accordingly:
+${ODIR}/${BASE1}.M${mmatchnum}.eestats.txt
+ - -- --- ---- ---- --- -- -
 " | tee /dev/tty
 
 done
