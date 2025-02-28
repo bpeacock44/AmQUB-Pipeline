@@ -12,6 +12,7 @@
 # -p Mapping file (this may be a new subset of the previous mapping file if you want to exclude samples)
 
 ## Optional Flags:
+# -s Subset ID. This will be appended to the name of the output folder so you can remember which map you used. Helpful if you are going to make different subsets from the same dataset. (Default is none, so output folder will have no subset ID attached.)
 # -m The number of allowed mismatches. This should only be used if it was first used in part 1.
 # -r Trim length stats range (default is from 1 to the end of the read; e.g. 1-301 for a 301 base dataset)
 # -i Trim length stats interval (default is every 25 and the highest 5)
@@ -21,7 +22,8 @@
 #    Where params.csv contains the following 3 rows, comma delimited, no white space between.
 #    The labels at the beginning of each row should be the same as below.
 #        Part 1 Output Folder,ID1_raw_output,ID2_raw_output
-#        Mapping File,ID1_map.txt,ID2_map.subset.txt 
+#        Mapping File,ID1_map.txt,ID2_map.sub2.txt 
+#        Subset ID,DEFAULT,sub2
 #        Mismatch Bases,2,DEFAULT (Default is 0)
 #        Trim Length Stats Range,200-301,DEFAULT (Default is full length of read)
 #        Trim Length Stats Interval,10,DEFAULT (Default is every 25 and each of the the highest 5)
@@ -42,7 +44,7 @@ error_handler() {
 trap 'error_handler "$BASH_COMMAND"' ERR
 
 # Arrays to hold multiple sets of inputs
-declare -a OUTF_ARRAY MAPF_ARRAY MMATCH_ARRAY RANGE_ARRAY INTERVAL_ARRAY
+declare -a OUTF_ARRAY MAPF_ARRAY SUB_ARRAY MMATCH_ARRAY RANGE_ARRAY INTERVAL_ARRAY
 
 # Function to check if a required label exists in the file
 check_label_present() {
@@ -56,7 +58,7 @@ check_label_present() {
 # Function to parse parameter file and store multiple sets
 parse_file_input() {
     # Validate required labels
-    for label in "Part 1 Output Folder" "Mapping File" "Mismatch Bases" "Trim Length Stats Range" "Trim Length Stats Interval"; do
+    for label in "Part 1 Output Folder" "Mapping File" "Subset ID" "Mismatch Bases" "Trim Length Stats Range" "Trim Length Stats Interval"; do
         check_label_present "$label" "$1"
     done
 
@@ -71,6 +73,9 @@ parse_file_input() {
 
         elif [[ "$line" == "Mapping File,"* ]]; then
             IFS=',' read -r -a MAPF_ARRAY <<< "${line#Mapping File,}"
+
+        elif [[ "$line" == "Subset ID,"* ]]; then
+            IFS=',' read -r -a SUB_ARRAY <<< "${line#Subset ID,}"
 
         elif [[ "$line" == "Mismatch Bases,"* ]]; then
             IFS=',' read -r -a MMATCH_ARRAY <<< "${line#Mismatch Bases,}"
@@ -108,26 +113,30 @@ parse_file_input() {
 check_arrays_length() {
     local outf_len=${#OUTF_ARRAY[@]}
     local map_len=${#MAPF_ARRAY[@]}
+    local sub_len=${#SUB_ARRAY[@]}
     local mmatch_len=${#MMATCH_ARRAY[@]}
     local beg_len=${#BEG_ARRAY[@]}
     local fin_len=${#FIN_ARRAY[@]}
     local interval_len=${#INTERVAL_ARRAY[@]}
 
-    if [[ "$outf_len" -ne "$map_len" || "$outf_len" -ne "$mmatch_len" || "$outf_len" -ne "$beg_len" || "$outf_len" -ne "$fin_len" || "$outf_len" -ne "$interval_len" ]]; then
+    if [[ "$outf_len" -ne "$map_len" || "$outf_len" -ne "$mmatch_len" || "$outf_len" -ne "$beg_len" || "$outf_len" -ne "$fin_len" || "$outf_len" -ne "$interval_len" || "$outf_len" -ne "$sub_len" ]]; then
         echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length." | tee /dev/tty
         exit 1
     fi
 }
 
-    echo " - -- --- ---- ---- --- -- -
- █████╗             ██████╗ ██╗   ██╗██████╗ 
-██╔══██╗████╗ ████╗██║   ██╗██║   ██║██╔══██╗
-███████║██╔████╔██║██║   ██║██║   ██║██████╔╝
-██╔══██║██║╚██╔╝██║██║   ██║██║   ██║██╔══██╗
-██║  ██║██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██████╔╝
-╚═╝  ╚═╝╚═╝     ╚═╝ ╚════██╗ ╚═════╝ ╚═════╝  
-PART 2:Demultiplexing    ╚═╝
- - -- --- ---- ---- --- -- -"
+echo "
+        ┌── ~<>
+ ┌──────┤
+ │      └── ~~<>
+─┤
+ │ ┌── [A m Q U B]  
+ └─┤
+   └──── ~<>~  
+
+Part 2: Demultiplexing
+
+ - -- --- ---- ---- --- -- -"  
 
 # Check if the first argument is a parameter file
 if [[ -f "$1" ]]; then
@@ -139,16 +148,18 @@ if [[ -f "$1" ]]; then
 else
     # Process single command-line arguments
     OUTF_ARRAY=()  
-    MAPF_ARRAY=()  
+    MAPF_ARRAY=() 
+    SUB_ARRAY=() 
     MMATCH_ARRAY=("0")  
     INTERVAL_ARRAY=()  
     BEG_ARRAY=()
     FIN_ARRAY=()
 
-    while getopts ":f:p:m:r:i:" opt; do
+    while getopts ":f:p:s:m:r:i:" opt; do
         case $opt in
             f) OUTF_ARRAY=("$OPTARG") ;;
             p) MAPF_ARRAY=("$OPTARG") ;;
+            s) SUB_ARRAY=("$OPTARG") ;;
             m) MMATCH_ARRAY=("$OPTARG") ;;
             r) 
                 if [[ -n "$OPTARG" ]]; then  # Check if the argument for -r is provided
@@ -180,6 +191,10 @@ else
     # Check if INTERVAL_ARRAY is empty, if so set to "DEFAULT"
     if [ ${#INTERVAL_ARRAY[@]} -eq 0 ]; then
         INTERVAL_ARRAY=("DEFAULT")
+    fi
+
+    if [ ${#SUB_ARRAY[@]} -eq 0 ]; then
+        SUB_ARRAY=("DEFAULT")
     fi
 
     # Check if BEG_ARRAY is empty, if so set to "DEFAULT"
@@ -318,10 +333,15 @@ for i in "${!OUTF_ARRAY[@]}"; do
     fi
 
     ######### BEGIN PROCESSING
-    timestamp="$(date +"%y%m%d_%H:%M")"
     ODIR=${OUTF#part1_}
-    ODIR=${ODIR#part2_}
-    ODIR=part2_${ODIR}
+    ODIR=${ODIR%_output}
+
+    SUB="${SUB_ARRAY[$i]}"
+    if [[ "$SUB" == "DEFAULT" ]]; then
+        ODIR=part2_${ODIR}_output
+    else
+        ODIR=part2_${ODIR}_${SUB}_subset_output
+    fi
 
     # make the output directory
     if ! mkdir -p "${ODIR}"; then
