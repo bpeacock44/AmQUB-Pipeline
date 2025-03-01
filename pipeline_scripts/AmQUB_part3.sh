@@ -351,7 +351,7 @@ source "qiime_shell_helper_functions.sh"
 OTBL="${typ}_table_01"
 txt2biom_notax "${OUTDIR}/${typ}s/${OTBL}.txt" "${OUTDIR}/${typ}s/${OTBL}.biom"
 
-./add_counts_to_fasta.py "${OUTDIR}/${typ}s/${typ}_table_01.txt" "${OUTDIR}/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/${typ}s_counts.fa"
+add_counts_to_fasta.py "${OUTDIR}/${typ}s/${typ}_table_01.txt" "${OUTDIR}/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/${typ}s_counts.fa"
 
 mkdir -vp "${OUTDIR}/${typ}s/blast"
 mv -v "${OUTDIR}/${typ}s/${typ}s_counts.fa" "${OUTDIR}/${typ}s/blast"
@@ -484,7 +484,7 @@ if [[ "$MAPF" != "false" ]]; then
     qiime_table_sorter.py "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_01.txt"
     
     # Add counts to taxonomic units and sort them
-    ./add_counts_to_fasta.py --typ "${typ^}" --modify-headers "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa"
+    add_counts_to_fasta.py --typ "${typ^}" --modify-headers "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa"
     mv "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa"
     #create a table AGAIN with correct headers.
     CMD=("usearch" "--otutab" "${OUTDIR}/combined.fq" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt")
@@ -504,7 +504,7 @@ if [[ "$MAPF" != "false" ]]; then
     qiime_table_sorter.py "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_01.txt"
     
     # Add counts to taxonomic units and sort them
-    ./add_counts_to_fasta.py "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_01.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa"
+    add_counts_to_fasta.py "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_01.txt" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa"
 
     #source for bash helper functions
     source "qiime_shell_helper_functions.sh"
@@ -624,7 +624,7 @@ if [[ "$PRE" != "false" ]]; then
     qiime_table_sorter.py "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}_table_01.txt"
         
     # Add counts to taxonomic units and sort them
-    ./add_counts_to_fasta.py "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}s_counts.fa"
+    add_counts_to_fasta.py "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}s.fa" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}s_counts.fa"
 
     #source for bash helper functions
     source "qiime_shell_helper_functions.sh"

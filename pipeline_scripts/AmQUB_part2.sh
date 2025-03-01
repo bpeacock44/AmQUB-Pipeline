@@ -212,7 +212,7 @@ fi
 # Ensure at least one dataset is provided
 if [[ ${#OUTF_ARRAY[@]} -eq 0 || ${#MAPF_ARRAY[@]} -eq 0 ]]; then
     echo "Error: No valid input provided."
-    echo "Usage: AmQUB_part2.sh -f <part 1 output folder> -p <mapping file> [-m <mismatches>] [-r <range>] [-i <interval>]"
+    echo "Usage: AmQUB_part2.sh -f <part 1 output folder> -p <mapping file> [-s <subset ID> -m <mismatches>] [-r <range>] [-i <interval>]"
     echo "OR use a parameter file: AmQUB_part2.sh params.csv"
     exit 1
 fi
