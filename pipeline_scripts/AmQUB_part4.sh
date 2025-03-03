@@ -6,7 +6,7 @@
 # 1. Direct command-line arguments:
 #    AmQUB_part4.sh -i output_dir -t 256 -e email@email.com
 #    AmQUB_part4.sh  -i output_dir -t 256 -e email@email.com \
-#        -b mega-blast -v 0.005 -c classifier.qza -f 0.8 --strategy2 --strategy3 
+#        -b mega-blast -v 0.005 -c classifier.qza -f 0.8 --nostrategy1 --strategy2 --strategy3 
 #    AmQUB_part4.sh  -o output_dir -t 256 -e email@email.com \
 #        -c classifier.qza -f disable --strategy2 --strategy3 -s \
            
@@ -21,6 +21,7 @@
 # -s Skip blast (useful for troubleshooting the rest of the script to avoid waiting for blast to run if it's already been completed)
 # -c Assign taxonomy via a classifier in addition to BLAST 
 # -f Set confidence interval for classifier (default is 0.7) (you can put "disable" to ignore confidence)
+# --nostrategy1 Does not assign taxonomy to OTUs/ASVs generated via Strategy 1 in part 3. (This is the default strategy.)
 # --strategy2 Also assign taxonomy to OTUs/ASVs generated via Strategy 2 in part 3. 
 # --strategy3 Also assign taxonomy to OTUs/ASVs generated via Strategy 3 in part 3. 
 
@@ -38,6 +39,7 @@
 #        Skip BLAST,true
 #        Classifier,classifier.qza
 #        Confidence Interval,disable
+#        Skip Assigning Taxonomy for Strategy 1,true
 #        Assign Taxonomy for Strategy 2,true
 #        Assign Taxonomy for Strategy 3,true
 #
@@ -58,6 +60,7 @@ parse_parameter_file() {
             "Expect Threshold for BLAST,"*) EVAL="${line#*,}" ;;
             "Classifier,"*) CFIER="${line#*,}" ;;
             "Confidence Interval,"*) CON="${line#*,}" ;;
+            "Skip Assigning Taxonomy for Strategy 1,"*) STR1="${line#*,}" ;;
             "Assign Taxonomy for Strategy 2,"*) STR2="${line#*,}" ;;
             "Assign Taxonomy for Strategy 3,"*) STR3="${line#*,}" ;;
             "Skip BLAST,"*) skip_blast="${line#*,}" ;;
@@ -68,18 +71,19 @@ parse_parameter_file() {
 # Initialize default values
 TASK="blastn"
 EVAL="0.001"
+STR1=false
 STR2=false
 STR3=false
 skip_blast=false
 
 echo "
-        ┌── ~<>
+        ┌── ===
  ┌──────┤
- │      └── ~~<>
+ │      └── ooo
 ─┤
  │ ┌── [A m Q U B]  
  └─┤
-   └──── ~<>~   
+   └──── ~<>~    
 
 Part 4: Taxonomic Assignment
 
@@ -102,6 +106,7 @@ else
             -v|--eval) EVAL="$2"; shift 2 ;;
             -c|--classifier) CFIER="$2"; shift 2 ;;
             -f|--confidence) CON="$2"; shift 2 ;;
+            --nostrategy1) STR1=true; shift ;;
             --strategy2) STR2=true; shift ;;
             --strategy3) STR3=true; shift ;;
             -s|--skip-blast) skip_blast=true; shift ;;
@@ -165,6 +170,11 @@ if [ "$STR3" = true ]; then
     fi
 fi
 
+# make sure that at least 1 strategy is true
+if [ "$STR1" = true ] && [ "$STR2" = false ] && [ "$STR3" = false ]; then
+    echo "Error: If you skip assigning taxonomy for strategy 1 (default), you should be assigning taxonomy to either strategy 2 or 3."
+fi
+
 # Define run_type variable.
 run_type=local
 
@@ -204,6 +214,10 @@ if [[ "${CON}" ]]; then
     echo "${CON} will be used as the minimum confidence level for classifier taxonomic assignments." | tee /dev/tty
 fi
 
+if [ "$STR1" = true ]; then
+    echo "Skipping assigning taxonomy to the default taxonomic units created using Strategy 1." | tee /dev/tty
+fi
+
 if [ "$STR2" = true ]; then
     echo "Also assigning taxonomy to the tables created using Strategy 2." | tee /dev/tty
 fi
@@ -225,24 +239,25 @@ blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS
 chmod +x blast.sh
 
 if [ "$skip_blast" = false ]; then
-    
-    # Run BLAST script in the background
-    blast_iterator.sh "${output_dir}" blast.sh ${run_type} ${typ} &
-    
-    # Get the process ID of the last background command
-    blast_pid=$!
-    
-    # Wait for the process to finish
-    while ps -p $blast_pid > /dev/null; do
-        sleep 1
-    done
-    
-    # Check for final.blastout file
-    if [ ! -s "${output_dir}/${typ}s/blast/final.blastout" ]; then
-        echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
-        exit 1
-    else
-        echo "Blast successfully completed."
+    if [ "$STR1" = false ]; then
+        # Run BLAST script in the background
+        blast_iterator.sh "${output_dir}" blast.sh ${run_type} ${typ} &
+        
+        # Get the process ID of the last background command
+        blast_pid=$!
+        
+        # Wait for the process to finish
+        while ps -p $blast_pid > /dev/null; do
+            sleep 1
+        done
+        
+        # Check for final.blastout file
+        if [ ! -s "${output_dir}/${typ}s/blast/final.blastout" ]; then
+            echo "Error: final blast output either does not exist or is empty. Blast has not been completed."
+            exit 1
+        else
+            echo "Blast successfully completed."
+        fi
     fi
     if [ "$STR2" = true ]; then
         # Run BLAST script in the background

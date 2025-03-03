@@ -126,13 +126,13 @@ check_arrays_length() {
 }
 
 echo "
-        ┌── ~<>
+        ┌── ===
  ┌──────┤
- │      └── ~~<>
+ │      └── ooo
 ─┤
  │ ┌── [A m Q U B]  
  └─┤
-   └──── ~<>~  
+   └──── ~<>~   
 
 Part 2: Demultiplexing
 

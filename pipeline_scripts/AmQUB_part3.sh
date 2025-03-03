@@ -116,13 +116,13 @@ if [ $# -eq 0 ]; then
 fi
 
 echo "
-        ┌── ~<>
+        ┌── ===
  ┌──────┤
- │      └── ~~<>
+ │      └── ooo
 ─┤
  │ ┌── [A m Q U B]  
  └─┤
-   └──── ~<>~    
+   └──── ~<>~      
 
 Part 3: Taxonomic Unit Generation
 
@@ -411,12 +411,14 @@ if [[ "$MAPF" != "false" ]]; then
     done | seqkit seq - > "$output_fasta" # Use seqkit to format the sequences
     done < tmp_value_to_sampleIDs.txt
     
-    
     # Clean up temporary file
     rm -rf tmp_value_to_sampleIDs.txt
     
     #find unique sequences
     for F in "${OUTDIR}/${typ}s/STRATEGY2/subset_filtered_fastas/"*subset.fa; do
+        # Skip empty files
+        [[ ! -s "$F" ]] && echo "Skipping empty file: $F" && continue
+
         BASE=$(echo "$F" | sed 's/\.fa$//')
         CMD=("usearch" "-fastx_uniques" "${F}" "-quiet" "-fastaout" "${BASE}.uniques.fa" "-sizeout" "-relabel" "Uniq")
         [[ "$UG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")
