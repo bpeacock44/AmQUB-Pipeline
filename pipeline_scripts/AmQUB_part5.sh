@@ -4,22 +4,25 @@
 ### USAGE ###
 # This script accepts two types of input:
 # 1. Direct command-line arguments:
-#    AmQUB_part5.sh -i output_dir -k to_keep.txt
-#    AmQUB_part5.sh -i output_dir -k to_keep.txt -2 to_keep_S2.txt -3 to_keep_S3.txt -u -c -d -m  
+#    AmQUB_part5.sh -i output_dir
+#    AmQUB_part5.sh -i output_dir -1 to_keep.txt -2 to_keep_S2.txt -3 to_keep_S3.txt -u -c -d -m  
 
 ## Required Flags
 # -i: The output directory generated in part 3 that you also ran part 4 on.
-# -k: A file of taxonomic units you wish to keep in the final table - one per line.
 
 ## Optional Flags:
+# -1: A file of taxonomic units you wish to keep in the final table - one per line.
 # -2: A file of taxonomic units you wish to keep in the final table for STRATEGY 2 - one per line.
 # -3: A file of taxonomic units you wish to keep in the final table for STRATEGY 3 - one per line.
 # -u: Universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 # -c: Optionally choose to use the classifier taxonomic assignments instead of BLAST.
 # -d: Creates a specialized "Detailed Informational OTU/ASV Table" with more detail about the taxonomic assignments.
 # -m: Will run an optional analysis checking whether the top 10 BLAST results for each taxonomic unit 
-	# had more than one family present. This can be an indicator that the BLAST results should be examined
-	# more closely. Note that runtime will increase as this is a more intensive analysis. 
+#    had more than one family present. This can be an indicator that the BLAST results should be examined
+#    more closely. Note that runtime will increase as this is a more intensive analysis. 
+# --nostrategy1: Don't process the output from strategy 1. (This is the default strategy.)
+# --strategy2: Process the output from strategy 2.
+# --strategy3: Process the output from strategy 3.
 
 # 2. A parameter template file:
 #    AmQUB_part4.sh params.csv
@@ -35,6 +38,9 @@
 #        Classifier Assignments Primary,true
 #        Detailed Informational OTU/ASV Table,true
 #        Mixed Top 10 Analysis,true
+#        Skip Strategy 1,true
+#        Process Strategy 2,true
+#        Process Strategy 3,true
 #
 #Any optional line can be left out of the file if you with to use default settings.
 
@@ -54,11 +60,18 @@ parse_parameter_file() {
             "Classifier Assignments Primary,"*) CLA="${line#*,}" ;;
             "Detailed Informational OTU/ASV Table,"*) DET="${line#*,}" ;;
             "Mixed Top 10 Analysis,"*) MIX="${line#*,}" ;;
+            "Skip Strategy 1,"*) skSTR1="${line#*,}" ;;
+            "Process Strategy 2,"*) STR2_simp="${line#*,}" ;;
+            "Process Strategy 3,"*) STR3_simp="${line#*,}" ;;
         esac
     done < "$param_file"
 }
 
 # Initialize default values
+skSTR1=false
+KEEP=false
+STR2_simp=false
+STR3_simp=false
 STR2=false
 STR3=false
 UNI=false
@@ -86,25 +99,28 @@ if [[ -f "$1" ]]; then
     parse_parameter_file "$1"
     shift  # Remove the parameter file argument
 else
-    # Parse long options
+    # Parse command-line arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -i|--output) output_dir="$2"; shift 2 ;;
-            -k|--keep_file) KEEP="$2"; shift 2 ;;
-            -2|--strategy2) STR2=$2; shift 2 ;;
-            -3|--strategy3) STR3=$2; shift 2 ;;
+            -1|--keep_file) KEEP="$2"; shift 2 ;;
+            -2|--s2_file) STR2="$2"; shift 2 ;;
+            -3|--s3_file) STR3="$2"; shift 2 ;;
             -u|--universal) UNI=true; shift ;;
             -c|--classifier) CLA=true; shift ;;
             -d|--detailed_summary) DET=true; shift ;;
             -m|--mixed_fam_analysis) MIX=true; shift ;;
+            --nostrategy1) skSTR1=true; shift ;;
+            --strategy2) STR2_simp=true; shift ;;
+            --strategy3) STR3_simp=true; shift ;;
             *) echo "Unknown option: $1" >&2; exit 1 ;;
         esac
     done
 fi
 
 # Check for mandatory arguments
-if [ -z "$output_dir" ] || [ -z "$KEEP" ]; then
-    echo "Usage: $0 -i <output directory from part 3> -k <list of taxonomic units to keep> [-2 -3 -u -c -d -m]"
+if [ -z "$output_dir" ]; then
+    echo "Usage: $0 -i <output directory from part 3> [-1 -2 -3 -u -c -d -m -y -z]"
     exit 1
 fi
 
@@ -122,39 +138,52 @@ else
 fi
 
 # detect if STRATEGY 3 and STRATEGY 2 were made and process if they are present.
-DIRS=("${output_dir}/${typ}s")
+if [ "$skSTR1" == false ]; then
+    DIRS=("${output_dir}/${typ}s")
+else 
+    DIRS=()
+fi
 
-# check if input files exist
-
-if [ "$STR2" != false ]; then 
-    if [ -d "${output_dir}/${typ}s/STRATEGY2" ]; then
-        DIRS+=("${output_dir}/${typ}s/STRATEGY2/${typ}s")
-    else 
-        echo "You have provided a taxonomic units to keep file for Strategy 2, but no Strategy 2 output directory (${output_dir}/${typ}s/STRATEGY2) was detected."
+# Check if Strategy 2 should be processed
+if [[ "$STR2" != false || "$STR2_simp" == true ]]; then
+    if [[ ! -d "${output_dir}/${typ}s/STRATEGY2" ]]; then
+        echo "Error: Strategy 2 flag was set, but no STRATEGY2 directory found."
+        exit 1
+    fi
+    DIRS+=("${output_dir}/${typ}s/STRATEGY2/${typ}s")
+    if [[ "$STR2" != false && ! -f "$STR2" ]]; then
+        echo "Error: Specified Strategy 2 file ($STR2) does not exist."
+        exit 1
     fi
 fi
 
-if [ "$STR3" != false ]; then 
-    if [ -d "${output_dir}/${typ}s/STRATEGY3" ]; then
-        DIRS+=("${output_dir}/${typ}s/STRATEGY3/${typ}s")
-    else 
-        echo "You have provided a taxonomic units to keep file for Strategy 3, but no Strategy 3 output directory (${output_dir}/${typ}s/STRATEGY3) was detected."
+# Check if Strategy 3 should be processed
+if [[ "$STR3" != false || "$STR3_simp" == true ]]; then
+    if [[ ! -d "${output_dir}/${typ}s/STRATEGY3" ]]; then
+        echo "Error: Strategy 3 flag was set, but no STRATEGY3 directory found."
+        exit 1
+    fi
+    DIRS+=("${output_dir}/${typ}s/STRATEGY3/${typ}s")
+    if [[ "$STR3" != false && ! -f "$STR3" ]]; then
+        echo "Error: Specified Strategy 3 file ($STR3) does not exist."
+        exit 1
     fi
 fi
 
-if [ ! -f "$KEEP" ]; then
-    echo "The taxonomic units file $KEEP does not exist! Exiting." >&2
-    exit 1
+if [ "$skSTR1" == true ]; then
+    if [[ "$KEEP" != false && ! -f "$KEEP" ]]; then
+        echo "Error: The taxonomic-units-to-keep file ($KEEP) does not exist! Exiting."
+        exit 1
+    fi
+    if [[ -z "$STR2" && "$STR2_simp" == false && -z "$STR3" && "$STR3_simp" == false ]]; then
+        echo "Error: You chose to skip Strategy 1 but did not specify Strategy 2 or 3 processing."
+        exit 1
+    fi
+    if [ "$KEEP" != false ]; then
+        echo "Conflicting input: You provided a taxonomic-units-to-keep file for Strategy 1 but also set --nostrategy1 to skip it. Remove one of these inputs."
+        exit 1
+    fi
 fi
-if [ "$STR2" != false ] && [ ! -f "$STR2" ]; then
-    echo "The taxonomic units file for Strategy 2 ($STR2) does not exist! Exiting." >&2
-    exit 1
-fi
-if [ "$STR3" != false ] && [ ! -f "$STR3" ]; then
-    echo "The taxonomic units file for Strategy 3 ($STR3) does not exist! Exiting." >&2
-    exit 1
-fi
-
 
 # initiate log
 timestamp="$(date +"%y%m%d_%H:%M")"
@@ -166,12 +195,28 @@ exec 2> >(tee -a "$output_file" >&2)
 echo "Log file for Part 5 of the Microbiome Pipeline. Processed the following arguments:
 Output directory to be processed: ${output_dir}
 List of taxonomic units to keep: ${KEEP}" | tee /dev/tty
-if [ "$STR2" != false ]; then 
+if [ "$skSTR1" != false ]; then 
+    echo "Strategy 1 (default) results are not being processed."
+fi
+
+if [ "$KEEP" != false ]; then 
+    echo "Strategy 1 (default) results are not being processed."
+fi
+
+if [ "$STR2_simp" != false ]; then 
     echo "Strategy 2 results will be processed."
 fi
 
-if [ "$STR3" != false ]; then 
+if [ "$STR3_simp" != false ]; then 
     echo "Strategy 3 results will be processed."
+fi
+
+if [ "$STR2" != false ]; then 
+    echo "All taxonomic units not included in ${STR2} are being removed for strategy 2 output."
+fi
+
+if [ "$STR3" != false ]; then 
+    echo "All taxonomic units not included in ${STR3} are being removed for strategy 3 output."
 fi
 
 if [ "$UNI" = true ]; then
@@ -192,9 +237,6 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
-# Print the array to check the result
-echo "Array contents: ${array[@]}"
-
 # detect if classifier assignments are present and use them in final summary file if generated
 if [ -d "${output_dir}/${typ}s/classifier_output" ]; then
 	CP=true 
@@ -207,15 +249,30 @@ fi
 
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
 
+echo $DIRS
 for DIR in ${DIRS[@]}; do
-    # remove taxonomic units as indicated
+    if [[ "$DIR" == *"STRATEGY2"* ]]; then
+        fi=${STR2}
+    elif [[ "$DIR" == *"STRATEGY3"* ]]; then
+        fi=${STR3}
+    else
+        fi=${KEEP}
+    fi
+
+if [ "$fi" != false ]; then
+    # Remove taxonomic units as indicated
     OTBL=${typ}_table_01
     biom subset-table \
-      -i "${DIR}/${OTBL}.biom" \
-      -a observation \
-      -s ${KEEP} \
-      -o "${DIR}/${typ}_table_02_TUs_removed.biom"
-    
+        -i "${DIR}/${OTBL}.biom" \
+        -a observation \
+        -s "$fi" \
+        -o "${DIR}/${typ}_table_02_TUs_removed.biom"
+else
+    OTBL=${typ}_table_01
+    rm -rf "${DIR}/${typ}_table_02_TUs_removed.biom"
+    cp "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_02_TUs_removed.biom"
+fi
+
     #add taxa to ASV table
     OTBL=${typ}_table_02_TUs_removed
     # Use classifier assignments if indicated; otherwise use BLAST.
@@ -328,6 +385,7 @@ for DIR in ${DIRS[@]}; do
     outfp="${DIR}/${typ}_table_04_add_seqs.txt"
     
     add_sequences_to_asv.py ${otblfp} ${DIR}/${typ}s.fa ${outfp}
+
     
     otblfp="${DIR}/${typ}_table_03_add_taxa.norm.txt"
     outfp="${DIR}/${typ}_table_04_add_seqs.norm.txt"
@@ -357,7 +415,8 @@ for DIR in ${DIRS[@]}; do
     
         rm -rf "${DIR}/blast/mixed_family_output.txt"
         # Run the mixed_family_checker.py script with error checking
-    
+
+        echo "Running Mixed Family Checker."
         if [ "$MIX" = true ]; then
         	mixed_file="${DIR}/blast/mixed_family_output.txt"
         	mixed_family_checker.py "${DIR}/blast/final.blastout" --email "${EMAIL}" --output "${mixed_file}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
@@ -375,10 +434,11 @@ for DIR in ${DIRS[@]}; do
         tax_file="${DIR}/blast/tax_assignments.txt"
         sum_output="${DIR}/Detailed_Informational_${typ}_Table.tsv"
         rm -rf "${sum_output}"
-	   
+
+        echo "Generating summary file."
     	# Single call to the script
     	summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} ${cp_arg} ${mixed_arg} ${sum_output}
-    
+        
         if [ ! -f ${sum_output} ]; then
             echo "${DIR}/Detailed_Informational_${typ}_Table.tsv was not successfully created."
             #exit 1

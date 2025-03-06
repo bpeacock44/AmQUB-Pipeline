@@ -407,7 +407,9 @@ process_output_dir() {
 
 }
 
-process_output_dir "$output_dir"
+if [ "$STR1" = false ]; then
+    process_output_dir "$output_dir"
+fi
 
 # Finish processing strategy 2 if indicated.
 if [ "$STR2" = true ]; then
