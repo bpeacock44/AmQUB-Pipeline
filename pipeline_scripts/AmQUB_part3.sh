@@ -595,7 +595,7 @@ if [[ "$PRE" != "false" ]]; then
 
     if [ -s "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa" ]; then
         # rename OTUs so we know they are from the "unbinned" OTUs
-        sed -i 's/>/>unbinned_/g' "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa"
+        sed -i 's/>/>UB_/g' "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa"
     
         #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
         CMD=("usearch" "--otutab" "$F" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}_table_00.txt")
