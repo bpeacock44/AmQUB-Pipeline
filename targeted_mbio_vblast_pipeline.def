@@ -82,6 +82,7 @@ From: ubuntu:22.04
     # Create Conda environment
     conda env create -n qiime2-amplicon-2024.5 --file https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.5-py39-linux-conda.yml
     conda install -n qiime2-amplicon-2024.5 seqkit 
+    conda install -n qiime2-amplicon-2024.5 bioconda::embassy-phylip
     echo ". /opt/miniconda/etc/profile.d/conda.sh" >> $SINGULARITY_ENVIRONMENT
     echo "conda activate qiime2-amplicon-2024.5" >> $SINGULARITY_ENVIRONMENT
 
