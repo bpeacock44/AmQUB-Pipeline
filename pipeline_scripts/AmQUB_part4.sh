@@ -389,6 +389,7 @@ process_output_dir() {
 
     # Define file paths
     norm_file="${output_dir}/${typ}s/${typ}_table_01.norm.txt"
+    fasta_file="${output_dir}/${typ}s/${typ}s.fa"
     tax_file="${output_dir}/${typ}s/blast/tax_assignments.txt"
     tax_c_file="${output_dir}/${typ}s/classifier_output/taxonomy.tsv"
     sum_output="${output_dir}/${typ}s/taxonomy_summary_table.tsv"
@@ -396,9 +397,9 @@ process_output_dir() {
     rm -rf "${sum_output}"
     if [[ "${CFIER}" ]]; then
         # Run the R script with all arguments (### REMOVE output_dir here!)
-        mini_summary_file_generator.py ${norm_file} ${tax_file} ${tax_c_file} ${sum_output}
+        mini_summary_file_generator.py ${norm_file} ${fasta_file} ${tax_file} ${tax_c_file} ${sum_output}
     else 
-        mini_summary_file_generator.py ${norm_file} ${tax_file} NULL ${sum_output}
+        mini_summary_file_generator.py ${norm_file} ${fasta_file} ${tax_file} NULL ${sum_output}
     fi
     if [ ! -f ${sum_output} ]; then
         echo "'taxonomy_summary_table.tsv' was not successfully created."
