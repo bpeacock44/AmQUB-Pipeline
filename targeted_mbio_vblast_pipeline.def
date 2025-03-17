@@ -97,6 +97,7 @@ From: ubuntu:22.04
     export PATH="/bind:$PATH"
     export PATH="/home/programs/:$PATH"
     export PATH="/helper_functions:$PATH"
+    export PATH="/optional_analyses_scripts:$PATH"
     export PATH="/pipeline_scripts:$PATH"
     export PATH="/blast/ncbi-blast-*/bin:$PATH"  # Updated to use wildcard for blast directory
     export HDIR="/helper_functions"
