@@ -3,55 +3,36 @@
 import pandas as pd
 import numpy as np
 import os
-from collections import Counter
 import argparse
+import logging
+from collections import Counter
+import datetime
 
 """
 Description:
 This script processes an ASV/OTU table and a mapping file to generate average abundance 
 data per treatment group and outputs a consolidated PRISM-compatible file. 
-
-The main steps include:
-1. Reading the ASV table and mapping file.
-2. Calculating average abundances for each treatment group.
-3. Identifying the top taxa (ASVs/OTUs) based on abundance.
-4. Generating an "all" row for overall average abundance across all treatments.
-5. Saving average abundances for each treatment and an overall output file in 
-   PRISM-compatible format.
-
-Usage:
-This script accepts command-line arguments for paths to the input files, output 
-directory, and other parameters. Run the script as follows:
-
-    ./process_asv.py --file_path <path_to_asv_table> \
-        --map_file <path_to_mapping_file> \
-        --column <column_name_for_grouping> \
-        --output_avg_abundance_directory <output_directory_for_abundances> \
-        --output_prism_file <path_to_prism_output> \
-        --num_taxa <number_of_top_taxa>
-
-Example:
-    ./process_asv.py --file_path asv_table.txt \
-        --map_file map_file.txt \
-        --column SoilNumber \
-        --output_avg_abundance_directory ./output/avg_abundances \
-        --output_prism_file ./output/prism_output.tsv \
-        --num_taxa 5
-
-Input Notes:
-1. The ASV/OTU table (file_path) should be normalized before beginning. 
-2. Currently the input mapping file (map_file) is expected to have "#SampleID" as the sample ID column header. 
-3. The column indicated by "column" should contain values only in rows of data that is to be included. 
-    If all values in column are the same, then all samples indicated will be considered to be part of 
-    the same treatment. If there are different values, samples with the same value will be aggregated 
-    (averaged). The final output prism file will have a row for each treatment as well as an "all" row 
-    for average abundance across all taxa.
-4. Num taxa will determine how many top taxa per treatment to include in the plot. 
-    (e.g. if there are 2 treatments and num_taxa is set to 5, then the top 5 taxa from each treatment will be 
-    excluded from the "other" category and given their own column. If there are duplicates between the two treatments
-    then they will only be included once. 
-
+...
 """
+
+# Set up the logger
+def setup_logger(output_dir):
+    # Get the current date and time in the format "YYYY-MM-DD_HH-MM-SS"
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Create a log file name with the timestamp
+    log_file = os.path.join(output_dir, f'prism_maker_{current_time}.log')
+    
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger().addHandler(console)
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(description="Process ASV table and mapping file to generate average abundance data.")
@@ -65,7 +46,11 @@ parser.add_argument('--num_taxa', type=int, default=3, help="Number of top taxa 
 # Parse the arguments
 args = parser.parse_args()
 
+# Setup logger
+setup_logger(args.output_avg_abundance_directory)
+
 # Read in data file (ASV table)
+logging.info(f"Reading ASV table from: {args.file_path}")
 with open(args.file_path) as f:
     first_line = f.readline().strip()
 
@@ -84,6 +69,7 @@ else:
     df.rename(columns={'ASV_ID': 'taxonomy'}, inplace=True)
 
 # Read map file (treatment information)
+logging.info(f"Reading mapping file from: {args.map_file}")
 map_df = pd.read_csv(args.map_file, sep='\t', comment='~')
 map_df.rename(columns={'#SampleID': 'sampleID'}, inplace=True)
 map_df = map_df[[args.column, 'sampleID']]  # Adjust based on the column name you want to use
@@ -93,6 +79,7 @@ treatments = map_df[args.column].unique()
 
 # Ensure the output directory exists
 os.makedirs(args.output_avg_abundance_directory, exist_ok=True)
+logging.info(f"Output directory created: {args.output_avg_abundance_directory}")
 
 # Transpose the ASV table to have sample IDs as rows (aligned with mapping file)
 df_transposed = df.set_index('taxonomy').T  # Taxonomy becomes column names, sampleIDs are rows
@@ -100,6 +87,7 @@ df_transposed.reset_index(inplace=True)  # Sample IDs move to a column named "in
 df_transposed.rename(columns={'index': 'sampleID'}, inplace=True)  # Rename the index column to 'sampleID'
 
 # Merge with the mapping file
+logging.info("Merging ASV data with treatment information from the map file")
 merged_df = pd.merge(map_df, df_transposed, on='sampleID')  # Align treatments with ASV data
 
 # Step 1: Identify top OTUs per treatment using Counter
@@ -109,6 +97,7 @@ top_otus_counter = Counter()
 treatment_avg_abundance_dict = {}
 
 for treatment in treatments:
+    logging.info(f"Processing treatment: {treatment}")
     # Filter for samples belonging to this treatment
     treatment_df = merged_df[merged_df[args.column] == treatment]
     # Drop non-numeric columns (like 'sampleID' and treatment column)
@@ -127,6 +116,8 @@ for treatment in treatments:
     # Update top OTUs counter
     top_otus_counter.update(avg_abundance.head(args.num_taxa)['taxonomy'])
 
+logging.info("Top OTUs identified and saved.")
+
 # Extract the top OTUs (those that appear most across treatments)
 top_otus = [otu for otu, _ in top_otus_counter.most_common()]
 
@@ -139,6 +130,7 @@ output_df = output_df.astype({col: float for col in columns if col != 'treatment
 output_df['treatment'] = output_df['treatment'].astype(str)
 
 # Step 3: Calculate average abundances for each treatment and "all"
+logging.info("Calculating average abundances for each treatment and 'all'.")
 for treatment in treatments:
     # Get average abundance for the treatment from the dictionary
     avg_abundance = treatment_avg_abundance_dict[treatment].set_index('taxonomy')['average_abundance']
@@ -179,4 +171,7 @@ for idx, row in output_df.iterrows():
         output_df.iloc[idx, 1:] = (row.drop(['treatment']) / row_sum) * 100
 
 # Step 7: Save the updated DataFrame to a file
+logging.info(f"Saving the output PRISM file to: {args.output_prism_file}")
 output_df.to_csv(args.output_prism_file, sep='\t', index=False)
+
+logging.info("Processing complete. Results saved.")

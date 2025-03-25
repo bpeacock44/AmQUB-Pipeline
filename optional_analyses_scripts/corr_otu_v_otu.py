@@ -25,7 +25,8 @@ def parse_args():
     return parser.parse_args()
 
 def setup_logger(output_dir):
-    log_file = os.path.join(output_dir, 'correlation_analysis.log')
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(output_dir, f'corr_otu_v_otu_{column}_{current_time}_log.log')
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
