@@ -8,7 +8,7 @@
  └─┤
    └──── ~<>~  
 ```
-This pipeline is an attempt to better automate the Borneman Lab's targeted amplicon microbiome analysis pipeline, which uses Qiime2, Usearch, and Blast for taxonomic assignments. (**Am**plicon**Q**iime2**U**search**B**last)
+This pipeline is an attempt to better automate the Borneman Lab's targeted amplicon microbiome analysis pipeline, which uses Qiime2, Usearch, and Blast for taxonomic assignments. (**Am***plicon***Q***iime2***U***search***B**last)
    
 Many of the python, perl, and R helper functions that these scripts call were written by Paul Ruegger.
 
