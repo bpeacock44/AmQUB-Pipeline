@@ -249,7 +249,6 @@ fi
 
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
 
-echo $DIRS
 for DIR in ${DIRS[@]}; do
     if [[ "$DIR" == *"STRATEGY2"* ]]; then
         fi=${STR2}
@@ -259,19 +258,23 @@ for DIR in ${DIRS[@]}; do
         fi=${KEEP}
     fi
 
-if [ "$fi" != false ]; then
-    # Remove taxonomic units as indicated
-    OTBL=${typ}_table_01
-    biom subset-table \
-        -i "${DIR}/${OTBL}.biom" \
-        -a observation \
-        -s "$fi" \
-        -o "${DIR}/${typ}_table_02_TUs_removed.biom"
-else
-    OTBL=${typ}_table_01
-    rm -rf "${DIR}/${typ}_table_02_TUs_removed.biom"
-    cp "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_02_TUs_removed.biom"
-fi
+    # remove previous versions of the tables
+    rm -rf "${DIR}/otu_table_02"*
+    rm -rf "${DIR}/otu_table_03"*
+    rm -rf "${DIR}/otu_table_04"*
+    
+    if [ "$fi" != false ]; then
+        # Remove taxonomic units as indicated
+        OTBL=${typ}_table_01
+        biom subset-table \
+            -i "${DIR}/${OTBL}.biom" \
+            -a observation \
+            -s "$fi" \
+            -o "${DIR}/${typ}_table_02_TUs_removed.biom"
+    else
+        OTBL=${typ}_table_01
+        cp "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_02_TUs_removed.biom"
+    fi
 
     #add taxa to ASV table
     OTBL=${typ}_table_02_TUs_removed

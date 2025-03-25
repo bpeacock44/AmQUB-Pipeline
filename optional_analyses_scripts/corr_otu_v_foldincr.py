@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from scipy.stats import spearmanr, rankdata, norm
 from statsmodels.stats.multitest import multipletests
