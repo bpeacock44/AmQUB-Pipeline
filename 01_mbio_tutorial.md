@@ -1,344 +1,269 @@
 # Tutorial
 
-This pipeline is in four parts. Each part should be run sequentially.
+This pipeline is in five parts. Each part should be run sequentially.
 
-[Part 1:](#part-1) This first part will take as input a fastq file and a mapping file (or a batch of them). It will check for barcode mismatches and can optionally be used to convert mismatches to perfect matches up to the number of mismatches designated by you. (This is only recommended if you have samples with very few reads and you need more but if that is the case, you may want to resequence regardless!)
+[Part 1:](#part-1---sequence-preprocessing) Sequence Preprocessing (Removes PhiX reads, generates stats about the data and how many reads per sample you have, and optionally can convert mismatched barcodes to perfect match barcodes.)
 
-[Part 2:](#part-2) This part will use usearch to generate basic stats about your fastq file (which you should take a look at) and generate stats about the effect that trimming and filtering will have on your read counts. (e.g. if you trim to x length, then you will have x percent of your reads left over after the filtering step occurs.) You will need to determine a length here to use in the next part. 
+[Part 2:](#part-2---demultiplexing-and-trim-stat-generation) Demultiplexing and Trim Stat Generation (Demultiplexes the data and generates stats about how many reads you will retain based on trim length and quality filtering.)
 
-[Part 3:](#part-3) This part will use usearch trim and filter your reads in preparating for ASV picking. (Note that filtered reads will be used for ASV picking, but all your reads will be used in the final ASV table.) It will then pick your ASVs and create your ASV table. 
+[Part 3:](#part-3) Taxonomic Unit (TU) Selection (Processes the data in order to pick taxonomic units and generates initial count table.)
 
-[Part 4:](#part-4) This part is optional, as you may want to use other methods for assigning taxonomy to your ASVs. But Part 4 uses BLAST to assign taxonomy to your ASVs using the NCBI nt database. This is useful for any kind of targeted analyses where you do not have a good curated database available for assignment. (e.g. bacterial ITS) Rather than assigning taxonomy using the top hit, it finds all hits that have the highest bitscore and finds the least common ancestor (LCA) among them.
+[Part 4:](#part-4) Taxonomic Assignment (Uses BLAST of the NCBI nt database and optionally a classifier from Qiime2 to assign taxonomy to TUs.)
+
+[Part 5:](#part-5) Final Processing (Generates different versions/levels fo the count tables with taxonomy and creates a Detailed Summary File for accessing results.)
 
 There are some [examples](#example-of-overall-pipeline) of how this might be run overall at the end. 
 
-**Note** that when you run any of these scripts, a log file will be created in you working directory that you can reference if you run into errors. Please raise an issue if this occurs! There will be a blast log created separately from your part 4 log specific to the blast run and it can be found in your final analysis output folder.
+**Note** that when you run any of these scripts, a log file will be created in the output folder that you can reference if you run into errors. Please raise an issue if this occurs! There will be a blast log created separately from your part 4 log specific to the blast run. 
 
-## Part 1
-### USAGE
-This script expects to be given at least two aguments:
-- -d: a working directory, which contains a one folder for each of your fastq files named by ID
-- -j: all the IDs you intend to process in a comma-delimited list (ID1,ID2,ID3,etc.)
+&nbsp;
 
-Optional argument:
-- -m: number of mismatched bases (OPTIONAL - if you want to convert barcode with given number of mismatches into perfect match barcodes)
+## Prep – Starting Singularity
 
-Examples:
+### Steps
+1. Make sure singularity is loaded as a module on the cluster (command below) or installed on your computer. Note that installing singularity on Mac or Windows will require you to use a virtual Linux machine because it is only compatible with Linux. There are detailed instructions on how to do this here (link forthcoming).
 ```sh
-mbio_part1.sh -d /path/to/dir -j ID1,ID2 
-mbio_part1.sh -d /path/to/dir -j ID1,ID2 -m 1
-```
-
-### INPUT
-Each folder needs to contain a fastq file named by ID followed by "\_raw.fq" and an appropriately formatted mapping file followed by "\_map.txt"
-For example, the directory indicated contains a folder called JB141 and it contains the files "JB141_raw.fq" and "JB141_map.txt."
-
-Your mapping file should be formatted in the same way that the Qiime program uses:
-
-At least three tab-delimited columns:
-1) SampleID (with a # before as in #SampleID) - these are the IDs you associate with each sample
-2) BarcodeSequence - the barcodes for each sample
-
-Other columns can include any characteristics you want to use later on to run differential analysis or correlation, etc.
-```
-SampleID	BarcodeSequence	SampleType	PlatePosition	Library	TubeLabel	Contents	DateTaken
-B001.110	CTCGACTACTGA	SAMPLE	A1	JB110	1	Psyllid	1-6	2/28/19
-B002.110	TGACCAGTAGTC	SAMPLE	A2	JB110	2	Psyllid	7-12	2/28/19
-B003.110	GCGATTAGGTCG	IGNORE	A3	JB110	3	Psyllid	13-18	2/28/19
-PCR_CONTROL	ACATGGCCTAAT	CONTROL	A4	JB110	NA	NA	NA
-```
-
-If you are confused about the mapping file, there are some more notes [here](#more-mapping-file-details).
-
-## Part 2
-
-### USAGE
-This script expects to be given at least two arguments:
-- -d: a working directory, which contains the folder containing the fastq file you want to process.
-- -j: a single ID. This script must be run individually on your IDs 
-(This is in contrast to part 1, which was run just once for all.)
-
-Optional arguments:
-- -m: the number of mismatches you want to use. This needs to match the files you generated in part 1.
-- -s: this is a comma-delimited list of trim lengths you want to view stats for. These will be generated in addition to all cutoffs that are 11 bases or fewer below the max length of your reads.
-- -o: a subset ID - if you want to pick ASVs from and further analyze only a subset of the samples in your data, you can create a mapping file in the same format as the original with the lines of unwanted samples removed. This file will be named ID_map.subset_name.txt (e.g. JB141_map.sub1.txt) and be placed in the same ID folder as the other files are in.
-
-Examples:
-```sh
-mbio_part2.sh -d /path/to/dir -j ID1 
-mbio_part2.sh -d /path/to/dir -j ID1 -s 137,148
-mbio_part2.sh -d /path/to/dir -j ID1 -o sub1 
-mbio_part2.sh -d /path/to/dir -j ID1 -m 1
-mbio_part2.sh -d /path/to/dir -j ID1 -o sub1 -m 1
-```
-### INPUT
-This script can only be run once the original fastq file (e.g. JB141_raw.fq) has been run through part 1. 
-
-Each folder needs to contain the fastq files resulting from part 1, which are named by ID followed by .M#.fq and \_BC.M#.fq, as well as a mapping file (either the original or the subset.)
-
-So, as an example, your working directory might now include:
-- Folder JB141 (containing JB141.M0.fq, JB141_BC.M0.fq, and JB141_map.sub1.txt)
-- JB141_map.txt should also be present in folder if subset map isn't used.
-
-When this code is run, a new directory will be created for your output named either with the name of your subset (e.g. JB141_sub1_output), or with your regular ID if no unique map was provided (e.g. JB141_output) 
-
-## Part 3
-
-### USAGE
-This script expects to be given at least 4 arguments:
-- -d: a working directory, which contains one folder for each of your fastq files named by ID
-- -j: the folders created in the last part that you intend to process in a comma-delimited list (ID1_subset1_output, ID2_output, ID3_subset2_output, etc.)
-- -l: the length you want to trim your reads to. Note ALL files will be trimmed to this length.
-- -o: the name of your output directory
-
-Optional arguments:
-- -m: number of mismatches, if using (again, this should have been specified from part1)
-- -n: change the minsize of the unoise3 algorithm (default is 8)
-
-Examples:
-```sh
-mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test1_out
-mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test2_out -m 1
-mbio_part3.sh -d /path/to/dir -j "ID1_output,ID2_output" -l 150 -o test3_out -n 7
-```
-
-### INPUT ###
-This script follows part 2, which must be completed first. You will look at your trim stats, determine what length you want to trim to, and run this code to finish the analysis.
-
-When this code is run, a new directory named as indicated by -o will be created for analysis output. 
-
-## Part 4
-
-This part involves using BLAST and it can be run in two different ways:
-
-1) Within the continer. (If you are on a cluster, you will want to request resources before you begin the container!)
-3) Initially outside of the container (if you have a very large ASV file and you want to split it up and run each part in parallel to speed up the process) and then finishing inside the container. In this case, you will have a slightly more complicated pipeline. See the "Part 4 Split" section below for details on this.
-
-### USAGE 
-This script expects to be given at least 5 arguments:
-- -d: a working directory, which contains one folder for each of your fastq files named by ID
-- -o: the name of your output directory
-- -e: email of the user for NCBI purposes
-
-Optional arguments:
-- -b: path to your blast script file (required if you don't use the -s option)
-- -s: skip the blast - skips the blast and uses blast output already there (required if you don't use the -b option)
-
-- -u: universal assay - causes final ASV tables to be split into 3 domains
-- -j: create a detailed summary file with extra detail for assessing taxonomic assignments. Runtime will increase slightly, as it generates an analysis examining the top 10 blast hits for each ASV.
-- -c: path to a Qiime2 classifier file you want to use for generating alternative taxonomic assignments
-
-Examples:
-```sh
-mbio_part4.sh -d /path/to/dir -o test1_out -b /path/to/blast.sh -e email@email.com
-mbio_part4.sh -d /path/to/dir -o test2_out -e email@email.com -s
-mbio_part4.sh -d /path/to/dir -o test3_out -b /path/to/blast.sh -e email@email.com -u -j -c unite_ver10_99_04.04.2024-Q2-2024.5.qza
-```
-
-### INPUT 
-This script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
-
-The NCBI nt database needs to be bound to the singularity container. This is described in [00_singularity_instructions.md](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/00_singularity_instructions.md) and shown in the [examples](#example-of-overall-pipeline) below. If you bind it to /database as shown in the example below, then the path indicated here should work.
-
-For argument -b, you are going to want to make a blast script. You will need to modify the NUMTHREADS below to match the number of threads you have available (whether on your local computer requested in your interactive session). This needs to be executable.
-```
-#!/bin/bash
-DATABASE_PATH=/database/nt 
-NUMTHREADS=256
-
-#<>#<>#<>#<>#<>
-# GENERALLY DON'T CHANGE THESE:
-#<>#<>#<>#<>#<>
-OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-TASK=blastn
-INFASTA=$1
-MAXTSEQS=$2
-EVAL=0.001
-blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS"
-```
-
-## Part 4 Split (note: mbio_part4_blast_only.sh is not written yet)
-
-NOTE: You will need [ncbi blast](https://blast.ncbi.nlm.nih.gov/doc/blast-help/downloadblastdata.html) and [seqkit](https://bioinf.shenwei.me/seqkit/) installed on your system to run this, since you will not be using the container.
-
-You will also want to have the scripts ["mbio_part4_blast_only.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/pipeline_scripts/mbio_part4_blast_only.sh), ["reblast_check.pl"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/reblast_check.pl) and ["blast_iterator.sh"](https://github.com/bpeacock44/targeted_microbiome_via_blast/blob/main/helper_functions/blast_iterator.sh) in your path and executable. 
-
-If you want to split up your ASV file, you will need to run the blast portion on it's own outside of the container. You will start with the script "mbio_part4_blast_only.sh", which is a truncated version of mbio_part4.sh.
-
-It has no optional arguments:
-- -d: a working directory, which contains one folder for each of your fastq files named by ID
-- -o: the name of your output directory
-- -b: the path to your blast script file (should include ALL jobs, each beginning with a shebang as below)
-- -n: number of different jobs you want to run
-
-### INPUT 
-As before, this script follows part 3, which must be completed first. The output directory will have already been generated in part 3.
-
-For argument -b, you are going to want to make a blast script but it should include ALL the scripts you want to run. The code will automatically split this file by shebang, and also split your ASV file and merge the results back together into a single blast file.
-```
-# ########## SLURM BLAST FILE EXAMPLE (-b), if you had 2 jobs to run ########## 
-#!/bin/bash 
-#SBATCH -p epyc
-#SBATCH -c 256
-#SBATCH --mem=300G 
-# any other parameters or modules needed
-module load ncbi-blast/2.6.0+
-module load db-ncbi
-
-#<>#<>#<>#<>#<>
-# YOU MUST SET THESE:
-#<>#<>#<>#<>#<>
-DATABASE_PATH=$NCBI_DB/nt
-NUMTHREADS=256
-
-#<>#<>#<>#<>#<>
-# GENERALLY DON'T CHANGE THESE:
-#<>#<>#<>#<>#<>
-OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-TASK=blastn
-INFASTA=$1
-MAXTSEQS=$2  
-EVAL=0.001
-blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-
-#!/bin/bash 
-#SBATCH -c 256
-#SBATCH --mem=300G 
-# any other parameters or modules needed
-module load ncbi-blast/2.6.0+
-module load db-ncbi
-
-#<>#<>#<>#<>#<>
-# YOU MUST SET THESE:
-#<>#<>#<>#<>#<>
-DATABASE_PATH=$NCBI_DB/nt
-NUMTHREADS=256
-
-#<>#<>#<>#<>#<>
-# GENERALLY DON'T CHANGE THESE:
-#<>#<>#<>#<>#<>
-OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
-TASK=blastn
-INFASTA=$1
-MAXTSEQS=$2  
-EVAL=0.001
-blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS -evalue $EVAL -num_threads $NUMTHREADS -outfmt "7 $OPTS" 
-```
-
-After you run mbio_part4_blast_only.sh, you will need to run mbio_part4.sh as usual - just make sure to run with the -s flag so it doesn't run BLAST all over again!
-
-## Example of Overall Pipeline:
-
-```sh
-# Start an interactive session with enough power to run BLAST if you are in a cluster environment.
-srun -c 128 --mem 300gb --pty bash -l
 module load singularity
-
-# Set these paths. You are binding these directories to your container.
-programs="/path/to/programs" # this is where the .sif and usearch are stored 
-blast_db="/path/to/blast/database" 
-WDIR="/path/to/your/data"
-
-# Start the container
-singularity shell --containall \
-    --bind ${programs}:/programs/ \
-    --bind ${blast_db}:/database/ \
-    --bind ${WDIR}:/home/ \
-    ${programs}/2.1.1.sif
-
-#### NOW YOU ARE IN THE CONTAINER	
-# Add the programs file to your path so it can find usearch.
-export PATH="/programs/:$PATH"
-
-# Set your working directory and go there.
-WDIR=/home
-cd ${WDIR}
-
-# part 1
-mbio_part1.sh -d ${WDIR} -j "ID1"
-
-# part 2
-mbio_part2.sh -d ${WDIR} -j "ID1"
-mbio_part2.sh -d ${WDIR} -j "ID2"
-
-# part 3
-mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
-
-# Note - your blast.sh file should point to /database/nt 
-
-# part 4
-mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -b ${WDIR}/blast.sh
-
 ```
-
-## Example of Overall Pipeline with Split Blast:
-
+2. Create a folder of the programs/tools required. In the following examples, I have one called “mbio_pipeline_files.” And inside I have:
+    - The singularity file (AmQUB.sif)
+    - A copy of USEARCH 64-bit
+    - A QIIME2 classifier (instructions link forthcoming)
+3. Set this folder equal to the variable “programs” using the full path as so: 
 ```sh
-### WDIR contains folders with your data and your blast script.
-WDIR=/path/to/WDIR
-cd ${WDIR}
+programs="/rhome/bpeacock/mbio_pipeline_files"
+```
+4. You can check if step 3 was done correctly by listing the files in the folder using this command:
+```sh
+ls $programs
+```
+5. You should also have an updated local NCBI nt database (instructions) or access to one on your cluster.
+6. Set your database equal to the variable “NCBI_DB” using the full path like so:
+```sh
+NCBI_DB=”/srv/projects/db/ncbi/preformatted/20240807”
+```
+7. Move to your working directory – which is where you want to generate output.
+8. Run the following command to start the AmQUB singularity container. Note that there are a few lines, and they all need to be run at the same time! 
+```sh
+singularity shell 
+--bind ${programs}:/home/programs/ \
+--bind ${NCBI_DB}:/database/ \
+--bind $(pwd):/home/analysis/ \
+${programs}/AmQUB.sif'
+```
+9. Detailed explanation of what the above command means: 
+- Remember that when you start a singularity container you are essentially starting a “minicomputer”, and these commands help set up what that computer has access to. You are using the flag “--bind” to set folders in your minicomputer:
+    - Your programs folder will be the folder “/home/programs” in the container
+    - Your NCBI database will be in the path “/database” in the container
+    - Your working directory (which is stored as $(pwd) if you are in it currently) will be the folder “/home/analysis” in the container
+    - Backslashes (\\) mean that the command continues on the next line.
+    - The end of the command should be the singularity container file you want to start.
+10. Once you run the singularity shell command, it will open the singularity and you will see “Singularity>” in your terminal. This is the prompt for you to start running commands!
+```sh
+Singularity>                             
+```
+&nbsp;
 
-# start an interactive session with some power. You won't run BLAST yet so no need to go crazy here.
-srun -c 8 --pty bash -l
-module load singularity
+## Part 1 - Sequence Preprocessing
 
-# you are binding only one directories to your container here - the one containing usearch.
-# this command will start the singularity container.
-singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleanenv --no-home 
+### 📚 What is this part of the pipeline doing?
+1. **Creates a new folder** where all the output for this part will be stored.
+    - This will be called **“part1_XY_output”**, where **XY** is the name of your input fastq file with `.fq` or `.fastq` removed (e.g., `XY.fastq` generates `part1_XY_output`).
+2. **Removes reads that are likely phiX**
+    - This step will generate:
+      - **`XY.phiX_clean.fq`** – The new data file without phiX reads.
+      - **`XY.phiX_clean.alnout`** – A detailed output file for the alignment process used to find phiX reads.
+3. **Finds and converts mismatches in the read barcodes (if desired)**
+    - See below for details on what this is and how it works.
+4. **Creates the two files required to demultiplex**
+    - **Barcode-only file**: Formatted like the original fastq file, named **`XY_BC.M#.fq`**.
+    - **Processed reads file**: If mismatched barcodes are converted, it will create **`XY.M#.fq`**; otherwise, it creates a simulated link.
+5. **Generates a barcode read count file**
+    - This will be called **`XY.M#.read_counts.txt`**.
+6. **Generates a read statistics file**
+    - This file will be called **`XY.M#.fastq_info.txt`** and includes stats such as letter frequencies, min/med/max read lengths, and mean/med/max EE values.
 
-# define your WDIR path. It should be the directory you start in.
-WDIR=$(pwd)
+### ⚙️ Usage
+This script accepts input in two ways: **direct command-line arguments** or a **parameter file**.
 
-# part 1
-mbio_part1.sh -d ${WDIR} -j "ID1"
+#### 1. Direct Command-Line Arguments
+```sh
+AmQUB_part1.sh -f data/AB.fq -p data/AB_map.txt -m 2
+AmQUB_part1.sh -f data/XY.fq -p data/XY_map.txt
+```
+**Required Flags:**
+> **-f**  Path to fastq file for your flowcell  
+> **-p**  Path to mapping file  
 
-# part 2
-mbio_part2.sh -d ${WDIR} -j "ID1"
-mbio_part2.sh -d ${WDIR} -j "ID2"
+**Optional Flags:**
+> **-m**  Number of allowed mismatches (1-5). Default is **0**.
 
-# part 3
-mbio_part3.sh -d ${WDIR} -j "ID1_output,ID2_output" -l 300 -o PN1_final_results
+#### 2. Using a Parameter File
+```sh
+AmQUB_part1.sh params.csv
+```
+The parameter file (e.g., `params.csv`) should be comma-delimited, without headers or extra spaces. The first column should contain the following row names:
+```
+Raw Fastq File
+Mapping File
+Mismatch Bases
+```
+Example with Two Flowcells:
+```
+Raw Fastq File,data/AB.fq,data/XY.fq
+Mapping File,data/AB_map.txt,data/XY_map.txt
+Mismatch Bases,2,DEFAULT #(OPTIONAL ROW)
+```
+- `DEFAULT` in **Mismatch Bases** means it will use the default (0 mismatches).
+- Easily created in Excel: enter data in columns, then save as a CSV file.
 
-# exit singularity 
-exit
+### 🔍 In-Depth Description of Parameters
 
-# exit your interactive session if you want more resources for BLAST
-exit 
+#### 1. **Raw Fastq File (-f) [Required]**
+These are **raw** data files (before demultiplexing, filtering, or trimming). They must be **uncompressed** and end in `.fastq` or `.fq`.
 
-# make sure WDIR is still defined
-WDIR=/path/to/WDIR
+#### 2. **Mapping File (-p) [Required]**
+**Must be tab-delimited** and contain the following columns:
+```
+#SampleID   BarcodeSequence   
+F001.236    CTCGACTACTGA    
+F002.236    TGACCAGTAGTC    
+F003.236    GCGATTAGGTCG    
+```
+The first two columns **must** be exactly as shown:  
+- **#SampleID**: Sample ID associated with the barcode.
+- **BarcodeSequence**: The barcode sequence.
+**If using the mismatch function, you MUST include all original barcodes.** If any are missing, the function's results will not be trustworthy.
 
-# save the scripts "mbio_part4_blast_only.sh", "reblast_check.pl", and "blast_iterator.sh" to WDIR and make them executable.
+#### 3. **Mismatch Bases (-m) [Optional, Default = 0]**
+This optional function **converts mismatched barcodes** into perfect match barcodes. You can specify **1-5 mismatches**.
 
-# add WDIR to path so these scripts can be run.
-export PATH="${WDIR}:${PATH}"
+Example:
+- If `F001.236` has barcode **CTCGACTACTGA**, a read with **TTCGACTACTGA** would normally be excluded.
+- If **1 mismatch is allowed**, it would be included.
 
-# Load modules required if you are in a cluster environment. 
-module load seqkit 
+⚠ **We recommend avoiding this function unless necessary and keeping mismatches minimal.**
 
-# part 4 (just blast)
-mbio_part4_blast_only.sh -d ${WDIR} -o PN1_final_results -b blast_to_split.sh -n 2 
+### 📤 What Should I Do with the Output?
+After running **Part 1**, you will decide which samples to include for **Part 2** by modifying the map file:
 
-# start another interactive session with some power
-srun -c 60 --pty bash -l
+- **Example 1:** Exclude non-relevant samples (e.g., only analyze female nematodes and remove soil samples).
+- **Example 2:** Remove samples with too few reads for analysis.
 
-# start singularity as before
-module load singularity
-WDIR=/path/to/WDIR
-cd ${WDIR}
-singularity shell --bind /path/to/usearch:/bind/ /path/to/container.sif --cleanenv --no-home 
+🔹 **Create a copy of the original map file and remove unwanted samples before proceeding to Part 2.**
 
-# define your WDIR path. It should be the directory you start in.
-WDIR=$(pwd)
+&nbsp;
 
-# part 4 (the rest, but skip blast with -s flag!)
-mbio_part4.sh -d ${WDIR} -o PN1_final_results -e email@email.com -s
+## Part 2 - Demultiplexing and Trim Stat Generation
+
+### 📚 What is this part of the pipeline doing?
+1. **Creates a new folder** where all the output for this part will be stored.
+    - This will be called **“part2_XY_output”**, following the same naming format as Part 1.
+2. **Generates a barcode reference file**
+    - This file, **`barcodes.fa`**, contains the barcodes from your new mapping file.
+3. **Demultiplexes the data based on the barcodes file**
+    - Reads with barcodes **not found** in the barcodes file are removed.
+    - Sample ID information is added to the header of each read.
+    - The resulting fastq file is named **`XY.M#.demux.fq`**.
+4. **Generates statistics for retained reads based on trim lengths**
+    - Outputs a file called **`XY.M#.eestats.txt`**, detailing how many reads remain at various trim lengths.
+
+### ⚙️ Usage
+This script accepts input in two ways: **direct command-line arguments** or a **parameter file**.
+
+#### 1. Direct Command-Line Arguments
+```sh
+mbio_part2.sh -f part1_AB_output -p data/AB_subset_map.txt -m 2 -r 200-301 -i 10
+mbio_part2.sh -f part1_XY_output -p data/XY_map.txt
 ```
 
-## More Mapping File Details
-When you demultiplex (part 1), mapping files must only contain the samples (and barcodes) from that specific fastq file. So at that stage, each data file you process should have it's own mapping file.
+**Required Flags:**
+> **-f**  Path to the output folder from Part 1  
+> **-p**  Path to the mapping file  
 
-The only time you alter a mapping file during the pipeline is if you want to make an ASV table from only a subset of the samples within a fastq file, which you can indicate at part 2 using the -o option. (For example, if you were sequencing the microbiomes of insects and your advisor asked if he could add a couple of mouse gut samples into the library as well, you probably don't want to include them - especially when you are picking ASVs! So in step 2 you would create a new mapping file without those mouse gut sample rows.)
+**Optional Flags:**
+> **-m**  Number of allowed mismatches (1-5). Default is **0**.  
+> **-r**  Trim length stats range. Default is full read length.  
+> **-i**  Trim length stats interval. Default is **25**.
 
-There is no reason to combine mapping files until you are doing analyses at the very end when you will be referencing metadata and your ASV table contains samples from multiple fastq files. At this point, it makes sense to merge all the rows from all the mapping files that represent the samples in the ASV table you will be analyzing.
+#### 2. Using a Parameter File
+```sh
+mbio_part2.sh params.csv
+```
+
+The parameter file (e.g., `params.csv`) should be comma-delimited, without headers or extra spaces. The first column should contain these row names:
+```
+Part 1 Output Folder
+Mapping File
+Mismatch Bases
+Trim Length Stats Range
+Trim Length Stats Interval
+```
+
+Example with Two Flowcells:
+```
+Part 1 Output Folder,part1_AB_output,part1_XY_output
+Mapping File,data/AB_subset_map.txt,data/XY_map.txt
+Mismatch Bases,2,DEFAULT #(OPTIONAL ROW)
+Trim Length Stats Range,200-301,DEFAULT #(OPTIONAL ROW)
+Trim Length Stats Interval,10,DEFAULT #(OPTIONAL ROW)
+```
+- `DEFAULT` will use the script's default values.
+- Each column represents a different flowcell.
+
+### 🔍 In-Depth Description of Parameters
+
+#### 1. **Part 1 Output Folder (-f) [Required]**
+The path to the Part 1 output folder for the flowcell being processed. The folder name should follow the format **part1_XY_output**, where **XY** is the flowcell ID.
+
+#### 2. **Mapping File (-p) [Required]**
+A tab-delimited file containing at least two columns:
+```
+#SampleID   BarcodeSequence   
+F001.236    CTCGACTACTGA    
+F002.236    TGACCAGTAGTC    
+F003.236    GCGATTAGGTCG    
+```
+- The headers **#SampleID** and **BarcodeSequence** must be exactly as shown.
+- The first column contains sample IDs.
+- The second column contains barcode sequences.
+- If you subset this file to exclude unwanted samples, only those will be processed in Part 2.
+
+#### 3. **Mismatch Bases (-m) [Optional, Default = 0]**
+The number of barcode mismatches allowed. If you used this option in Part 1, use the same value here.
+
+#### 4. **Trim Length Stats Range (-r) [Optional]**
+The range of read trim lengths for which statistics should be generated. Example:
+- **`250-301`** calculates stats for reads trimmed to lengths **250 through 301**.
+
+#### 5. **Trim Length Stats Interval (-i) [Optional]**
+Determines the interval for calculating trim length stats. Example:
+- **`5`** calculates stats every **5 bases** within the specified range.
+- If `250-301` is the range, then stats will be generated for lengths **250, 255, 260, …, 300**.
+
+### 📤 What Should I Do with the Output?
+After running **Part 2**, check the stats output file: **`XY.M#.eestats.txt`**.
+
+**Example Output:**
+```
+16737356 reads, max len 301, avg 300.8
+
+Length         MaxEE 0.50         MaxEE 1.00         MaxEE 2.00
+------   ----------------   ----------------   ----------------
+   270    8398084( 50.2%)   10343240( 61.8%)   11992976( 71.7%)
+   280    7929776( 47.4%)   10008096( 59.8%)   11775144( 70.4%)
+   290    7361744( 44.0%)    9599660( 57.4%)   11535620( 68.9%)
+   300    6523644( 39.0%)    8902236( 53.2%)   11061544( 66.1%)
+```
+- This table shows how many reads remain at different trim lengths based on quality filtering.
+- **MaxEE** (Maximum Expected Errors) functions like a p-value: lower values are more stringent.
+
+🔹 **Decide on a Trim Length:**
+- If you plan to merge multiple flowcells in **Part 3**, all should be trimmed to the same length.
+- Compare stats across flowcells and choose a trim length that retains enough reads while ensuring quality.
+
+You can rerun **Part 2** with different parameters if needed before moving on.
+
+# TUTORIAL TO BE CONTINUED.
+
 
