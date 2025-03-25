@@ -4,7 +4,7 @@
 """
 blast_assign_taxonomy.py
 
-Loads an [ASVs2filter.log] file created by [blast_taxa_categorizer.py] and assigns taxonomy to the ASVs/query sequences
+Loads an [TUs2filter.log] file created by [blast_taxa_categorizer.py] and assigns taxonomy to the TUs/query sequences
 
 Usage:
     blast_assign_taxonomy.py -i <file> --db <file> -m <email@email.com> [-o <file>] [-K <int>] [-E <int>] [--add_sizes] [--assign_all] [--regex <regex>] [--asv <asv>]
@@ -12,7 +12,7 @@ Usage:
     blast_assign_taxonomy.py -h
 
 Arguments:
-    -i <file>     filepath to ASVs2filter.log
+    -i <file>     filepath to TUs2filter.log
     --db <file>   filepath to json taxonomy database (eg: path-to/taxonomyDB.json)
     -m <email>    user's email for NCBI reporting
 
@@ -20,15 +20,15 @@ Options:
     -o <file>        output filepath (if not defined, prints to STDOUT)
     -K <int>         minimum acceptable bitscore for Keeper hits [default: 0]
     -E <int>         minimum acceptable bitscore for Environmental hits [default: 0]
-    --assign_all     assign taxonomy even to Rejected ASVs (including PhiX) [default: False]
-    --add_sizes      add ASV sizes to output [default: False]
+    --assign_all     assign taxonomy even to Rejected TUs (including PhiX) [default: False]
+    --add_sizes      add taxonomic unit sizes to output [default: False]
     --regex <regex>  use a custom regular expression to detect an "Asv" line [default: ^Asv]
     --version        version
     --asv <asv>      debugging info
     -h               this help
 
 Related scripts:
-1) blast_taxa_categorizer.py (creates the [ASVs2filter.log] file)
+1) blast_taxa_categorizer.py (creates the [TUs2filter.log] file)
 """
 
 
@@ -48,7 +48,7 @@ import http.client  # Add this import
 
 
 class ASV:
-    '''Holds all blastn hits to a single asv found in an [ASVs2filter.log] file'''
+    '''Holds all blastn hits to a single asv found in an [TUs2filter.log] file'''
     def __init__(self, asv, size, designation, predesignation):
         self.id = str(asv)
         self.size = int(size)
@@ -169,7 +169,7 @@ def get_starting_line(opts):
     return (starting_line)
 
 
-def parse_ASVs2filter_log(opts):
+def parse_TUs2filter_log(opts):
     ''' '''
     asv_list = []
     # stopAt = 5000 ###
@@ -183,7 +183,7 @@ def parse_ASVs2filter_log(opts):
             next(infile)
 
         #-- real data processing starts here --#
-        nASVs = 0
+        nTUs = 0
         finishedASV = False
         for line in infile:
             line = line.rstrip()
@@ -243,9 +243,9 @@ def parse_ASVs2filter_log(opts):
 
             if finishedASV:
                 asv_list.append(asvObj)
-                nASVs = nASVs + 1
+                nTUs = nTUs + 1
                 finishedASV = False
-                # if nASVs >= stopAt:
+                # if nTUs >= stopAt:
                     # break
 
         return asv_list
@@ -456,7 +456,7 @@ def get_localDB_taxonomy(opts):
     return old_taxid_dict
 #
 
-def get_ASVs2filter_taxonIDs_list(opts, asv_list):
+def get_TUs2filter_taxonIDs_list(opts, asv_list):
     #@Returns list[taxonIDs]
     taxIDs = []
     for asv in asv_list:
@@ -587,17 +587,17 @@ def get_taxonomy(opts, asv_list):
     #@Returns dict[taxonIDs]=taxonomic_lineages
 
     localDB_taxonomy_dict = get_localDB_taxonomy(opts)
-    ASVs2filter_taxonIDs_list = get_ASVs2filter_taxonIDs_list(opts, asv_list)
+    TUs2filter_taxonIDs_list = get_TUs2filter_taxonIDs_list(opts, asv_list)
 
-    #determine which of the ASVs2filter_taxonIDs are new
-    new_taxonIDs_list = list(set(ASVs2filter_taxonIDs_list) - set(localDB_taxonomy_dict.keys()))
+    #determine which of the TUs2filter_taxonIDs are new
+    new_taxonIDs_list = list(set(TUs2filter_taxonIDs_list) - set(localDB_taxonomy_dict.keys()))
 
     #ensure all taxIDs are okay (are integers)
     new_taxonIDs_list[:] = [x for x in new_taxonIDs_list if taxID_is_integer(x)]
 
     if opts["debug"]:
         print(": len(localDB_taxonomy_dict):",len(localDB_taxonomy_dict), file=sys.stderr)
-        print(": len(ASVs2filter_taxonIDs_list):",len(ASVs2filter_taxonIDs_list), file=sys.stderr)
+        print(": len(TUs2filter_taxonIDs_list):",len(TUs2filter_taxonIDs_list), file=sys.stderr)
         print(": len(new_taxonIDs_list):",len(new_taxonIDs_list), file=sys.stderr)
 
     #update localDB_taxonomy_dict with any new taxa
@@ -934,7 +934,7 @@ def get_consensus_taxonomy(opts, taxonomies_list):
 
 def assigntax2all(opts, asv, taxonomy_dict):
 
-    #assign taxonomy to all ASVs, even host/contaminants/PhiX that we would normally remove
+    #assign taxonomy to all TUs, even host/contaminants/PhiX that we would normally remove
     best_hit_bitscore = "NA"
     best_hit_pident = "NA"
     best_hit_qcov = "NA"
@@ -968,7 +968,7 @@ def assigntax2all(opts, asv, taxonomy_dict):
                 else:
                     print("E txid["+str(txid)+"] NOT in taxonomy_dict!", file=sys.stderr)
 
-    #assign taxonomy to the "Rejected" ASVs
+    #assign taxonomy to the "Rejected" TUs
     elif asv.designation == "R":
         if asv.get_best_hit_taxIDs("R") is not None:
             best_hit_bitscore = asv.get_best_hit_bitscore("R")
@@ -1108,9 +1108,9 @@ def main(args):
     ###
     if 1:
         if opts["debug"]:
-            print(":parse_ASVs2filter_log", file=sys.stderr)
+            print(":parse_TUs2filter_log", file=sys.stderr)
 
-        asv_list = parse_ASVs2filter_log(opts)
+        asv_list = parse_TUs2filter_log(opts)
 
         if opts["debug"]:
             print(":asv_list.sort", file=sys.stderr)
@@ -1144,9 +1144,9 @@ def main(args):
     assigned_taxonomy = assign_taxonomy(opts, asv_list, taxonomy_dict)
 
     if opts["--add_sizes"]:
-        header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov\tsize"
+        header = "#ID\ttaxonomy\tbitscore\tper_id\tper_qcov\tsize"
     else:
-        header = "#ASVID\ttaxonomy\tbitscore\tper_id\tper_qcov"
+        header = "#ID\ttaxonomy\tbitscore\tper_id\tper_qcov"
 
     if opts["-o"]:
         with open(opts["-o"], 'w') as outfile:

@@ -7,30 +7,34 @@ import argparse
 def process_data_and_write_summary(norm, raw, tax, tax_c, mixed, output_file):
     # Read the main data file without recognizing any comment characters
     df = pd.read_csv(norm, sep='\t', comment=None, header=0)
-    df.rename(columns={df.columns[0]: 'ASV_ID'}, inplace=True)
+    df.rename(columns={df.columns[0]: 'ID'}, inplace=True)
     if 'taxonomy' in df.columns:
         df.drop(columns=['taxonomy'], inplace=True)
+
     # Read primary taxonomy file
     tax_df = pd.read_csv(tax, sep='\t', comment=None, header=0)
-    tax_df.columns = ['ASV_ID', 'taxonomy', 'bitscore', 'per_ID', 'per_qcov']
-    df = pd.merge(df, tax_df[['ASV_ID', 'taxonomy', 'per_ID', 'per_qcov']], on='ASV_ID', how='left')
+    tax_df.columns = ['ID', 'taxonomy', 'bitscore', 'per_ID', 'per_qcov']
+    df = pd.merge(df, tax_df[['ID', 'taxonomy', 'per_ID', 'per_qcov']], on='ID', how='left')
+
     # Check if tax_c is provided and process it if available
     if tax_c and tax_c.lower() != 'null':
-        # Read classifier taxonomy file if given
         tax_df_C = pd.read_csv(tax_c, sep='\t', comment=None, header=0)
-        tax_df_C.columns = ['ASV_ID', 'c_taxonomy', 'confidence']
-        df = pd.merge(df, tax_df_C, on='ASV_ID', how='left')
-        # Include c_taxonomy and confidence in excluded columns
-        excluded_columns = ['ASV_ID', 'taxonomy', 'per_ID', 'per_qcov', 'c_taxonomy', 'confidence', 'sequence']
+        tax_df_C.columns = ['ID', 'c_taxonomy', 'confidence']
+        df = pd.merge(df, tax_df_C, on='ID', how='left')
+        excluded_columns = ['ID', 'taxonomy', 'per_ID', 'per_qcov', 'c_taxonomy', 'confidence', 'sequence']
     else:
-        # Exclude c_taxonomy and confidence if tax_c is not provided
-        excluded_columns = ['ASV_ID', 'taxonomy', 'per_ID', 'per_qcov', 'sequence']
+        excluded_columns = ['ID', 'taxonomy', 'per_ID', 'per_qcov', 'sequence']
+
     # Calculate mean abundance using only numeric columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns.difference(excluded_columns)
     df['avg_abun'] = df[numeric_cols].mean(axis=1, skipna=True)
-    # Flag ASVs with mixed families in top 10
-    top10_df = pd.read_csv(mixed, sep='\t', comment=None, header=None)
-    df['mixed'] = np.where(df['ASV_ID'].isin(top10_df.iloc[:, 0]), 'yes', 'no')
+
+    # Check if mixed is provided and process it if available
+    if mixed and mixed.lower() != 'null':
+        top10_df = pd.read_csv(mixed, sep='\t', comment=None, header=None)
+        df['mixed'] = np.where(df['ID'].isin(top10_df.iloc[:, 0]), 'yes', 'no')
+    else:
+        df['mixed'] = 'no'  # Default value if no mixed file is provided
 
     # Reorder columns
     if tax_c and tax_c.lower() != 'null':
@@ -51,6 +55,10 @@ def process_data_and_write_summary(norm, raw, tax, tax_c, mixed, output_file):
     new_vector = pd.Series(nd_columns + sums.tolist(), index=df.columns)
     df = pd.concat([pd.DataFrame([new_vector]), df], ignore_index=True)
 
+    # Drop the 'mixed' column only if mixed was not provided
+    if not mixed or mixed.lower() == 'null':
+        df.drop(columns=['mixed'], inplace=True)
+
     # Write dataframe to the specified output file
     df.to_csv(output_file, sep='\t', index=False, quoting=False)
 
@@ -63,7 +71,7 @@ def main():
     parser.add_argument('raw', type=str, help='Path to the raw data file')
     parser.add_argument('tax', type=str, help='Path to the primary taxonomy file')
     parser.add_argument('tax_c', type=str, nargs='?', default=None, help='Path to the classifier taxonomy file (optional, use "NULL" to skip)')
-    parser.add_argument('mixed', type=str, help='Path to the top 10 mixed families file')
+    parser.add_argument('mixed', type=str, nargs='?', default=None, help='Path to the top 10 mixed families file (optional, use "NULL" to skip)')
     parser.add_argument('output_file', type=str, help='Path to the output file')
 
     # Parse command-line arguments

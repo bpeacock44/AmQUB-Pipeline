@@ -9,7 +9,7 @@ from both tables are retained in the merged output, filling missing values with 
 that don't exist in one of the input tables. The output is saved as a new tab-delimited file.
 
 Usage:
-    python align_otu.py <input_file1> <input_file2> <output_file>
+    python merge_tables.py <input_file1> <input_file2> <output_file>
 
 Arguments:
     input_file1  - Path to the first OTU table
@@ -17,7 +17,7 @@ Arguments:
     output_file  - Path where the merged table will be saved
 
 Example:
-    python align_otu.py pre-existing_otu_table_00.txt unbinned_otu_table_00.txt merged_otu_table.txt
+    python merge_tables.py pre-existing_otu_table_00.txt unbinned_otu_table_00.txt merged_otu_table.txt
 """
 
 def main(file1, file2, output_file):

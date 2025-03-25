@@ -4,6 +4,7 @@ From: ubuntu:22.04
 %files
     helper_functions
     pipeline_scripts
+    optional_analyses_scripts
 
 %post
     export TZ='America/Los_Angeles'
@@ -81,9 +82,11 @@ From: ubuntu:22.04
 
     # Create Conda environment
     conda env create -n qiime2-amplicon-2024.5 --file https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.5-py39-linux-conda.yml
+    conda install -n qiime2-amplicon-2024.5 seqkit 
+    conda install -n qiime2-amplicon-2024.5 bioconda::embassy-phylip
     echo ". /opt/miniconda/etc/profile.d/conda.sh" >> $SINGULARITY_ENVIRONMENT
     echo "conda activate qiime2-amplicon-2024.5" >> $SINGULARITY_ENVIRONMENT
-
+    
     # Remove leftover files
     rm /miniconda.sh
 
@@ -94,7 +97,8 @@ From: ubuntu:22.04
     export LANG=en_US.UTF-8
     export PATH="/bind:$PATH"
     export PATH="/home/programs/:$PATH"
-    export PATH="/helper_functions:$PATH"
+    export PATH="/helper_functions:$PATH"    
+    export PATH="/optional_analyses_scripts:$PATH"
     export PATH="/pipeline_scripts:$PATH"
     export PATH="/blast/ncbi-blast-*/bin:$PATH"  # Updated to use wildcard for blast directory
     export HDIR="/helper_functions"
