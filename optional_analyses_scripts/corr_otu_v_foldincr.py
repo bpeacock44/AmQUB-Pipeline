@@ -29,7 +29,7 @@ def parse_args():
     return parser.parse_args()
 
 # Setup logger
-def setup_logger(output_dir):
+def setup_logger(output_dir column):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(output_dir, f'corr_otu_v_foldincr_{column}_{current_time}_log.log')
     logging.basicConfig(
@@ -125,7 +125,7 @@ def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
 
 def main():
     args = parse_args()
-    setup_logger(args.output_dir)
+    setup_logger(args.output_dir,args.column)
     logging.info("Starting TU-TU correlation analysis.")
     asv_table = load_asv_table(args.asv_file)
     metadata = load_metadata(args.metadata_file)

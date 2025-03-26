@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 
 
-def setup_logger(output_dir):
+def setup_logger(output_dir, column):
     # Get the current date and time in the format YYYYMMDD_HHMMSS
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(output_dir, f'corr_otu_v_col_{column}_{current_time}_log.log')
@@ -34,7 +34,7 @@ def load_metadata(metadata_file):
     return pd.read_csv(metadata_file, sep='\t', index_col=0)
 
 def main(asv_file, metadata_file, output_dir, column):
-    setup_logger(output_dir)
+    setup_logger(output_dir, column)
     logging.info("Starting TU-Correlation analysis.")
 
     asv_table = load_asv_table(asv_file)

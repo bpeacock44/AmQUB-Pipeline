@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--setB', required=True, help='Comma-separated list of samples for Set B')
     return parser.parse_args()
 
-def setup_logger(output_dir):
+def setup_logger(output_dir, column):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(output_dir, f'corr_otu_v_otu_{column}_{current_time}_log.log')
     logging.basicConfig(
@@ -122,7 +122,7 @@ def main():
         logging.error("No treatment_col specified and Set A and Set B are different. Exiting analysis.")
         return
 
-    setup_logger(args.output_dir)
+    setup_logger(args.output_dir,args.column)
     logging.info("Starting TU-TU correlation analysis.")
     asv_table = load_asv_table(args.asv_file)
     metadata = load_metadata(args.metadata_file)
