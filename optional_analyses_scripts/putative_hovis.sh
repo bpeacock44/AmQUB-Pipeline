@@ -309,9 +309,12 @@ for WDIR in "${DIRS[@]}"; do
     # Step 2: Read the putative hovis IDs into a hash map and replace "no" with "yes" where appropriate
     declare -A putative_hovis_ids
     while read -r id; do
-        id_with_prefix="PH-$id"  # Prepend "PH-" to the ID
-        putative_hovis_ids["$id_with_suffix"]=1  # Store ID in the hash map
+        if [[ -n "$id" ]]; then  # Check if the id is not empty
+            id_with_prefix="PH-$id"  # Prepend "PH-" to the ID
+            putative_hovis_ids["$id_with_prefix"]=1  # Store ID in the hash map
+        fi
     done < "$putative_file"
+
     
     # Step 3: Update the rows in temp_file.tsv based on the hash map
     # Convert the associative array keys into a space-separated string
