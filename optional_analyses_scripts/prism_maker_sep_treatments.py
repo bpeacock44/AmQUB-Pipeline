@@ -19,10 +19,8 @@ data per treatment group and outputs a consolidated PRISM-compatible file.
 def setup_logger(output_dir):
     # Get the current date and time in the format "YYYY-MM-DD_HH-MM-SS"
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
     # Create a log file name with the timestamp
     log_file = os.path.join(output_dir, f'prism_maker_{current_time}.log')
-    
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
@@ -106,30 +104,27 @@ for treatment in treatments:
     avg_abundance = treatment_abundance.mean(axis=0).reset_index()
     avg_abundance.columns = ['taxonomy', 'average_abundance']
     avg_abundance = avg_abundance.sort_values(by='average_abundance', ascending=False)
-    
     # Get top N taxa for this treatment
     top_taxa = avg_abundance.head(args.num_taxa)['taxonomy'].tolist()
     treatment_top_taxa_dict[treatment] = top_taxa
-    
     # Add these top taxa to the global unique set
     unique_top_taxa.update(top_taxa)
 
 # Convert the set of unique top taxa into a sorted list
 final_top_taxa = sorted(unique_top_taxa)  # Sorting for consistency
 
-# Step 1.5: Compute and store the average abundance data for each treatment
+# Compute and store the average abundance data for each treatment
 for treatment in treatments:
     treatment_df = merged_df[merged_df[args.column] == treatment]
     treatment_abundance = treatment_df.drop(columns=['sampleID', args.column])
-
+    # Ensure that the 'taxonomy' column is preserved when creating the avg_abundance DataFrame
     avg_abundance = treatment_abundance.mean(axis=0).reset_index()
     avg_abundance.columns = ['taxonomy', 'average_abundance']
-    avg_abundance = avg_abundance.set_index('taxonomy')
-
-    # Store this in the dictionary
+    # Explicitly retain the 'taxonomy' column for later usage
+    avg_abundance = avg_abundance[['taxonomy', 'average_abundance']]
     treatment_avg_abundance_dict[treatment] = avg_abundance
-    
-# Step 2: Prepare the output DataFrame with dynamic columns
+
+# Prepare the output DataFrame with dynamic columns
 columns = ['treatment'] + final_top_taxa + ['other']
 output_df = pd.DataFrame(columns=columns)
 
@@ -137,37 +132,21 @@ output_df = pd.DataFrame(columns=columns)
 output_df = output_df.astype({col: float for col in columns if col != 'treatment'})
 output_df['treatment'] = output_df['treatment'].astype(str)
 
-# Step 3: Calculate average abundances for each treatment
+# Calculate average abundances for each treatment
 for treatment in treatments:
     avg_abundance = treatment_avg_abundance_dict[treatment].set_index('taxonomy')['average_abundance']
-    
     row = {'treatment': treatment}
     row.update({otu: avg_abundance.get(otu, 0) for otu in final_top_taxa})  # Fill missing taxa with 0
     row['other'] = avg_abundance.drop(index=final_top_taxa, errors='ignore').sum()  # Sum other taxa
-    
-    output_df = pd.concat([output_df, pd.DataFrame([row])], ignore_index=True)
-
-# Step 4: Calculate the "all" row (average across treatments)
-treatment_means = pd.DataFrame([
-    treatment_avg_abundance_dict[treatment].set_index('taxonomy')['average_abundance']
-    for treatment in treatments
-]).fillna(0)
-
-overall_row = {'treatment': 'avg_abun'}
-overall_row.update({otu: treatment_means[otu].mean() for otu in final_top_taxa})
-overall_row['other'] = treatment_means.drop(columns=final_top_taxa, errors='ignore').sum(axis=1).mean()
-
-output_df = pd.concat([pd.DataFrame([overall_row]), output_df], ignore_index=True)
-
-# Step 5: Convert values to proportions
-for idx, row in output_df.iterrows():
-    row_sum = row.drop(['treatment']).sum()
+    # Prepare the dataframe for the current treatment
+    treatment_df = pd.DataFrame([row])
+    # Calculate proportions for the current treatment
+    row_sum = treatment_df.drop(['treatment'], axis=1).sum(axis=1).values[0]
     if row_sum > 0:
-        output_df.iloc[idx, 1:] = (row.drop(['treatment']) / row_sum) * 100
+        treatment_df.iloc[:, 1:] = (treatment_df.drop(['treatment'], axis=1) / row_sum) * 100
+    # Save the current treatment data to a separate file
+    treatment_filename = os.path.join(args.output_avg_abundance_directory, f"{treatment}_abundance.tsv")
+    logging.info(f"Saving treatment file for {treatment} to: {treatment_filename}")
+    treatment_df.to_csv(treatment_filename, sep='\t', index=False)
 
-# Step 6: Save the updated DataFrame
-logging.info(f"Saving the output PRISM file to: {args.output_prism_file}")
-output_df.to_csv(args.output_prism_file, sep='\t', index=False)
-
-logging.info("Processing complete. Results saved.")
-
+logging.info("Processing complete. Individual treatment files saved.")

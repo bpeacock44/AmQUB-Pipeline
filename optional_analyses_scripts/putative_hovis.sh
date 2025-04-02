@@ -248,11 +248,12 @@ for WDIR in "${DIRS[@]}"; do
     
             # Loop over each string from the list file
             while IFS= read -r otu; do
-                sed -i "s/\b$otu\b/&-PH/g" "${output_dir}/$(basename "$file")"
+                # Add 'PH-' to the beginning of each matching word
+                sed -i "s/\b$otu\b/PH-&/g" "${output_dir}/$(basename "$file")"
             done < "$list_file"
         done
     }
-    
+
     # Process all *.txt files
     add_ph_to_strings "${WDIR}/finding_more_hovis/final_putative_hovis.txt" \
                         "${WDIR}/*.txt" \
@@ -308,7 +309,7 @@ for WDIR in "${DIRS[@]}"; do
     # Step 2: Read the putative hovis IDs into a hash map and replace "no" with "yes" where appropriate
     declare -A putative_hovis_ids
     while read -r id; do
-        id_with_suffix="${id}-PH"  # Append "-PH" to the ID
+        id_with_prefix="PH-$id"  # Prepend "PH-" to the ID
         putative_hovis_ids["$id_with_suffix"]=1  # Store ID in the hash map
     done < "$putative_file"
     

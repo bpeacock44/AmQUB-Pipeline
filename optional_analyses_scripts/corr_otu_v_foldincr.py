@@ -12,7 +12,6 @@ from datetime import datetime
 # Define argument parser
 def parse_args():
     parser = argparse.ArgumentParser(description="TU-TU Correlation Analysis")
-
     # Add the arguments you want to be available to the script
     parser.add_argument('--asv_file', required=True, help='Path to the ASV table file')
     parser.add_argument('--metadata_file', required=True, help='Path to the metadata file')
@@ -25,11 +24,11 @@ def parse_args():
     parser.add_argument('--setA', required=True, help='Comma-separated list of samples for Set A')
     parser.add_argument('--setB_before', required=True, help='Comma-separated list of samples for Set B (Before)')
     parser.add_argument('--setB_after', required=True, help='Comma-separated list of samples for Set B (After)')
-
+    
     return parser.parse_args()
 
 # Setup logger
-def setup_logger(output_dir column):
+def setup_logger(output_dir, column):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(output_dir, f'corr_otu_v_foldincr_{column}_{current_time}_log.log')
     logging.basicConfig(
@@ -56,15 +55,22 @@ def load_asv_table(asv_file):
 def load_metadata(metadata_file):
     return pd.read_csv(metadata_file, sep='\t', index_col=0)
 
-def average_counts(asv_table, metadata, group_col, treatment_col):
-    metadata = metadata.dropna(subset=[group_col])
+def average_counts(asv_table, metadata, column, treatment_col):
+    metadata = metadata.dropna(subset=[column])
     metadata = metadata.loc[metadata.index.intersection(asv_table.columns)]
     averaged_counts = {}
-    grouped = metadata.groupby([group_col, treatment_col])
-    for (group, treatment), samples in grouped:
+    grouped = metadata.groupby([column, treatment_col])
+    for (group, treatment), samples in grouped:        
         relevant_samples = asv_table[samples.index]
-        if not relevant_samples.empty:
-            averaged_counts[(group, treatment)] = relevant_samples.mean(axis=1)
+        # Check if relevant_samples is empty BEFORE computing the mean
+        if relevant_samples.empty:
+            logging.warning(f"No valid samples for group {group}, treatment {treatment}. Skipping.")
+            continue
+        averaged_counts[(group, treatment)] = relevant_samples.mean(axis=1)
+    # If no valid groups were found, return an empty DataFrame
+    if not averaged_counts:
+        logging.error("No valid samples found after filtering. Please check your inputs.")
+        return pd.DataFrame()
     return pd.DataFrame(averaged_counts)
 
 def calculate_setB_ratio(setB_before, setB_after):
@@ -73,7 +79,7 @@ def calculate_setB_ratio(setB_before, setB_after):
     common_columns = setB_before.columns.intersection(setB_after.columns)
     setB_before_common = setB_before[common_columns]
     setB_after_common = setB_after[common_columns]
-    ratio = setB_after_common / setB_before_common
+    ratio = setB_after_common / setB_before_common.replace(0, np.nan)
     return ratio
 
 def calculate_spearman_matrix(setA_values, setB_values):
@@ -100,15 +106,54 @@ def calculate_spearman_matrix(setA_values, setB_values):
     return correlation_matrix, p_values
 
 def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
-    correlation_matrix, p_value_matrix = calculate_spearman_matrix(setA_values, setB_values)
-    p_values = p_value_matrix.flatten()
+    setA_numeric_columns = setA_values.columns.get_level_values(1)
+    matching_columns = set(setA_numeric_columns) & set(setB_values.columns)
+    if not matching_columns:
+        raise ValueError("No matching columns found between setA_values and setB_values.")
+    # Subset both datasets to include only matching columns
+    setA_matched = setA_values.loc[:, setA_values.columns.get_level_values(1).isin(matching_columns)]
+    setB_matched = setB_values[list(matching_columns)]
+    # Extract column identifiers (level 1 values)
+    setA_col_ids = setA_matched.columns.get_level_values(1)
+    setB_col_ids = setB_matched.columns
+    # Count occurrences of each unique value in setA_col_ids
+    setA_counts = pd.Series(setA_col_ids).value_counts()
+    # Expand setB_matched by repeating rows to match occurrences in setA
+    expanded_B_rows = []
+    expanded_B_columns = []
+    # Rebuild setB_expanded to match setA_matched
+    setB_expanded = pd.DataFrame(index=setB_matched.index)
+    if isinstance(setA_matched.columns, pd.MultiIndex):
+        for col in setA_matched.columns.get_level_values(1):
+            # Find all matching columns in setB_matched (can be multiple)
+            matching_cols = setB_matched.columns[setB_matched.columns == col]
+            if len(matching_cols) == 0:
+                raise ValueError(f"Column {col} in setA_matched has no match in setB_matched")
+            # Duplicate each matching column to align with setA_matched
+            for i in range((setA_matched.columns.get_level_values(1) == col).sum()):
+                setB_expanded[col] = setB_matched[matching_cols].iloc[:, 0]  # Take first match
+    else:
+        # If no MultiIndex, match directly
+        common_cols = setA_matched.columns.intersection(setB_matched.columns)
+        setB_expanded = setB_matched[common_cols]
+    # Ensure column order matches
+    setB_expanded = setB_expanded[setA_matched.columns.get_level_values(1)]
+    # Check if shapes match
+    assert setA_matched.shape == setB_expanded.shape, f"Shape mismatch: {setA_matched.shape} vs {setB_expanded.shape}"
+    # Perform Spearman correlation
+    correlation_matrix, p_values = calculate_spearman_matrix(setA_matched, setB_expanded)
+    # Ensure p_values is 1D and handle them correctly
+    p_values = p_values.flatten()  # Flatten to ensure it's 1D
+    # Perform FDR correction
     _, corrected_p_values, _, _ = multipletests(p_values, method='fdr_bh')
-    corrected_p_values = corrected_p_values.reshape(p_value_matrix.shape)
+    # Since p_values is 1D, we don't need to reshape it
+    corrected_p_values = corrected_p_values.flatten()
+    # Results collection
     results = []
     for i, otu1_id in enumerate(otu_ids_A):
-        corr = correlation_matrix[i, 0]
-        p_value = p_value_matrix[i, 0]
-        fdr = corrected_p_values[i, 0]
+        corr = correlation_matrix[i, 0]  # Assuming correlation_matrix is 2D, but with 1 column
+        p_value = p_values[i]  # Use only one index to access p_values
+        fdr = corrected_p_values[i]  # Use only one index to access corrected p-values
         if not np.isnan(corr):
             results.append([
                 otu1_id,
@@ -119,23 +164,25 @@ def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
                 ','.join(map(str, setB_values.iloc[i])),
                 ','.join(map(str, setA_values.columns.get_level_values(1)))
             ])
+    # Create DataFrame and write to output
     results_df = pd.DataFrame(results, columns=['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'TU_Counts_SetA', 'TU_Counts_SetB_Ratio', 'Sample_IDs'])
     results_df.to_csv(output_file, sep='\t', index=False)
     return results_df
 
+
 def main():
     args = parse_args()
     setup_logger(args.output_dir,args.column)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
     logging.info("Starting TU-TU correlation analysis.")
     asv_table = load_asv_table(args.asv_file)
     metadata = load_metadata(args.metadata_file)
     logging.info("Loaded ASV table and metadata.")
-
     averaged_counts = average_counts(asv_table, metadata, args.column, args.treatment_col)
     if averaged_counts.empty:
         logging.error("No valid samples found after filtering. Please check your inputs.")
         return
-
     setA_samples = [x.strip() for x in args.setA.split(',')]
     setB_before_samples = [x.strip() for x in args.setB_before.split(',')]
     setB_after_samples = [x.strip() for x in args.setB_after.split(',')]
@@ -144,15 +191,11 @@ def main():
     setB_after = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setB_after_samples)]
     
     # drop any that aren't the same between before and after
-    setB_ratio = calculate_setB_ratio(setB_before, setB_after)
-
+    setB_values = calculate_setB_ratio(setB_before, setB_after)
     otu_ids_A = setA_values.index
-
     output_file = os.path.join(args.output_dir, f"otu_correlation_results_{args.column}.txt")
-
-    run_analysis(setA_values, setB_ratio, otu_ids_A, output_file)
+    run_analysis(setA_values, setB_values, otu_ids_A, output_file)
     logging.info("Correlation analysis completed.")
-
 
 if __name__ == "__main__":
     main()
