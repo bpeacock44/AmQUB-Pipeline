@@ -422,7 +422,7 @@ for DIR in ${DIRS[@]}; do
         echo "Running Mixed Family Checker."
         if [ "$MIX" = true ]; then
         	mixed_file="${DIR}/blast/mixed_family_output.txt"
-        	mixed_family_checker.py "${DIR}/blast/final.blastout" --email "${EMAIL}" --output "${mixed_file}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
+        	mixed_family_checker.py "${DIR}/blast/filtered.blastout" --email "${EMAIL}" --output "${mixed_file}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
         	mixed_arg="${mixed_file}"
         fi
     

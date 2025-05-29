@@ -405,6 +405,7 @@ def assign_taxonomy(opts, asv_list, taxonomy_dict):
     assigned_taxonomy = []
     for asv in asv_list.values():
         taxonomies_list = []
+        lowest_common_taxa = []  # <-- Initialize here
         # Get best hit details
         best_hit_taxIDs = asv.best_hit_txIDS
         if best_hit_taxIDs:
@@ -418,6 +419,10 @@ def assign_taxonomy(opts, asv_list, taxonomy_dict):
                 else:
                     print(f"txid[{txid}] NOT in taxonomy_dict!")
             lowest_common_taxa = get_lowest_common_taxonomy(opts, taxonomies_list, asv)
+        else:
+            best_hit_bitscore = 0
+            best_hit_pident = 0
+            best_hit_qcov = 0
         # If no common taxonomy found, use 'Unassigned'
         if not lowest_common_taxa:
             lowest_common_taxa = ['k__Unassigned']
