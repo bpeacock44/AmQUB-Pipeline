@@ -22,6 +22,7 @@ from collections import defaultdict
 from urllib.error import HTTPError
 from docopt import docopt
 from Bio import Entrez
+from datetime import datetime
 import json
 import time
 import sys
@@ -30,8 +31,11 @@ import os
 import http.client
 import argparse
 import xmltodict
- 
-import re
+
+# Create a unique directory name using current datetime
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+output_dir = f"/tmp/taxa_run_{timestamp}"
+os.makedirs(output_dir, exist_ok=True)
 
 class ASV:
     def __init__(self, asv):
@@ -207,7 +211,7 @@ def parse_xml_file(taxa_xml_file):
 def epost_taxonIDs(opts, new_taxonIDs_list):
     #TODO: define these earlier? somewhere else?
     #set some options
-    opts['taxa_xml_file'] = "taxa_01." # TODO: define directory as /tmp
+    opts['taxa_xml_file'] = os.path.join(output_dir, "taxa_")
     opts['retmax'] = 1000
     opts['retmode'] = "xml"
     opts['max_attempts'] = 3

@@ -159,8 +159,7 @@ fi
 # initiate log
 timestamp="$(date +"%y%m%d_%H:%M")"
 output_file="${output_dir}/putative_hovis_${timestamp}.log"
-exec > "$output_file"
-exec 2> >(tee -a "$output_file" >&2)
+exec > >(tee -ia "$output_file") 2>&1
 
 # log header
 echo "Log file for Putative Hovis Finder. Processed the following arguments:
