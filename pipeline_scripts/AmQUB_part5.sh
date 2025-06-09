@@ -282,10 +282,10 @@ for DIR in ${DIRS[@]}; do
     if [ "$CLA" = true ]; then
     	awk 'NR==1 {gsub("Feature ID", "#OTU ID"); gsub("Taxon", "taxonomy"); print; next} {print}' "${DIR}/classifier_output/taxonomy.tsv" > "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
     	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
-    	tail -n +2 "${DIR}/${typ}s/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > temp.txt
+    	tail -n +2 "${DIR}/${typ}s/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
     else
     	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/blast/tax_assignments.txt"
-    	tail -n +2 "${DIR}/blast/tax_assignments.txt" | cut -d$'\t' -f1,2 > temp.txt
+    	tail -n +2 "${DIR}/blast/tax_assignments.txt" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
     fi
     
     # create three additional taxonomic levels of ASV tables
@@ -301,9 +301,9 @@ for DIR in ${DIRS[@]}; do
     qiime tools import \
       --type 'FeatureData[Taxonomy]' \
       --input-format HeaderlessTSVTaxonomyFormat \
-      --input-path temp.txt \
+      --input-path "${DIR}/temp.txt" \
       --output-path "${DIR}/taxonomy.qza"
-    rm -rf temp.txt
+    rm -rf "${DIR}/temp.txt"
     
     # generate levels
     to_process=(
@@ -340,11 +340,11 @@ for DIR in ${DIRS[@]}; do
     done
     
     if [ "$CLA" = true ]; then
-    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "temp.txt" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
+    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
     else
-    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "temp.txt" "${DIR}/blast/tax_assignments.txt"
+    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/blast/tax_assignments.txt"
     fi
-    mv temp.txt "${DIR}/${typ}_table_03_add_taxa.norm.biom"
+    mv "${DIR}/temp2.txt" "${DIR}/${typ}_table_03_add_taxa.norm.biom"
     
     # split into 3 domains if indicated and normalize resulting tables
     if [[ "$split_asv_table" == true ]]; then

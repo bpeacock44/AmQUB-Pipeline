@@ -226,7 +226,7 @@ for WDIR in "${DIRS[@]}"; do
     sort "${WDIR}/finding_more_hovis/final_putative_hovis.txt" | uniq > "${WDIR}/finding_more_hovis/temp.txt" && mv "${WDIR}/finding_more_hovis/temp.txt" "${WDIR}/finding_more_hovis/final_putative_hovis.txt"
     seqkit grep -f "${WDIR}/finding_more_hovis/final_putative_hovis.txt" $INFASTA > "${WDIR}/finding_more_hovis/final_putative_hovis.fa"
     cat ~/shared/mbio_pipeline_files/control_hya_seqs_for_tree.fa >> "${WDIR}/finding_more_hovis/final_putative_hovis.fa"
-    mafft --phylipout --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/final_putative_hovis.fa" > "${WDIR}/finding_more_hovis/final_putative_hovis.phy"
+    mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/final_putative_hovis.fa" > "${WDIR}/finding_more_hovis/final_putative_hovis.aln.fa"
 
     # create new output files with putative hovis annotated
     mkdir -vp "${WDIR}/finding_more_hovis/new_output_files"

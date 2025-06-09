@@ -30,7 +30,7 @@ def parse_args():
 # Setup logger
 def setup_logger(output_dir, column):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join(output_dir, f'corr_otu_v_foldincr_{column}_{current_time}_log.log')
+    log_file = os.path.join(output_dir, f'corr_otu_v_foldincr_{column}_{current_time}.log')
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
