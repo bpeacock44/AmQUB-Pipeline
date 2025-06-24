@@ -70,11 +70,10 @@ def main(asv_file, metadata_file, output_dir, column):
     # Now correlate each TU with the specified column (instead of pairwise TU correlation)
     for otu_id in otu_ids:
         otu_counts = filtered_asv_table.loc[otu_id].astype(float)
+        print(otu_counts)
         corr, p_value = spearmanr(otu_counts, metadata.loc[filtered_samples, column])
-
         if np.isnan(corr) or np.isnan(p_value):
             continue
-
         results.append({
             'TU': otu_id,
             'Correlation Coefficient': corr,

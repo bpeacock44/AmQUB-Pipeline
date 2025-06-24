@@ -17,12 +17,12 @@ data per treatment group and outputs a consolidated PRISM-compatible file.
 
 # Set up the logger
 def setup_logger(output_dir):
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
     # Get the current date and time in the format "YYYY-MM-DD_HH-MM-SS"
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
     # Create a log file name with the timestamp
     log_file = os.path.join(output_dir, f'prism_maker_{current_time}.log')
-    
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
@@ -106,11 +106,9 @@ for treatment in treatments:
     avg_abundance = treatment_abundance.mean(axis=0).reset_index()
     avg_abundance.columns = ['taxonomy', 'average_abundance']
     avg_abundance = avg_abundance.sort_values(by='average_abundance', ascending=False)
-    
     # Get top N taxa for this treatment
     top_taxa = avg_abundance.head(args.num_taxa)['taxonomy'].tolist()
     treatment_top_taxa_dict[treatment] = top_taxa
-    
     # Add these top taxa to the global unique set
     unique_top_taxa.update(top_taxa)
 
@@ -121,11 +119,9 @@ final_top_taxa = sorted(unique_top_taxa)  # Sorting for consistency
 for treatment in treatments:
     treatment_df = merged_df[merged_df[args.column] == treatment]
     treatment_abundance = treatment_df.drop(columns=['sampleID', args.column])
-
     avg_abundance = treatment_abundance.mean(axis=0).reset_index()
     avg_abundance.columns = ['taxonomy', 'average_abundance']
     avg_abundance = avg_abundance.set_index('taxonomy')
-
     # Store this in the dictionary
     treatment_avg_abundance_dict[treatment] = avg_abundance
     
