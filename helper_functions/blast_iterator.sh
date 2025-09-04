@@ -21,7 +21,7 @@ trap 'error_handler "$BASH_COMMAND"' ERR
 
 # Define initial values
 reblast_iteration="rb0"
-maxseqs=5000
+maxseqs=1000
 
 DIR=$1
 BLAST_FILE=$2

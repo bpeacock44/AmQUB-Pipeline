@@ -188,22 +188,6 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
-# helper function to extract IDs
-extract_reads_for_ids() {
-    local id_file="$1"
-    local fq_file="$2"
-    local out_fa="$3"
-
-    awk 'NR==FNR { ids[$1]; next }
-        /^@/ {
-            header = $0; getline seq; getline plus; getline qual;
-            if (substr(header, 2) in ids) {
-                print ">" substr(header, 2) "\n" seq
-            }
-        }' "$id_file" "$fq_file" > "$out_fa"
-}
-
-
 ### Strategy 1 (default)
 if [ "$skSTR1" == false ]; then
     # check for and if necessary generate binning reports

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pandas as pd
+import numpy as np
 import os
 import argparse
 import logging
@@ -21,106 +22,104 @@ def setup_logger(output_dir):
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-def main():
-    parser = argparse.ArgumentParser(description="Process ASV table and mapping file to generate average abundance data.")
-    parser.add_argument('--file_path', required=True)
-    parser.add_argument('--map_file', required=True)
-    parser.add_argument('--column', required=True)
-    parser.add_argument('--output_avg_abundance_directory', required=True)
-    parser.add_argument('--output_prism_file', required=True)
-    parser.add_argument('--num_taxa', type=int, default=3)
-    args = parser.parse_args()
+parser = argparse.ArgumentParser(description="Generate PRISM-compatible OTU abundance summaries.")
+parser.add_argument('--file_path', required=True, help="Path to the ASV table file (normalized).")
+parser.add_argument('--map_file', required=True, help="Path to the mapping file.")
+parser.add_argument('--column', required=True, help="Column in the mapping file to group by (e.g., 'SoilNumber').")
+parser.add_argument('--output_dir', required=True, help="Directory to save output files.")
+parser.add_argument('--num_taxa', type=int, default=3, help="Number of top taxa to include (default: 3).")
+parser.add_argument('--output_mode', choices=['avg_all', 'split'], required=True,
+                    help="Specify output mode: 'avg_all' for one summary row or 'split' for separate files.")
+args = parser.parse_args()
 
-    setup_logger(args.output_avg_abundance_directory)
+setup_logger(args.output_dir)
 
-    try:
-        logging.info(f"Reading ASV table from: {args.file_path}")
-        with open(args.file_path) as f:
-            first_line = f.readline().strip()
-        skip_rows = 1 if first_line == "# Constructed from biom file" else 0
+# Extract an ID from file_path for naming
+asv_table_id = os.path.splitext(os.path.basename(args.file_path))[0]
 
-        df = pd.read_csv(args.file_path, sep='\t', skiprows=skip_rows, comment='~')
-        df.rename(columns={df.columns[0]: "ASV_ID"}, inplace=True)
+# Read ASV table
+logging.info(f"Reading ASV table from: {args.file_path}")
+with open(args.file_path) as f:
+    first_line = f.readline().strip()
+skip_rows = 1 if first_line == "# Constructed from biom file" else 0
+df = pd.read_csv(args.file_path, sep='\t', skiprows=skip_rows, comment='~')
+df.rename(columns={df.columns[0]: "ASV_ID"}, inplace=True)
 
-        if 'taxonomy' in df.columns:
-            df['taxonomy'] = df['taxonomy'] + '_' + df['ASV_ID']
-            df.drop(columns=['ASV_ID'], inplace=True)
-        else:
-            df.rename(columns={'ASV_ID': 'taxonomy'}, inplace=True)
+if 'taxonomy' in df.columns:
+    df['taxonomy'] = df['taxonomy'] + '_' + df['ASV_ID']
+    df.drop(columns=['ASV_ID'], inplace=True)
+else:
+    df.rename(columns={'ASV_ID': 'taxonomy'}, inplace=True)
 
-        logging.info(f"Reading mapping file from: {args.map_file}")
-        map_df = pd.read_csv(args.map_file, sep='\t', comment='~')
-        map_df.rename(columns={'#SampleID': 'sampleID'}, inplace=True)
+# Read map file
+logging.info(f"Reading mapping file from: {args.map_file}")
+map_df = pd.read_csv(args.map_file, sep='\t', comment='~')
+map_df.rename(columns={'#SampleID': 'sampleID'}, inplace=True)
+map_df = map_df[[args.column, 'sampleID']]
+treatments = map_df[args.column].dropna().unique()
 
-        if args.column not in map_df.columns:
-            logging.error(f"Column '{args.column}' not found in mapping file.")
-            exit(1)
+# Transpose ASV table
+df_transposed = df.set_index('taxonomy').T
+df_transposed.reset_index(inplace=True)
+df_transposed.rename(columns={'index': 'sampleID'}, inplace=True)
 
-        map_df = map_df[[args.column, 'sampleID']]
-        treatments = map_df[args.column].dropna().unique()
+# Merge ASV and metadata
+merged_df = pd.merge(map_df, df_transposed, on='sampleID')
+merged_df = merged_df[~pd.isna(merged_df[args.column])]
 
-        os.makedirs(args.output_avg_abundance_directory, exist_ok=True)
+# Determine top N taxa per treatment
+treatment_top_taxa_dict = {}
+unique_top_taxa = set()
+treatment_avg_abundance_dict = {}
 
-        df_transposed = df.set_index('taxonomy').T.reset_index().rename(columns={'index': 'sampleID'})
-        merged_df = pd.merge(map_df, df_transposed, on='sampleID')
-        merged_df = merged_df.dropna(subset=[args.column])
+for treatment in treatments:
+    treatment_df = merged_df[merged_df[args.column] == treatment]
+    treatment_abundance = treatment_df.drop(columns=['sampleID', args.column])
+    avg_abundance = treatment_abundance.mean(axis=0).reset_index()
+    avg_abundance.columns = ['taxonomy', 'average_abundance']
+    avg_abundance = avg_abundance.sort_values(by='average_abundance', ascending=False)
+    top_taxa = avg_abundance.head(args.num_taxa)['taxonomy'].tolist()
+    treatment_top_taxa_dict[treatment] = top_taxa
+    unique_top_taxa.update(top_taxa)
+    treatment_avg_abundance_dict[treatment] = avg_abundance.set_index('taxonomy')
 
-        treatment_top_taxa_dict = {}
-        unique_top_taxa = set()
-        treatment_avg_abundance_dict = {}
+final_top_taxa = sorted(unique_top_taxa)
 
-        for treatment in treatments:
-            logging.info(f"Processing treatment: {treatment}")
-            t_df = merged_df[merged_df[args.column] == treatment]
-            abund = t_df.drop(columns=['sampleID', args.column])
-            avg_abund = abund.mean().reset_index()
-            avg_abund.columns = ['taxonomy', 'average_abundance']
-            top_taxa = avg_abund.sort_values(by='average_abundance', ascending=False).head(args.num_taxa)['taxonomy'].tolist()
-            treatment_top_taxa_dict[treatment] = top_taxa
-            unique_top_taxa.update(top_taxa)
+# Generate output
+if args.output_mode == 'avg_all':
+    treatment_means = pd.DataFrame([
+        treatment_avg_abundance_dict[t].loc[:, 'average_abundance']
+        for t in treatments
+    ]).fillna(0)
 
-        final_top_taxa = sorted(unique_top_taxa)
+    avg_row = {'treatment': 'avg_abun'}
+    avg_row.update({otu: treatment_means[otu].mean() for otu in final_top_taxa})
+    avg_row['other'] = treatment_means.drop(columns=final_top_taxa, errors='ignore').sum(axis=1).mean()
 
-        for treatment in treatments:
-            t_df = merged_df[merged_df[args.column] == treatment]
-            abund = t_df.drop(columns=['sampleID', args.column])
-            avg_abund = abund.mean().reset_index()
-            avg_abund.columns = ['taxonomy', 'average_abundance']
-            treatment_avg_abundance_dict[treatment] = avg_abund.set_index('taxonomy')
+    avg_df = pd.DataFrame([avg_row])
+    row_sum = avg_df.drop(columns='treatment').sum(axis=1).values[0]
+    if row_sum > 0:
+        avg_df.iloc[:, 1:] = (avg_df.drop(columns='treatment') / row_sum) * 100
 
-        columns = ['treatment'] + final_top_taxa + ['other']
-        rows = []
+    filename = f"prism.column_{args.column}.numtaxa_{args.num_taxa}.outputmode_avg_all.tsv"
+    output_path = os.path.join(args.output_dir, filename)
+    logging.info(f"Saving average-only output to: {output_path}")
+    avg_df.to_csv(output_path, sep='\t', index=False)
 
-        for treatment in treatments:
-            avg_abund = treatment_avg_abundance_dict[treatment]['average_abundance']
-            row = {'treatment': treatment}
-            row.update({otu: avg_abund.get(otu, 0) for otu in final_top_taxa})
-            row['other'] = avg_abund.drop(index=final_top_taxa, errors='ignore').sum()
-            rows.append(row)
+elif args.output_mode == 'split':
+    for treatment in treatments:
+        avg_abundance = treatment_avg_abundance_dict[treatment]['average_abundance']
+        row = {'treatment': treatment}
+        row.update({otu: avg_abundance.get(otu, 0) for otu in final_top_taxa})
+        row['other'] = avg_abundance.drop(index=final_top_taxa, errors='ignore').sum()
+        treatment_df = pd.DataFrame([row])
+        row_sum = treatment_df.drop(columns='treatment').sum(axis=1).values[0]
+        if row_sum > 0:
+            treatment_df.iloc[:, 1:] = (treatment_df.drop(columns='treatment') / row_sum) * 100
 
-        output_df = pd.DataFrame(rows, columns=columns)
+        filename = f"prism.column_{args.column}.numtaxa_{args.num_taxa}.outputmode_split.{treatment}.tsv"
+        output_path = os.path.join(args.output_dir, filename)
+        logging.info(f"Saving per-treatment file for {treatment} to: {output_path}")
+        treatment_df.to_csv(output_path, sep='\t', index=False)
 
-        treatment_means = pd.DataFrame([
-            treatment_avg_abundance_dict[treatment]['average_abundance']
-            for treatment in treatments
-        ]).fillna(0)
-
-        overall_row = {'treatment': 'avg_abun'}
-        overall_row.update({otu: treatment_means[otu].mean() for otu in final_top_taxa})
-        overall_row['other'] = treatment_means.drop(columns=final_top_taxa, errors='ignore').sum(axis=1).mean()
-
-        output_df = pd.concat([pd.DataFrame([overall_row]), output_df], ignore_index=True)
-
-        numeric_cols = output_df.columns.difference(['treatment'])
-        output_df[numeric_cols] = output_df[numeric_cols].div(output_df[numeric_cols].sum(axis=1), axis=0) * 100
-
-        logging.info(f"Saving the output PRISM file to: {args.output_prism_file}")
-        output_df.to_csv(args.output_prism_file, sep='\t', index=False)
-        logging.info("Processing complete. Results saved.")
-
-    except Exception as e:
-        logging.exception("An error occurred during processing.")
-        exit(1)
-
-if __name__ == '__main__':
-    main()
+logging.info("Script complete.")

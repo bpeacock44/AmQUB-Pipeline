@@ -609,7 +609,6 @@ if [[ "$PRE" != "false" ]]; then
     
         # Merge tables - put "zero" in for samples that aren't there. 
         merge_tables.py "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/pre-existing_${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}_table_00.txt" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}_table_00.txt"
-        rm -rf 
         cat "${PRE}" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa" > "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/${typ}s.fa"
     else
         # File is empty or doesn't exist, exit the loop or script
