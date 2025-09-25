@@ -56,7 +56,7 @@ From: ubuntu:22.04
     Rscript -e 'BiocManager::install("edgeR")'
 
     # Download and install BLAST+
-    wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz -P /tmp/
+    wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.16.0/ncbi-blast-2.16.0+-x64-linux.tar.gz -P /tmp/
     tar -zxvf /tmp/ncbi-blast-2.16.0+-x64-linux.tar.gz  -C /blast/
     rm -r /tmp/ncbi-blast-2.16.0+-x64-linux.tar.gz 
 

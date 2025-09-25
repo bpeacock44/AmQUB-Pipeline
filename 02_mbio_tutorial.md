@@ -1,4 +1,4 @@
-# Tutorial
+# Pipeline Tutorial
 
 This pipeline is in five parts. Each part should be run sequentially.
 
@@ -16,52 +16,6 @@ There are some [examples](#example-of-overall-pipeline) of how this might be run
 
 **Note** that when you run any of these scripts, a log file will be created in the output folder that you can reference if you run into errors. Please raise an issue if this occurs! There will be a blast log created separately from your part 4 log specific to the blast run. 
 
-&nbsp;
-
-## Prep – Starting Singularity
-
-### Steps
-1. Make sure singularity is loaded as a module on the cluster (command below) or installed on your computer. Note that installing singularity on Mac or Windows will require you to use a virtual Linux machine because it is only compatible with Linux. There are detailed instructions on how to do this here (link forthcoming).
-```sh
-module load singularity
-```
-2. Create a folder of the programs/tools required. In the following examples, I have one called “mbio_pipeline_files.” And inside I have:
-    - The singularity file (AmQUB.sif)
-    - A copy of USEARCH 64-bit
-    - A QIIME2 classifier (instructions link forthcoming)
-3. Set this folder equal to the variable “programs” using the full path as so: 
-```sh
-programs="/rhome/bpeacock/mbio_pipeline_files"
-```
-4. You can check if step 3 was done correctly by listing the files in the folder using this command:
-```sh
-ls $programs
-```
-5. You should also have an updated local NCBI nt database (instructions) or access to one on your cluster.
-6. Set your database equal to the variable “NCBI_DB” using the full path like so:
-```sh
-NCBI_DB=”/srv/projects/db/ncbi/preformatted/20240807”
-```
-7. Move to your working directory – which is where you want to generate output.
-8. Run the following command to start the AmQUB singularity container. Note that there are a few lines, and they all need to be run at the same time! 
-```sh
-singularity shell 
---bind ${programs}:/home/programs/ \
---bind ${NCBI_DB}:/database/ \
---bind $(pwd):/home/analysis/ \
-${programs}/AmQUB.sif'
-```
-9. Detailed explanation of what the above command means: 
-- Remember that when you start a singularity container you are essentially starting a “minicomputer”, and these commands help set up what that computer has access to. You are using the flag “--bind” to set folders in your minicomputer:
-    - Your programs folder will be the folder “/home/programs” in the container
-    - Your NCBI database will be in the path “/database” in the container
-    - Your working directory (which is stored as $(pwd) if you are in it currently) will be the folder “/home/analysis” in the container
-    - Backslashes (\\) mean that the command continues on the next line.
-    - The end of the command should be the singularity container file you want to start.
-10. Once you run the singularity shell command, it will open the singularity and you will see “Singularity>” in your terminal. This is the prompt for you to start running commands!
-```sh
-Singularity>                             
-```
 &nbsp;
 
 ## Part 1 - Sequence Preprocessing
