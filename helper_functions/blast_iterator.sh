@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-# This script will run BLAST with 5000 max seqs and then check to see if the results are satisfcatory to determine LCA
+# This script will run BLAST with 1000 max seqs and then check to see if the results are satisfcatory to determine LCA
 # for all ASVs that are greater than 1% the size of the largest ASV. 
 # In this context, that means that the results reach a point where the bitscore begins to go down so you know you've 
 # collected all the highest bitscore results available. If you have not reached this point, BLAST will run again with 
@@ -171,13 +171,13 @@ done
 echo "Merging all blastout files."
 
 rm -f ${DIR}/${TAX_TYPE}s/blast/final.blastout
-cat ${DIR}/${TAX_TYPE}s/blast/5000.rb0.blastout | grep -v "# BLAST processed" >> ${DIR}/${TAX_TYPE}s/blast/final.blastout 
+cat ${DIR}/${TAX_TYPE}s/blast/1000.rb0.blastout | grep -v "# BLAST processed" >> ${DIR}/${TAX_TYPE}s/blast/final.blastout 
 if [ -e "${DIR}/${TAX_TYPE}s/blast/30000.rb1.blastout" ]; then
     cat "${DIR}/${TAX_TYPE}s/blast/30000.rb1.blastout" | grep -v "# BLAST processed" >> "${DIR}/${TAX_TYPE}s/blast/final.blastout"
 fi
 
 echo "# BLAST processed" >> ${DIR}/${TAX_TYPE}s/blast/final.blastout 
 
-rm -f ${DIR}/${TAX_TYPE}s/blast/5000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/30000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/rb1.fasta  
+rm -f ${DIR}/${TAX_TYPE}s/blast/1000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/30000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/rb1.fasta  
 
 
