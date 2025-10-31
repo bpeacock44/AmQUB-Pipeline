@@ -32,10 +32,10 @@
 # --alpha UNOISE-Set Alpha Parameter
 # --map STR2-Mapping File 
 # --col STR2-Treatment Column (can be +-delimited list if multiple columns to be processed)
-# --pre STR3-Pre-existing OTUsASVs 
+# --pre STR3-Pre-existing TUs 
 # --tblid TABLE-Minimum fractional ID
-# --un-TABLE-Generation of Fastq of Unassigned Seqs
-# --rmf-TABLE-Generation of Read Mapping File
+# --un TABLE-Generation of Fastq of Unassigned Seqs
+# --rmf TABLE-Generation of Read Mapping File
 
 # 2. A parameter template file:
 #    AmQUB_part3.sh params.csv
@@ -59,7 +59,7 @@
 #        UNOISE-Set Alpha Parameter,NA (this line wouldn't be included)
 #        STR2-Mapping File,merged_map.txt
 #        STR2-Treatment Column,Soil_Type+Tissue
-#        STR3-Pre-existing OTUsASVs,IDx_OTUs.fa
+#        STR3-Pre-existing TUs,IDx_OTUs.fa
 #        TABLE-Minimum fractional ID,0.98
 #        TABLE-Generation of Fastq of Unassigned Seqs,true
 #        TABLE-Generation of Read Mapping File,true
@@ -101,7 +101,7 @@ parse_file_input() {
             "UNOISE-Set Alpha Parameter,"*) ALPHA="${line#*,}" ;;
             "STR2-Mapping File,"*) MAPF="${line#*,}" ;;
             "STR2-Treatment Column,"*) IFS='+' read -ra COL <<< "${line#*,}" ;;
-            "STR3-Pre-existing OTUsASVs,"*) PRE="${line#*,}" ;;
+            "STR3-Pre-existing TUs,"*) PRE="${line#*,}" ;;
             "TABLE-Minimum fractional ID,"*) TBLID="${line#*,}" ;;
             "TABLE-Generation of Fastq of Unassigned Seqs,"*) UN="${line#*,}" ;;
             "TABLE-Generation of Read Mapping File,"*) RMF="${line#*,}" ;;
@@ -253,7 +253,7 @@ fi
 print_arg "UNOISE - Alpha Parameter" "$ALPHA"
 print_arg "STR2 - Mapping File" "${MAPF[*]}"
 print_arg "STR2 - Treatment Column" "${COL[*]}"
-print_arg "STR3 - Pre-existing OTUs/ASVs" "$PRE"
+print_arg "STR3 - Pre-existing TUs" "$PRE"
 print_arg "TABLE - Minimum fractional ID" "$TBLID"
 print_arg "TABLE - Generation of Fastq of Unassigned Seqs" "$UN"
 print_arg "TABLE - Generation of Read Mapping File" "$RMF"
@@ -357,7 +357,7 @@ mkdir -vp "${OUTDIR}/${typ}s/blast"
 mv -v "${OUTDIR}/${typ}s/${typ}s_counts.fa" "${OUTDIR}/${typ}s/blast"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# OPTIONAL ALTERNATVIE OTU/ASV CALLING STRATEGY 2
+# OPTIONAL ALTERNATIVE OTU/ASV CALLING STRATEGY 2
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 if [[ "$MAPF" != "false" ]]; then
     echo

@@ -1,4 +1,4 @@
-#!/bin/bash
+ls#!/bin/bash
 # See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
@@ -309,16 +309,13 @@ process_output_dir() {
     # Activate the virtual environment containing necessary pip modules
     source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
-    # Step 1: Generate a list of likely environmental taxonomic IDs to exclude from the blast file and filter
+    # Generate a list of likely environmental taxonomic IDs to exclude from the blast file and filter
     likely_env_remove.py "${EMAIL}" "${output_dir}/${typ}s/blast/final.blastout" "${output_dir}/${typ}s/blast/filtered.blastout"
 
-    # Step 2: Parse the blastout into a summary file, keeping only the top bitscore hits
+    # Parse the blastout into a summary file, keeping only the top bitscore hits
     blast_top_hit_parser.py -i "${output_dir}/${typ}s/blast/filtered.blastout" -o "${output_dir}/${typ}s/blast/top_hit_summary.txt"
 
-    # Step 3: Remove temporary files
-    rm -f *.xml
-
-    # Step 4: Assign LCA via BLAST
+    # Assign LCA via BLAST
     assign_LCA_via_blast.py -i "${output_dir}/${typ}s/blast/top_hit_summary.txt" -m "${EMAIL}" -o "${output_dir}/${typ}s/blast/tax_assignments.txt"
 
     # Step 5: Clean the tax_assignments file using awk

@@ -137,79 +137,110 @@ def parse_asv_file(file_path):
  
 def parse_xml_file(taxa_xml_file):
     """
-    Parse the XML file and return a dictionary of taxon IDs to taxonomic lineages.
-    @param taxa_xml_file: Path to the XML file
-    @return: dict[taxonIDs]=taxonomy
+    Parse the NCBI taxonomy XML file and return a dictionary mapping Taxon IDs to KPCOFGS-style taxonomy strings.
+    Top ranks are domain (d__) and kingdom (k__).
     """
     d = {}
-    taxa_level_prefix = "k__ p__ c__ o__ f__ g__ s__ u__".split()
-    ranks = "superkingdom phylum class order family genus species".split()  # Removed subspecies
+    taxa_level_prefix = "d__ k__ p__ c__ o__ f__ g__ s__ u__".split()
+    ranks = "domain kingdom phylum class order family genus species".split()
+    
     if not os.path.isfile(taxa_xml_file):
         print(f":  ** File not found: [{taxa_xml_file}] **")
         return d    
+
     try:
         with open(taxa_xml_file) as fh:
             rootD = xmltodict.parse(fh.read())
     except Exception as e:
         print(f":  ** Error reading file [{taxa_xml_file}]: {e} **")
         return d
-    if isinstance(rootD, dict) and isinstance(rootD.get('TaxaSet', {}), dict):
-        taxon_objectsL = rootD['TaxaSet'].get('Taxon', [])
-    else:
-        print(f":  ** Nothing to parse in [{taxa_xml_file}] **")
-        return d    
+
+    taxon_objectsL = rootD.get('TaxaSet', {}).get('Taxon', [])
     if isinstance(taxon_objectsL, dict):
-        taxon_objectsL = [taxon_objectsL]    
+        taxon_objectsL = [taxon_objectsL]
+
+    # Map NCBI ranks to our standard ranks
+    rank_map = {
+        'domain': ['domain'],
+        'kingdom': ['kingdom'],
+        'phylum': ['phylum'],
+        'class': ['class'],
+        'order': ['order'],
+        'family': ['family'],
+        'genus': ['genus'],
+        'species': ['species']
+    }
+
     for TaxonD in taxon_objectsL:
         TaxId = TaxonD.get('TaxId', 'Unknown')
         ScientificName = TaxonD.get('ScientificName', 'Unknown')
         taxonL = TaxonD.get('LineageEx', {}).get('Taxon', [])
         if isinstance(taxonL, dict):
-            taxonL = [taxonL]        
+            taxonL = [taxonL]
+
+        # Initialize taxonomy dictionary
         taxonomyD = {rank: None for rank in ranks}
-        genus, species = "", ""
-        species_found = False        
-        # Initialize taxonomy list
-        taxonomy = []
-        last_defined_taxa = ""        
+
+        # Fill taxonomyD from LineageEx using mapping
         for taxlevD in taxonL:
-            rank = taxlevD.get('Rank', 'Unknown')
-            if rank in taxonomyD:
-                taxonomyD[rank] = taxlevD.get('ScientificName', 'Unknown')        
-        for i, rank in enumerate(ranks):
-            if rank == 'genus':
-                if taxonomyD[rank] is not None:
-                    genus = taxonomyD[rank]
-                    species_name = re.sub(f"{genus} ", "", ScientificName).split(" ")[0]
-                    species = f"{genus}_{species_name}"
-                    taxonomyD['species2'] = species
-                else:
-                    taxonomyD['species2'] = None
-            elif rank == 'species':
-                if taxonomyD[rank] is not None:
-                    species_found = True
-                    species = taxonomyD[rank]
-                    taxonomyD['species'] = species
-                else:
-                    taxonomyD['species'] = taxonomyD.get('species2', None)
-            # Skip subspecies
-            if taxonomyD.get(rank) is not None:
-                taxonomy_rank = re.sub(" ", "_", taxonomyD[rank])
-                taxonomy.append(taxa_level_prefix[i] + taxonomy_rank)
-                last_defined_taxa = taxonomy_rank
+            ncbi_rank = taxlevD.get('Rank', '')
+            sci_name = taxlevD.get('ScientificName', '')
+            for our_rank, ncbi_ranks in rank_map.items():
+                if ncbi_rank in ncbi_ranks:
+                    taxonomyD[our_rank] = sci_name
+
+        # Fallbacks if domain or kingdom missing
+        if not taxonomyD['domain']:
+            # Try to infer from Lineage string
+            lineage_list = TaxonD.get('Lineage', '').split(';')
+            if len(lineage_list) >= 2:
+                taxonomyD['domain'] = lineage_list[1].strip()
             else:
-                taxonomy.append(taxa_level_prefix[i] + "unclassified_" + last_defined_taxa)        
+                taxonomyD['domain'] = 'Unassigned'
+
+        if not taxonomyD['kingdom']:
+            # Fallback: take next level after domain if available
+            lineage_list = TaxonD.get('Lineage', '').split(';')
+            if len(lineage_list) >= 3:
+                taxonomyD['kingdom'] = lineage_list[2].strip()
+            else:
+                taxonomyD['kingdom'] = 'Unassigned'
+
+        # Handle genus/species formatting
+        genus, species = "", ""
+        if taxonomyD['genus']:
+            genus = taxonomyD['genus']
+        if taxonomyD['species']:
+            species = taxonomyD['species']
+        elif ScientificName and genus:
+            species = f"{genus}_{ScientificName.replace(genus+' ', '')}"
+        taxonomyD['species2'] = species
+
+        # Build final taxonomy string
+        taxonomy = []
+        last_defined_taxa = taxonomyD['domain']  # start with domain
+        for i, rank in enumerate(ranks):
+            rank_name = taxonomyD.get(rank)
+            if rank_name:
+                rank_name = rank_name.replace(" ", "_")
+                taxonomy.append(f"{taxa_level_prefix[i]}{rank_name}")
+                last_defined_taxa = rank_name
+            else:
+                taxonomy.append(f"{taxa_level_prefix[i]}unclassified_{last_defined_taxa}")
+
         lineage = ";".join(taxonomy).replace(" ", "").replace("=", ".").replace("'", "")
-        d[TaxId] = lineage        
+        d[TaxId] = lineage
+
+        # Add AkaTaxIds if present
         AkaTaxIds = TaxonD.get('AkaTaxIds', {}).get('TaxId', '')
         if AkaTaxIds:
-            AkaTaxIds_list = re.split(",", AkaTaxIds)
-            for AkaTaxId in AkaTaxIds_list:
-                d[AkaTaxId] = lineage    
+            for AkaTaxId in re.split(",", AkaTaxIds):
+                d[AkaTaxId] = lineage
+
     return d
+
  
 def epost_taxonIDs(opts, new_taxonIDs_list):
-    #TODO: define these earlier? somewhere else?
     #set some options
     opts['taxa_xml_file'] = os.path.join(output_dir, "taxa_")
     opts['retmax'] = 1000

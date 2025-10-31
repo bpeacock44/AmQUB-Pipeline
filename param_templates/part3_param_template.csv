@@ -1,0 +1,20 @@
+Part 2 Output Folders To Process Together
+Trim Length
+Output Folder
+UPARSE or UNOISE3
+FILTERING-Generation of Removed Reads File
+FILTERING-EE Value Appended to IDs
+FILTERING-MaxEE Value
+FILTERING-Discard if there are > n Ns in the read
+UNIQUES-Generation of Sequence Binning Report
+UNIQUES-Set minuniquesize
+ALGORITHM-Set Min Size
+ALGORITHM-Generation of Processing Report
+UPARSE-Set Percent Identity Threshold
+UNOISE-Set Alpha Parameter
+STR2-Mapping File
+STR2-Treatment Column
+STR3-Pre-existing TUs
+TABLE-Minimum fractional ID
+TABLE-Generation of Fastq of Unassigned Seqs
+TABLE-Generation of Read Mapping File

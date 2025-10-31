@@ -16,7 +16,7 @@
 # -3: A file of taxonomic units you wish to keep in the final table for STRATEGY 3 - one per line.
 # -u: Universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 # -c: Optionally choose to use the classifier taxonomic assignments instead of BLAST.
-# -d: Creates a specialized "Detailed Informational OTU/ASV Table" with more detail about the taxonomic assignments.
+# -d: Creates a specialized "Detailed Informational TU Table" with more detail about the taxonomic assignments.
 # -m: Will run an optional analysis checking whether the top 10 BLAST results for each taxonomic unit 
 #    had more than one family present. This can be an indicator that the BLAST results should be examined
 #    more closely. Note that runtime will increase as this is a more intensive analysis. 
@@ -36,7 +36,7 @@
 #        Taxonomic Units to Keep File STRATEGY3,to_keep_S3.txt
 #        Universal Assay,true
 #        Classifier Assignments Primary,true
-#        Detailed Informational OTU/ASV Table,true
+#        Detailed Informational TU Table,true
 #        Mixed Top 10 Analysis,true
 #        Skip Strategy 1,true
 #        Process Strategy 2,true
@@ -58,7 +58,7 @@ parse_parameter_file() {
             "Taxonomic Units to Keep File STRATEGY3,"*) STR3="${line#*,}" ;;
             "Universal Assay,"*) UNI="${line#*,}" ;;
             "Classifier Assignments Primary,"*) CLA="${line#*,}" ;;
-            "Detailed Informational OTU/ASV Table,"*) DET="${line#*,}" ;;
+            "Detailed Informational TU Table,"*) DET="${line#*,}" ;;
             "Mixed Top 10 Analysis,"*) MIX="${line#*,}" ;;
             "Skip Strategy 1,"*) skSTR1="${line#*,}" ;;
             "Process Strategy 2,"*) STR2_simp="${line#*,}" ;;
@@ -228,7 +228,7 @@ if [ "$CLA" = true ]; then
 fi
 
 if [ "$DET" = true ]; then
-    echo "A Detailed Informational OTU/ASV Table will be generated." | tee /dev/tty
+    echo "A Detailed Informational TU Table will be generated." | tee /dev/tty
 fi
 
 if [ "$MIX" = true ]; then
@@ -347,7 +347,7 @@ for DIR in ${DIRS[@]}; do
     mv "${DIR}/temp2.txt" "${DIR}/${typ}_table_03_add_taxa.norm.biom"
     
     # split into 3 domains if indicated and normalize resulting tables
-    if [[ "$split_asv_table" == true ]]; then
+    if [[ "$UNI" == true ]]; then
         for F in "${to_process[@]}"; do
             biom2txt "${F}.biom" "${F}.txt"
             KDOMS=("k__Archaea" "k__Bacteria" "k__Eukaryota")
