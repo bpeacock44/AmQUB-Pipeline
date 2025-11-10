@@ -301,13 +301,11 @@ A **Taxonomic Unit (TU)** is a general term we use to describe the “bins” or
 
 TUs can be defined in different ways, depending on the algorithms and assumptions used. In this pipeline you can choose to work with **ASVs** or **OTUs**, which are two specific kinds of TUs. Unless describing steps unique to one method, I’ll refer to them generically as TUs.  
 
-🦠 **ASVs vs. OTUs**  
+🦠 **OTUs vs. ASVs**  
 - **OTUs (Operational Taxonomic Units):** Created by clustering sequences based on similarity (e.g., all sequences ≥97% similar to a reference or “seed” sequence are grouped into the same OTU).  
 - **ASVs (Amplicon Sequence Variants):** Represent exact sequences after careful error correction. Algorithms detect and remove sequencing errors and chimeras (artificial PCR artifacts). This makes ASVs more precise and reproducible than OTUs.  
+
 **Best practice:** Compare results from both OTUs and ASVs. If the overall taxonomic composition is similar, that builds confidence in your conclusions.  
-
-
-Best practice: Many researchers compare results from both OTUs and ASVs. If the overall taxonomic composition is similar between the two, that builds confidence in your conclusions.
 
 ### 📚 What does this part do?  
 1. **Creates a new output folder**  
@@ -457,7 +455,7 @@ Here you indicate which algorithm you want to use, which determines if you're us
 
 The rest of the parameters are OPTIONAL.
 
-<ins>Parameters for the read filtering section of the pipeline:</ins>
+### Parameters for the read filtering section of the pipeline:
 Read more about this command [here.](https://www.drive5.com/usearch/manual/cmd_fastq_filter.html)
 
 #### 5. **Generation of Removed Reads File `(--fr)` [Optional, Default is to not generate it.]**
@@ -472,7 +470,7 @@ This is the MaxEE filtering value. All reads that fall above this value will be 
 #### 8. **Discard if there are > n Ns in the read `(--fd)` [Optional, Default is no removal.]**
 This option will discard any reads that contain more Ns than the number you indicate.
 
-<ins>Parameters related to the command that finds unique reads in your filtered dataset.</ins>
+### Parameters related to the command that finds unique reads in your filtered dataset.
 Read more about this command [here.](https://drive5.com/usearch/manual/cmd_fastx_uniques.html)
 
 #### 9. **Generation of Sequence Binning Report `(--ug)` [Optional, Default is to note generate it.]**
@@ -481,7 +479,7 @@ This file will show you which representative sequence each read was binned under
 #### 10. **Set minuniquesize `(--us)` [Optional, Default is 1.]**
 If you set this option, any sequences that have fewer copies than the number you indicate will be discarded. (By default everything is kept because there is at least 1 copy of each sequence.)
 
-<ins>Parameters related to TU seed sequence picking.</ins>
+### Parameters related to TU seed sequence picking.
 Read more about UNOISE3 (ASVs) [here.](https://www.drive5.com/usearch/manual/cmd_unoise3.html)
 Read more about UPARSE (OTUs) [here.](https://www.drive5.com/usearch/manual/cmd_cluster_smallmem.html)
 
@@ -497,7 +495,8 @@ This is threshold of similarity after which sequences will be considered to be s
 #### 14. **UNOISE ONLY - Set Alpha Parameter `(--alpha)` [Optional, Default is 2.0.]**
 The -unoise_alpha option specifies the alpha parameter (see [UNOISE2 paper](https://www.drive5.com/usearch/manual/citation.html) for definition - it's more messy but basically it's determining how stringent or lenient the algorithm is in determining what is and isn't an ASV and finding chimeras.)
 
-<ins>Parameters for using Strategy 2.</ins> If you set these, Strategy 2 will be implemented. If you don't, it will be skipped.
+### Parameters for using Strategy 2.
+If you set these, Strategy 2 will be implemented. If you don't, it will be skipped.
 
 #### 15. **Mapping File `(--map)` [Optional, Default is no Strategy 2.]**
 This is a tab-delimited combined mapping file with all the samples from all the datasets that you are combining for this TU table. To make it, you can just merge all the mapping files from each of the folders you indicated in the "--in" flag. Make sure to remove any duplicate headers so you only have one! The #sampleID should be kept the same so your reads can still map to the correct sample. You should also have a column (or multiple) that show the groupings you want to use! For example:
@@ -520,12 +519,13 @@ In this case I want to group my samples by SoilNumber. So the two samples from S
 #### 16. **Treatment Column (`--col`) [Optional, Default is no Strategy 2.]**
 This should be the column name as it appears in your mapping file. (e.g. SoilNumber as above). 
 
-<ins>Parameters for using Strategy 3.</ins> If you set this, Strategy 3 will be implemented. If you don't, it will be skipped.
+### Parameter for using Strategy 3.
+If you set this, Strategy 3 will be implemented. If you don't, it will be skipped.
 
 #### 17. **Pre-existing TUs (`--pre`) [Optional, Default is no Strategy 3.]**
 This is a fasta file of pre-existing TU seed sequences generated in another analysis that you want to map your reads to.
 
-<ins>Parameters for making the TU table:</ins>
+### Parameters for making the TU table:
 Read more about this command [here.](https://www.drive5.com/usearch/manual/cmd_otutab.html)
 
 #### 18. **Minimum fractional ID (`--tblid`) [Optional, Default is 0.97 which is like 97%.]**
