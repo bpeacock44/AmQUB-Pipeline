@@ -2,10 +2,10 @@
 
 This pipeline has five parts, which should be run sequentially:
 
-🔴 [Part 1: Sequence Preprocessing](#part-1-sequence-preprocessing) 
+🔴 [Part 1: Sequence Preprocessing](##part-1-sequence-preprocessing) 
 Removes PhiX reads, generates summary statistics (e.g., how many reads per sample), and optionally converts mismatched barcodes to perfect matches.
 
-🟠 [Part 2: Demultiplexing and Trim Stat Generation](#part-2---demultiplexing-and-trim-stat-generation) 
+🟠 [Part 2: Demultiplexing and Trim Stat Generation](#part-2-demultiplexing-and-trim-stat-generation) 
 Demultiplexes the data and estimates how many reads you’ll retain after trimming and quality filtering.
 
 🟡 [Part 3: Taxonomic Unit (TU) Selection](#part-3)  
@@ -44,7 +44,7 @@ The letters with a dash before them are "flags" - these indicate the different o
 ### 2. Parameter Files (File Input) 🔄
 Instead of typing everything into the command, you can save your settings in a comma-delimited file (CSV). Each line specifies one option.
 
-Templates are provided in the [templates folder](LINK). You can edit them in a text editor or in Excel (but save as CSV).
+Templates are provided in the [templates folder](AmQUB-Pipeline/param_templates/). You can edit them in a text editor or in Excel (but save as CSV).
 
 Please keep in mind that your options cannot contain extra commas! So if your file path or column name etc. has a comma in it, the parameter file option will not work. 
 
