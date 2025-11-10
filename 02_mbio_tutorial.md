@@ -2,22 +2,22 @@
 
 This pipeline has five parts, which should be run sequentially:
 
-🔴 [Part 1: Sequence Preprocessing](##part-1-sequence-preprocessing) 
+[Part 1: Sequence Preprocessing](https://github.com/bpeacock44/AmQUB-Pipeline/edit/main/02_mbio_tutorial.md#part-1-sequence-preprocessing)
 Removes PhiX reads, generates summary statistics (e.g., how many reads per sample), and optionally converts mismatched barcodes to perfect matches.
 
-🟠 [Part 2: Demultiplexing and Trim Stat Generation](#part-2-demultiplexing-and-trim-stat-generation) 
+[Part 2: Demultiplexing and Trim Stat Generation](#part-2-demultiplexing-and-trim-stat-generation)
 Demultiplexes the data and estimates how many reads you’ll retain after trimming and quality filtering.
 
-🟡 [Part 3: Taxonomic Unit (TU) Selection](#part-3)  
+[Part 3: Taxonomic Unit (TU) Selection](#part-3)  
 Processes the data to define TUs (e.g., OTUs or ASVs) and generates the initial count table.
 
-🟢 [Part 4: Taxonomic Assignment](#part-4)
+[Part 4: Taxonomic Assignment](#part-4)
 Assigns taxonomy to TUs using BLAST against the NCBI nt database and, optionally, a Qiime2 classifier.
 
-🔵 [Part 5: Final Processing](#part-5)  
+[Part 5: Final Processing](#part-5)  
 Generates finalized count tables (with taxonomy at multiple levels) and creates a detailed summary file for accessing results.
 
-👉 Examples of how the full pipeline can be run are provided [here.](LINK) 
+👉 Examples of how the full pipeline can be run are provided [here.](LINK) (Link TBD)
 
 🪵 Note: Each script creates a log file in the output folder. Part 4 also generates a separate BLAST-specific log. These are helpful for troubleshooting errors.
 
@@ -44,7 +44,7 @@ The letters with a dash before them are "flags" - these indicate the different o
 ### 2. Parameter Files (File Input) 🔄
 Instead of typing everything into the command, you can save your settings in a comma-delimited file (CSV). Each line specifies one option.
 
-Templates are provided in the [templates folder](AmQUB-Pipeline/param_templates/). You can edit them in a text editor or in Excel (but save as CSV).
+Templates are provided in the [templates folder](../param_templates/). You can edit them in a text editor or in Excel (but save as CSV).
 
 Please keep in mind that your options cannot contain extra commas! So if your file path or column name etc. has a comma in it, the parameter file option will not work. 
 
@@ -69,7 +69,7 @@ It’s up to you:
 
 &nbsp;
 
-## 🔴 Part 1: Sequence Preprocessing
+## Part 1: Sequence Preprocessing
 
 ### 📚 What does this part do?  
 1. **Creates a new output folder**  
