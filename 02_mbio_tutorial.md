@@ -2,10 +2,10 @@
 
 This pipeline has five parts, which should be run sequentially:
 
-[Part 1: Sequence Preprocessing](https://github.com/bpeacock44/AmQUB-Pipeline/blob/main/02_mbio_tutorial.md#part-1-sequence-preprocessing)
+[Part 1: Sequence Preprocessing](#part-1-sequence-preprocessing) 
 Removes PhiX reads, generates summary statistics (e.g., how many reads per sample), and optionally converts mismatched barcodes to perfect matches.
 
-[Part 2: Demultiplexing and Trim Stat Generation](#part-2-demultiplexing-and-trim-stat-generation)
+[Part 2: Demultiplexing and Trim Stat Generation](#part-2---demultiplexing-and-trim-stat-generation) 
 Demultiplexes the data and estimates how many reads you’ll retain after trimming and quality filtering.
 
 [Part 3: Taxonomic Unit (TU) Selection](#part-3)  
@@ -17,7 +17,7 @@ Assigns taxonomy to TUs using BLAST against the NCBI nt database and, optionally
 [Part 5: Final Processing](#part-5)  
 Generates finalized count tables (with taxonomy at multiple levels) and creates a detailed summary file for accessing results.
 
-👉 Examples of how the full pipeline can be run are provided [here.](LINK) (Link TBD)
+👉 Examples of how the full pipeline can be run are provided [here.](LINK) 
 
 🪵 Note: Each script creates a log file in the output folder. Part 4 also generates a separate BLAST-specific log. These are helpful for troubleshooting errors.
 
@@ -44,7 +44,7 @@ The letters with a dash before them are "flags" - these indicate the different o
 ### 2. Parameter Files (File Input) 🔄
 Instead of typing everything into the command, you can save your settings in a comma-delimited file (CSV). Each line specifies one option.
 
-Templates are provided in the [templates folder](../param_templates/). You can edit them in a text editor or in Excel (but save as CSV).
+Templates are provided in the [templates folder](LINK). You can edit them in a text editor or in Excel (but save as CSV).
 
 Please keep in mind that your options cannot contain extra commas! So if your file path or column name etc. has a comma in it, the parameter file option will not work. 
 
@@ -170,7 +170,7 @@ Some reasons to exclude samples:
 
 &nbsp;
 
-## 🟠 Part 2: Demultiplexing and Trim Stat Generation
+## Part 2: Demultiplexing and Trim Stat Generation
 
 ### 📚 What does this part do?  
 1. **Creates a new output folder**  
@@ -294,7 +294,7 @@ This file shows how many reads remain at different trim lengths under varying st
 
 &nbsp;
 
-## 🟡 Part 3: Taxonomic Unit (TU) Selection
+## Part 3: Taxonomic Unit (TU) Selection
 
 ### 🤨 What is a TU?  
 A **Taxonomic Unit (TU)** is a general term we use to describe the “bins” or “groups” of sequences in your dataset. Each TU represents a distinct biological entity. If you see more reads in one TU than another, that suggests the corresponding entity is more abundant.  
@@ -544,7 +544,7 @@ After running Part 3, your **TU table is ready**. The next step is to assign tax
 
 &nbsp;
 
-## 🟢 Part 4: Taxonomic Assignment 
+## Part 4: Taxonomic Assignment 
 
 ### 📚 What does this part do?  
 Part 4 assigns **taxonomy** to the TUs (OTUs or ASVs) created in Part 3. You can do this via **BLAST** searches against NCBI’s nt database, a **QIIME2 classifier**, or both. You can also choose which strategy outputs from Part 3 to annotate.  
