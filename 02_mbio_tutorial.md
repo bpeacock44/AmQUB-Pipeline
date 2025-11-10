@@ -2,7 +2,7 @@
 
 This pipeline has five parts, which should be run sequentially:
 
-🔴 [Part 1: Sequence Preprocessing](#part-1---sequence-preprocessing) 
+🔴 [Part 1: Sequence Preprocessing](#part-1-sequence-preprocessing) 
 Removes PhiX reads, generates summary statistics (e.g., how many reads per sample), and optionally converts mismatched barcodes to perfect matches.
 
 🟠 [Part 2: Demultiplexing and Trim Stat Generation](#part-2---demultiplexing-and-trim-stat-generation) 
