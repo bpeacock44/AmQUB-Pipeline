@@ -695,7 +695,9 @@ The rest of the parameters are OPTIONAL.
    - You can use these to skip assigning taxonomy to the default strategy OTUs (strategy 1) or to enable taxonomy assignment for strategy 2 or 3 respectively.
 
 ### Getting Classifiers for Qiime2
-To be written. (LINK)
+   - [This link](https://library.qiime2.org/data-resources) is the qiime2 classifier page. It contains pre-trained classifiers you can download and use.
+   - As you will read in the Qiime2 documentation on that page, as of 2025 pre-trained classifiers can come with a security risk. They are working on fixing that, but for now if you download a pre-trained classifier, make sure you know exactly where it came from.  The above link also contains classifiers that Qiime2 has produced but, as they describe, even these can be compromised so once you download one. A way to handle this is described on the website as follows: 
+> "After downloading a classifier from this page, it is a very good idea to calculate the sha256 sum of the classifier using the command shasum -a 256 <path-to-classifier>. If the output does not match the SHA256 value associated with the classifier on this page, do not use the classifier and instead re-download it from this page. If this persists after you try downloading multiple times, please let us know on the QIIME 2 Forum."
 
 ### 📤 What Should I Do with the Output?  
    - You can compare strategies using the **`taxonomy_summary_table.tsv`** file to determine which gives the most reliable taxonomic resolution for your dataset. 
