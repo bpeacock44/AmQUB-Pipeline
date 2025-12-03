@@ -129,8 +129,8 @@ Mismatch Bases,2 #(OPTIONAL ROW)
 ### 🔍 In-Depth Description of Parameters
 
 #### 1. **Raw Fastq File (-f) [Required]**
-  - Must be **raw, uncompressed FASTQ files** (ending in `.fastq` or `.fq`).  
-  - No trimming, filtering, or demultiplexing should have been done yet.  
+  - Must be **raw (meaning unprocessed), uncompressed FASTQ files** (ending in `.fastq` or `.fq`).  
+  - By unprocessed, I mean no trimming, filtering, or demultiplexing should have been done yet.  
 
 #### 2. **Mapping File (-p) [Required]**
   - **Tab-delimited** file with at least these two columns:  
@@ -151,12 +151,12 @@ The first two columns **must** be exactly as shown:
   - Range: **1–5**.  
 
 **Example:**  
-  - True barcode: `CTCGACTACTGA`  
-  - Read barcode: `TTCGACTACTGA`  
-  - With `-m 0` → excluded  
-  - With `-m 1` → included  
+  - Say this is your barcode: `CTCGACTACTGA`  
+  - And there is a read with this barcode: `TTCGACTACTGA`  
+  - With `-m 0` → the read would be EXCLUDED (no mismatches allowed)
+  - With `-m 1` → the read would be INCLUDED (1 mismatch allowed)  
 
-⚠️ *Best practice:* Avoid using this option unless necessary, and keep the number of allowed mismatches low. 
+⚠️ *Best practice:* Avoid using this option unless necessary, and then keep the number of allowed mismatches low. 
 
 ### 📤 What to Do Next  
 
@@ -166,7 +166,7 @@ Some reasons to exclude samples:
 - **Biological filtering:** e.g., exclude males if analyzing only females  
 - **Low quality/coverage:** remove samples with too few reads  
 
-👉 **Make a copy of your original mapping file and delete unwanted rows** before moving to Part 2. I like to modify the original mapping file name with a subset ID. For example JB236_map.txt can be JB236_males_map.txt.  
+👉 **To do this, make a copy of your original mapping file and delete unwanted rows** before moving to Part 2. I like to modify the original mapping file name with a subset ID. For example JB236_map.txt can be JB236_males_map.txt.  
 
 &nbsp;
 
@@ -180,7 +180,7 @@ Some reasons to exclude samples:
    - **`barcodes.fa`** → contains the barcodes from your mapping file.  
 
 3. **Demultiplexes reads using the barcode file**  
-   - Reads with barcodes not found in the file are removed.  
+   - Reads with barcodes not found in the mapping file are removed.  
    - Sample ID information is added to the read headers.  
    - Output file: **`XY.M#.demux.fq`**  
 
@@ -188,11 +188,11 @@ Some reasons to exclude samples:
    - Output file: **`XY.M#.eestats.txt`** → shows how many reads remain at different trim lengths.  
 
 #### 🤨 What are trim lengths?  
-Sequencing read ends often have more errors, so trimming them improves quality. But trimming also shortens reads, which may reduce how easily they can be classified.  
+The ends of sequencing reads often have more errors, so trimming them improves quality. But trimming also shortens reads, which may reduce how clearly they can be classified.  
 
 The goal is to balance **quality** (fewer errors) and **length** (enough sequence for classification).  
 
-Filtering will also remove low-quality reads in later steps, so trimming now increases the number of usable reads.  
+Low-quality reads will be filtered out in later steps, so trimming now increases the number of usable reads later too.  
 
 ### ⚙️ Usage
 This script accepts input either by **direct command-line arguments** or via a **parameter file**.  
@@ -250,10 +250,10 @@ F003.236    GCGATTAGGTCG
   - The headers **#SampleID** and **BarcodeSequence** must be exactly as shown.
   - **#SampleID** → Sample identifier  
   - **BarcodeSequence** → Barcode sequence  
-  - If you subset this file by deleting rows, only the remaining samples will be processed.  
+  - If you have subset this file by deleting rows, only the remaining samples (rows) will be processed.  
 
 #### 3. **Subset ID (`-s`) [Optional, Default is no subset]**
-Appends the subset ID to the output folder name.  
+Appends the subset ID to the output folder name. It helps for this ID to match the one you add to your subset mapping file so you know the two are related.
 
 #### 4. **Mismatch Bases (`-m`) [Optional, Default = 0]**
   - Number of mismatches allowed in barcodes.  
@@ -283,14 +283,14 @@ Length         MaxEE 0.50         MaxEE 1.00         MaxEE 2.00
    290    7361744( 44.0%)    9599660( 57.4%)   11535620( 68.9%)
    300    6523644( 39.0%)    8902236( 53.2%)   11061544( 66.1%)
 ```
-This file shows how many reads remain at different trim lengths under varying stringency levels (**MaxEE** values).  
+This file shows how many reads remain at different trim lengths under varying stringency levels of filtering (**MaxEE** values).  
 
 - **MaxEE** (Maximum Expected Errors) works like a p-value → lower is more stringent.  
 - Use the table to decide on a trim length:  
   - If merging multiple flowcells in Part 3, all must use the same trim length.  
-  - Pick a length that balances read retention with high quality.  
+  - Pick a length that balances read retention with higher quality.  
 
-👉 If you realize you need different stats, rerun Part 2 with adjusted parameters before moving on.  
+👉 If you realize you need more stats, rerun Part 2 with adjusted parameters before moving on.  
 
 &nbsp;
 
@@ -337,8 +337,7 @@ TUs can be defined in different ways, depending on the algorithms and assumption
    - Sorts reads from **combined.fq** into TU bins.  
    - Outputs table of read counts per TU and per sample: **asv_table_00.txt** or **otu_table_00.txt**.  
 
-8. **Post-processing**  
-   - Sorts TU tables.  
+8. **Post-processing**   
    - Produces a **.biom** table for use in other programs.  
    - Annotates **otus.fa** or **asvs.fa** headers with counts.  
    - Moves annotated fasta into a **blast** folder for Part 4.  
