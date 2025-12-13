@@ -3,7 +3,8 @@ In order to run AmQUB, you will need to get set up in a few ways:
 1. 📝 Find or download a text editor on your computer.
 2. 💻 Get your account working and familiarize yourself with how to access files and use the terminal.
 3. 🗂️ Set up your working directory and data.
-4. 📦 Set up and start the AmQUB singularity container. 
+4. 💿 Request resources to use to run your analysis.
+5. 📦 Set up and start the AmQUB singularity container. 
 
 &nbsp;
 
@@ -213,7 +214,32 @@ This identifier will be used to generate output folders in the first parts of Am
 
 &nbsp;
 
-## 4. Starting Singularity for AmQUB 📦
+## 4. Requesting Resources 💿 
+When you start a session on HPCC, you start in a "Head Node" which is essentially a not-very-powerful computer. You can try to run complicated analyses from the head node, but it will likely fail (because the code won't have the resources it needs to run and/or the people who designed HPCC set it up to prevent you from hogging space/resources at the expense of others. So in order to run AmQUB you need to request more resources by starting a "job" which is 
+
+There is a thorough tutorial on this [here](https://hpcc.ucr.edu/manuals/hpc_cluster/jobs/). Knowing what resources to request and the limits on your account is important to being able to use the cluster effectively. I'm going to give you some basic requests that will probably be sufficient for AmQUB work here but please understand that you may need additional guidance from the people at HPCC if you run into issues, as I am not an expert. 
+
+### 4.1 
+srun -c 60 --time 7-00:00:00 --pty bash -l 
+
+#you can change the time here - however long you think you'll want to work. If your time runs out it'll shut the job down no matter what - so it can cut off your analysis. This is a big problem with BLAST. The more time you request, the longer you may need to wait for the job to start so you don't want to request for much longer than you need. If you don't know how long something will take to run, it's good to give yourself ample time. 
+
+FIGURE OUT HOW LONG BLASTS TAKE?
+
+srun -c 128 --mem 250G --time 14-00:00:00 --pty bash -l
+
+To run most of the pipeline, I request 60 cpus. This gives most of the commands plenty of power and space. Our lab has a cap on the number of cpus you can request at once. (See [here](https://hpcc.ucr.edu/manuals/hpc_cluster/queue/) for more details.) You can start multiple "jobs" of 60 cpus (per-user limit is 384 cpus last I checked) and then run multiple samples at the same time in each job. 
+
+
+
+
+
+
+
+
+&nbsp;
+
+## 5. Starting Singularity for AmQUB 📦
 When you use programs on HPCC, you sometimes need to "load" them as modules. This is like loading software. Sometimes programs conflict with each other so that is why by default they aren't all loaded. Singularity is a module.
 ```sh
 module load singularity

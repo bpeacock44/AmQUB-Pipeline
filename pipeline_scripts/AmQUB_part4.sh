@@ -1,4 +1,4 @@
-ls#!/bin/bash
+#!/bin/bash
 # See mbio_tutorial.md for further guidance!
 
 ### USAGE ###
