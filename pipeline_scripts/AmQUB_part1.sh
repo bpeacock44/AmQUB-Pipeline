@@ -191,6 +191,7 @@ for i in "${!FQ_ARRAY[@]}"; do
  - -- --- ---- ---- --- -- -" | tee /dev/tty
 
     # Run main pipeline commands
+    FQDIR=$(dirname "$FQ")
     if [ "$mmatchnum" -ne 0 ]; then
         echo "Processing barcode mismatches..."
 
@@ -198,14 +199,14 @@ for i in "${!FQ_ARRAY[@]}"; do
         check_barcode_collisions.pl -i "${FQ}" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
         filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
         fastq_convert_mm2pm_barcodes.py -t read -i "${FQ}" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
-        extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+        extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${FQDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
 
         # Check if files were generated
         [[ -e "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}.M${mmatchnum}.fq was not generated!"; exit 1; }
         [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
 
     else
-        extract_barcodes.go -f "${FQ}" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+        extract_barcodes.go -f "${FQ}" && mv -v "${FQDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
         ln -sf "${FQ}" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
     fi
 
