@@ -135,7 +135,7 @@ output_df['treatment'] = output_df['treatment'].astype(str)
 
 # Step 3: Calculate average abundances for each treatment
 for treatment in treatments:
-    avg_abundance = treatment_avg_abundance_dict[treatment].set_index('taxonomy')['average_abundance']
+    avg_abundance = treatment_avg_abundance_dict[treatment]['average_abundance']
     
     row = {'treatment': treatment}
     row.update({otu: avg_abundance.get(otu, 0) for otu in final_top_taxa})  # Fill missing taxa with 0
@@ -145,7 +145,7 @@ for treatment in treatments:
 
 # Step 4: Calculate the "all" row (average across treatments)
 treatment_means = pd.DataFrame([
-    treatment_avg_abundance_dict[treatment].set_index('taxonomy')['average_abundance']
+    treatment_avg_abundance_dict[treatment]['average_abundance']
     for treatment in treatments
 ]).fillna(0)
 

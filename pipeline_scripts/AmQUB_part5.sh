@@ -350,7 +350,7 @@ for DIR in ${DIRS[@]}; do
     if [[ "$UNI" == true ]]; then
         for F in "${to_process[@]}"; do
             biom2txt "${F}.biom" "${F}.txt"
-            KDOMS=("k__Archaea" "k__Bacteria" "k__Eukaryota")
+            KDOMS=("d__Archaea" "d__Bacteria" "d__Eukaryota")
             for K in "${KDOMS[@]}"; do
                 grep -P "(#|$K)" "${F}.txt" > "${F}.${K}.txt"
                 if [[ "$F" =~ _L([0-9]+) ]]; then

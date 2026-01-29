@@ -272,10 +272,12 @@ for IN in "${INP[@]}"; do
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: usearch -fastx_truncate ${FQ} -quiet -trunclen ${LEN} -fastqout ${FQ_base}_${LEN}bp.fq"
     usearch -fastx_truncate "${FQ}" -quiet -trunclen "${LEN}" -fastqout "${FQ_base}_${LEN}bp.fq"
+    # remove phix reads
+    usearch -search_phix "${FQ_base}_${LEN}bp.fq" -quiet -notmatchedfq "${FQ_base}_${LEN}bp.phiX_clean.fq" -alnout "${FQ_base}.phiX_clean.alnout"
     # create combined read file
-    cat "${FQ_base}_${LEN}bp.fq" >> "${OUTDIR}/combined.fq"
+    cat "${FQ_base}_${LEN}bp.phiX_clean.fq" >> "${OUTDIR}/combined.fq"
     #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
-    CMD=("usearch" "-threads" "1" "-fastq_filter" "${FQ_base}_${LEN}bp.fq" "-quiet" "-fastq_maxee" "${FM}" "-fastaout" "${FQ_base}_${LEN}bp.filtered.fa")
+    CMD=("usearch" "-threads" "1" "-fastq_filter" "${FQ_base}_${LEN}bp.phiX_clean.fq" "-quiet" "-fastq_maxee" "${FM}" "-fastaout" "${FQ_base}_${LEN}bp.filtered.fa")
     [[ "$FR" == "true" ]] && CMD+=("-fastqout_discarded" "${FQ_base}_${LEN}bp_discarded.fq")
     [[ "$FE" == "true" ]] && CMD+=("-fastq_eeout")
     [[ "$FD" == "true" ]] && CMD+=("-fastq_maxns" "${FD}")

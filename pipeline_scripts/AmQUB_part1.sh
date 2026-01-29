@@ -191,15 +191,13 @@ for i in "${!FQ_ARRAY[@]}"; do
  - -- --- ---- ---- --- -- -" | tee /dev/tty
 
     # Run main pipeline commands
-    usearch -search_phix "${FQ}" -quiet -notmatchedfq "${OUTDIR}/${BASE}.phiX_clean.fq" -alnout "${OUTDIR}/${BASE}.phiX_clean.alnout"
-
     if [ "$mmatchnum" -ne 0 ]; then
         echo "Processing barcode mismatches..."
 
         _BC_=$(grep -cP "^[A-Z]" "${MAPF}")
-        check_barcode_collisions.pl -i "${OUTDIR}/${BASE}.phiX_clean.fq" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
+        check_barcode_collisions.pl -i "${FQ}" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
         filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
-        fastq_convert_mm2pm_barcodes.py -t read -i "${OUTDIR}/${BASE}.phiX_clean.fq" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+        fastq_convert_mm2pm_barcodes.py -t read -i "${FQ}" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
         extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
 
         # Check if files were generated
@@ -207,8 +205,8 @@ for i in "${!FQ_ARRAY[@]}"; do
         [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
 
     else
-        extract_barcodes.go -f "${OUTDIR}/${BASE}.phiX_clean.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
-        ln -sf "${BASE}.phiX_clean.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+        extract_barcodes.go -f "${FQ}" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+        ln -sf "${FQ}" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
     fi
 
     echo "Generating fastq info file..."
