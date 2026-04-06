@@ -199,10 +199,18 @@ fi
 
 # show required input files
 for IN in "${INP[@]}"; do
-    matching_files=($(find -L "$IN" -type f -name "*demux*" -not -name "*bp*"))
-    # Check if more than one file was found
-    if [[ ${#matching_files[@]} -gt 1 ]]; then
-        echo "Error: More than one demux file found in $IN. You may have run parts 1 and 2 with two different mismatch levels. This is fine, but you need to choose one. Please delete the demux.fq file in ${IN} you don't want to use. The number of mismatches is indicated after the M. (So for example, ID.M2.demux.fq would have 2 mismatches and ID.M0.demux.fq would have 0.)"
+    mapfile -t matching_files < <(
+        find "$IN" -maxdepth 1 -type f \
+            -regextype posix-extended \
+            -regex '.*/[^/]+\.M[0-5]\.demux\.fq$'
+    )
+    if [[ ${#matching_files[@]} -eq 0 ]]; then
+        echo "Error: No demux file found in $IN matching *.M[0-5].demux.fq"
+        exit 1
+    elif [[ ${#matching_files[@]} -gt 1 ]]; then
+        echo "Error: Multiple demux files found in $IN:"
+        printf '  %s\n' "${matching_files[@]}"
+        echo "Please delete the one you don't intend to use."
         exit 1
     fi
 done
@@ -263,8 +271,11 @@ rm -f "${OUTDIR}/filtered.fa"
 
 # Trimming and Filtering Reads
 for IN in "${INP[@]}"; do
-    matching_files=($(find -L "$IN" -type f -name "*demux*" -not -name "*bp*"))
-    # Assign the single matching file to FQ if exactly one file is found
+    mapfile -t matching_files < <(
+        find "$IN" -maxdepth 1 -type f \
+            -regextype posix-extended \
+            -regex '.*/[^/]+\.M[0-5]\.demux\.fq$'
+    )    # Assign the single matching file to FQ if exactly one file is found
     FQ="${matching_files[0]}"
     FQ_base="${FQ%.fq}"
     # truncate reads at LEN
@@ -289,6 +300,11 @@ for IN in "${INP[@]}"; do
     # Create filtered.fa read file
     cat "${FQ_base}_${LEN}bp.filtered.fa" >> "${OUTDIR}/filtered.fa"
 done
+
+seqkit grep -s -p "GGGGGGGGGGGGGGGGGGGG,AAAAAAAAAAAAAAAAAAAA,TTTTTTTTTTTTTTTTTTTT,CCCCCCCCCCCCCCCCCCCC" "${OUTDIR}/combined.fq" --invert-match -o "${OUTDIR}/combinedb.fq"
+mv "${OUTDIR}/combinedb.fq" "${OUTDIR}/combined.fq"
+seqkit grep -s -p "GGGGGGGGGGGGGGGGGGGG,AAAAAAAAAAAAAAAAAAAA,TTTTTTTTTTTTTTTTTTTT,CCCCCCCCCCCCCCCCCCCC" "${OUTDIR}/filtered.fa" --invert-match -o "${OUTDIR}/filteredb.fa"
+mv "${OUTDIR}/filteredb.fa" "${OUTDIR}/filtered.fa"
 
 #find unique sequences
 CMD=("usearch" "-fastx_uniques" "${OUTDIR}/filtered.fa" "-quiet" "-fastaout" "${OUTDIR}/uniques.fa" "-sizeout" "-relabel" "Uniq")

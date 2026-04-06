@@ -321,6 +321,7 @@ process_output_dir() {
     # Step 5: Clean the tax_assignments file using awk
     awk -F'\t' 'BEGIN {OFS="\t"} {sub(/_[0-9]+$/, "", $1); print}' "${output_dir}/${typ}s/blast/tax_assignments.txt" > "${output_dir}/${typ}s/blast/temp.txt"
     mv "${output_dir}/${typ}s/blast/temp.txt" "${output_dir}/${typ}s/blast/tax_assignments.txt"
+    sed -i 's/unclassified_unclassified/unclassified/g' "${output_dir}/${typ}s/blast/tax_assignments.txt"
 
     # Step 6: Check if the final tax_assignments file exists
     if [ ! -f "${output_dir}/${typ}s/blast/tax_assignments.txt" ]; then

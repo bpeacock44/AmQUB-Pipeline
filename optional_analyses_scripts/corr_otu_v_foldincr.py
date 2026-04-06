@@ -73,13 +73,19 @@ def average_counts(asv_table, metadata, column, treatment_col):
         return pd.DataFrame()
     return pd.DataFrame(averaged_counts)
 
-def calculate_setB_ratio(setB_before, setB_after):
+def calculate_setB_ratio(setB_before, setB_after, pseudocount=1):
+    # Flatten columns if MultiIndex
     setB_before.columns = setB_before.columns.get_level_values(1)
     setB_after.columns = setB_after.columns.get_level_values(1)
+
+    # Keep only common columns
     common_columns = setB_before.columns.intersection(setB_after.columns)
-    setB_before_common = setB_before[common_columns]
-    setB_after_common = setB_after[common_columns]
-    ratio = setB_after_common / setB_before_common.replace(0, np.nan)
+    setB_before_common = setB_before[common_columns] + pseudocount
+    setB_after_common = setB_after[common_columns] + pseudocount
+
+    # Simple fold change
+    ratio = setB_after_common / setB_before_common
+
     return ratio
 
 def calculate_spearman_matrix(setA_values, setB_values):
@@ -105,7 +111,7 @@ def calculate_spearman_matrix(setA_values, setB_values):
     p_values = 2 * (1 - norm.cdf(np.abs(t_stat)))
     return correlation_matrix, p_values
 
-def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
+def run_analysis(setA_values, setB_values, otu_ids_A, avg_abundance, output_file):
     setA_numeric_columns = setA_values.columns.get_level_values(1)
     matching_columns = set(setA_numeric_columns) & set(setB_values.columns)
     if not matching_columns:
@@ -148,6 +154,8 @@ def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
     _, corrected_p_values, _, _ = multipletests(p_values, method='fdr_bh')
     # Since p_values is 1D, we don't need to reshape it
     corrected_p_values = corrected_p_values.flatten()
+    # Calculate mean fold increase per TU (across matched columns)
+    fold_increase = setB_values.mean(axis=1)
     # Results collection
     results = []
     for i, otu1_id in enumerate(otu_ids_A):
@@ -160,13 +168,20 @@ def run_analysis(setA_values, setB_values, otu_ids_A, output_file):
                 corr,
                 p_value,
                 fdr,
+                avg_abundance.loc[otu1_id],
+                fold_increase.loc[otu1_id],
                 ','.join(map(str, setA_values.iloc[i])),
                 ','.join(map(str, setB_values.iloc[i])),
                 ','.join(map(str, setA_values.columns.get_level_values(1)))
             ])
     # Create DataFrame and write to output
-    results_df = pd.DataFrame(results, columns=['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'TU_Counts_SetA', 'TU_Counts_SetB_Ratio', 'Sample_IDs'])
+    results_df = pd.DataFrame(results, columns=['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'Avg_Abun', 'Fold_Increase', 'TU_Counts_SetA', 'TU_Counts_SetB_Ratio', 'Sample_IDs'])
+    # Save TXT (tab-delimited)
     results_df.to_csv(output_file, sep='\t', index=False)
+
+    # Save Excel
+    excel_output_file = output_file.replace('.txt', '.xlsx')
+    results_df.to_excel(excel_output_file, index=False)
     return results_df
 
 
@@ -187,6 +202,8 @@ def main():
     setB_before_samples = [x.strip() for x in args.setB_before.split(',')]
     setB_after_samples = [x.strip() for x in args.setB_after.split(',')]
     setA_values = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setA_samples)]
+    # calculate average abundance of each TU in Set A
+    avg_abundance = setA_values.mean(axis=1)
     setB_before = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setB_before_samples)]
     setB_after = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setB_after_samples)]
     
@@ -194,7 +211,7 @@ def main():
     setB_values = calculate_setB_ratio(setB_before, setB_after)
     otu_ids_A = setA_values.index
     output_file = os.path.join(args.output_dir, f"otu_correlation_results_{args.column}.txt")
-    run_analysis(setA_values, setB_values, otu_ids_A, output_file)
+    run_analysis(setA_values, setB_values, otu_ids_A, avg_abundance, output_file)
     logging.info("Correlation analysis completed.")
 
 if __name__ == "__main__":
