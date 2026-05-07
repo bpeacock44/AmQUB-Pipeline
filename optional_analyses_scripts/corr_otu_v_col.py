@@ -7,7 +7,7 @@ import numpy as np
 import os
 import logging
 from datetime import datetime
-
+from statsmodels.stats.multitest import multipletests
 
 def setup_logger(output_dir, column):
     # Get the current date and time in the format YYYYMMDD_HHMMSS
@@ -67,29 +67,50 @@ def main(asv_file, metadata_file, output_dir, column):
     otu_ids = filtered_asv_table.index
     otu_count = len(otu_ids)
 
+    # calculate average abundance of each OTU from normalized table
+    avg_abundance = filtered_asv_table.mean(axis=1)
+
+    # store suppression values
+    suppression_values = metadata.loc[filtered_samples, column].astype(float)
+    suppression_str = ','.join(map(str, suppression_values))
+
     # Now correlate each TU with the specified column (instead of pairwise TU correlation)
     for otu_id in otu_ids:
         otu_counts = filtered_asv_table.loc[otu_id].astype(float)
-        print(otu_counts)
-        corr, p_value = spearmanr(otu_counts, metadata.loc[filtered_samples, column])
+        corr, p_value = spearmanr(otu_counts, suppression_values)
         if np.isnan(corr) or np.isnan(p_value):
             continue
         results.append({
             'TU': otu_id,
             'Correlation Coefficient': corr,
             'P-Value': p_value,
+            'Avg_Abun': avg_abundance.loc[otu_id],
+            'Suppression': suppression_str,
             'TU_Counts': ','.join(map(str, otu_counts)),
             'Sample_IDs': ','.join(filtered_samples)
         })
 
     # Create the results DataFrame
     results_df = pd.DataFrame(results)
-    results_df = results_df[['TU', 'Correlation Coefficient', 'P-Value', 'TU_Counts', 'Sample_IDs']]
+    # Calculate FDR (Benjamini–Hochberg)
+    if not results_df.empty:
+        _, fdr_values, _, _ = multipletests(results_df['P-Value'], method='fdr_bh')
+        results_df['FDR'] = fdr_values
+    else:
+        results_df['FDR'] = []
 
-    output_file = os.path.join(output_dir, f"correlation_results_{column}.txt")
-    results_df.to_csv(output_file, sep='\t', index=False)
-
-    logging.info(f"Results saved to {output_file}.")
+    results_df = results_df[['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'Avg_Abun', 'Suppression', 'TU_Counts', 'Sample_IDs']]
+    
+    # Save TXT (tab-delimited)
+    txt_output_file = os.path.join(output_dir, f"correlation_results_{column}.txt")
+    results_df.to_csv(txt_output_file, sep='\t', index=False)
+    
+    # Save Excel
+    excel_output_file = os.path.join(output_dir, f"correlation_results_{column}.xlsx")
+    results_df.to_excel(excel_output_file, index=False)
+    
+    logging.info(f"Results saved to {txt_output_file}.")
+    logging.info(f"Excel version saved to {excel_output_file}.")
     logging.info("Correlation analysis completed.")
 
 if __name__ == "__main__":
@@ -101,3 +122,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args.asv_file, args.metadata_file, args.output_dir, args.column)
+

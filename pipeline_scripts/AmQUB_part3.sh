@@ -301,11 +301,6 @@ for IN in "${INP[@]}"; do
     cat "${FQ_base}_${LEN}bp.filtered.fa" >> "${OUTDIR}/filtered.fa"
 done
 
-seqkit grep -s -p "GGGGGGGGGGGGGGGGGGGG,AAAAAAAAAAAAAAAAAAAA,TTTTTTTTTTTTTTTTTTTT,CCCCCCCCCCCCCCCCCCCC" "${OUTDIR}/combined.fq" --invert-match -o "${OUTDIR}/combinedb.fq"
-mv "${OUTDIR}/combinedb.fq" "${OUTDIR}/combined.fq"
-seqkit grep -s -p "GGGGGGGGGGGGGGGGGGGG,AAAAAAAAAAAAAAAAAAAA,TTTTTTTTTTTTTTTTTTTT,CCCCCCCCCCCCCCCCCCCC" "${OUTDIR}/filtered.fa" --invert-match -o "${OUTDIR}/filteredb.fa"
-mv "${OUTDIR}/filteredb.fa" "${OUTDIR}/filtered.fa"
-
 #find unique sequences
 CMD=("usearch" "-fastx_uniques" "${OUTDIR}/filtered.fa" "-quiet" "-fastaout" "${OUTDIR}/uniques.fa" "-sizeout" "-relabel" "Uniq")
 [[ "$UG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")

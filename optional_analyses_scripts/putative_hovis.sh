@@ -202,70 +202,88 @@ for WDIR in "${DIRS[@]}"; do
     INFASTA="${WDIR}/${typ}s.fa"
     OUT="${WDIR}/finding_more_hovis/our_6.blastout"
     blastn -task blastn -db $our_6_db -query $INFASTA -max_target_seqs 100 -evalue 0.001 -num_threads $NUMTHREADS -outfmt "6 $OPTS" > ${OUT}
-    # create "top" versions - only the best scoring match for each taxonomic unit
-    awk '!seen[$1]++' "${OUT}" > "${WDIR}/finding_more_hovis/our_6.top.blastout"
-    # filter ASVs for those with taxonomic predictions indicative of possible hovis (i.e. they fit various criteria)
-    filtering_tus_for_hovis.py "${WDIR}/finding_more_hovis/our_6.top.blastout" \
-        "${WDIR}/classifier_output/taxonomy.tsv" \
-        "${WDIR}/blast/tax_assignments.txt" \
-        "${WDIR}/finding_more_hovis/solid_hovi_${typ}s.txt" \
-        "${WDIR}/finding_more_hovis/putative_hovi_${typ}s.txt"
-        # solid hovis are those that were specifically hyalorbilia oviparasitica/etc.
-        # putative hovis match various criteria making them more likely to be hovi.
-    # Extract all taxonomic units that matched up with our 6 fungi
-    cut -f1 "${WDIR}/finding_more_hovis/our_6.top.blastout" > "${WDIR}/finding_more_hovis/our_6.ids.txt"
-    # clean up the blast output so sizes aren't appended to the headers
-    awk -F'\t' '{sub(/_[^_]*$/, "", $1)}1' OFS='\t' "${WDIR}/blast/filtered.blastout" > "${WDIR}/blast/filtered.clean.blastout"
-    # Filter BLAST results to only include taxonomic units that matched to our 6 fungi 
-    awk 'NR==FNR {ids[$1]; next} $1 in ids || $0 ~ /^#/ {print}' "${WDIR}/finding_more_hovis/our_6.ids.txt" "${WDIR}/blast/filtered.clean.blastout" > "${WDIR}/blast/filtered.clean.our6.blastout"
-    # Filter blast to find all taxonomic units that meet our 2nd level of criteria (3 conditions)
-    final_hovi_filter.py "${WDIR}/blast/filtered.clean.our6.blastout" "${WDIR}/finding_more_hovis/blast_summary_output.tsv" 
-    # find all putative hovis that also meet the critera for the final hovi filter and extract seqs
-    grep -Fw -f "${WDIR}/finding_more_hovis/putative_hovi_${typ}s.txt" "${WDIR}/finding_more_hovis/blast_summary_output.tsv" > "${WDIR}/finding_more_hovis/final_putative_hovis.txt"
-    cat "${WDIR}/finding_more_hovis/solid_hovi_${typ}s.txt" >> "${WDIR}/finding_more_hovis/final_putative_hovis.txt"
-    sort "${WDIR}/finding_more_hovis/final_putative_hovis.txt" | uniq > "${WDIR}/finding_more_hovis/temp.txt" && mv "${WDIR}/finding_more_hovis/temp.txt" "${WDIR}/finding_more_hovis/final_putative_hovis.txt"
-    seqkit grep -f "${WDIR}/finding_more_hovis/final_putative_hovis.txt" $INFASTA > "${WDIR}/finding_more_hovis/final_putative_hovis.fa"
-    cat ~/shared/mbio_pipeline_files/control_hya_seqs_for_tree.fa >> "${WDIR}/finding_more_hovis/final_putative_hovis.fa"
-    mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/final_putative_hovis.fa" > "${WDIR}/finding_more_hovis/final_putative_hovis.aln.fa"
+    
+    # generate "chunks" of the matching reads to make trees from
+    matching_fas="${WDIR}/finding_more_hovis/6_matching_otus.fa"
+    awk '{print $1}' "$OUT" | sort | uniq > "${WDIR}/finding_more_hovis/ids.txt"
+    # pull sequences
+    seqkit grep -f "${WDIR}/finding_more_hovis/ids.txt" "${INFASTA}" > "${matching_fas}"
+    rm -rf "${WDIR}/finding_more_hovis/6_matching_otus_chunks"
+    # split into 50-sequence chunks
+    seqkit split2 -s 50 -O "${WDIR}/finding_more_hovis/6_matching_otus_chunks" "${matching_fas}"
+
+    ./PH_via_trees.py "${WDIR}/finding_more_hovis/6_matching_otus_chunks" \
+        --ref "/rhome/bpeacock/shared/mbio_pipeline_files/PH_control_seqs.fa" 
+
+    # create final_putative_hovis.fa
+    cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.fa "/rhome/bpeacock/shared/mbio_pipeline_files/PH_control_seqs.fa" > "${WDIR}/finding_more_hovis/PH_with_controls.fa"
+    cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.txt > "${WDIR}/finding_more_hovis/PH.txt"
+    cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PPH.txt > "${WDIR}/finding_more_hovis/PPH.txt"
+    echo mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/PH_with_controls.fa" > "${WDIR}/finding_more_hovis/PH.aln"
+    #mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/PH_with_controls.fa" > "${WDIR}/finding_more_hovis/PH.aln"
 
     # create new output files with putative hovis annotated
     mkdir -vp "${WDIR}/finding_more_hovis/new_output_files"
     
-    # Function to add '-PH' to each string in the list, unconditionally
     add_ph_to_strings() {
-        local list_file="$1"    # Input file with strings (e.g., final_putative_hovis.txt)
-        local target="$2"       # A single file or a glob pattern (e.g., *.txt or a specific file)
-        local output_dir="$3"   # Directory where modified files will be saved
+        local list_file="$1"
+        local output_dir="$2"
+        local string="$3"
+        shift 3
     
-        # Expand the glob pattern to an array of files
-        eval "files=($target)"
+        local target_files=("$@")
     
-        # Loop through all the files in the target
-        for file in "${files[@]}"; do
-            # Copy the original file to the temporary file
-            cp "$file" "${output_dir}/$(basename "$file")"
+        mkdir -p "$output_dir"
     
-            # Loop over each string from the list file
-            while IFS= read -r otu; do
-                # Add 'PH-' to the beginning of each matching word
-                sed -i "s/\b$otu\b/PH-&/g" "${output_dir}/$(basename "$file")"
-            done < "$list_file"
+        for file in "${target_files[@]}"; do
+            local out_file="${output_dir}/$(basename "$file")"
+    
+            cp "$file" "$out_file"
+    
+            awk -v list="$list_file" -v rep="$string" '
+            BEGIN {
+                while ((getline otu < list) > 0) {
+                    if (otu != "") {
+                        map[otu] = 1
+                    }
+                }
+            }
+            {
+                for (i = 1; i <= NF; i++) {
+                    if ($i in map) {
+                        $i = rep "-" $i
+                    }
+                }
+                print
+            }
+            ' "$out_file" > "${out_file}.tmp" && mv "${out_file}.tmp" "$out_file"
+    
         done
     }
-
-    # Process all *.txt files
-    add_ph_to_strings "${WDIR}/finding_more_hovis/final_putative_hovis.txt" \
-                        "${WDIR}/*.txt" \
-                        "${WDIR}/finding_more_hovis/new_output_files"
+        
+    strings=(PH PPH)
     
-    # Process a specific pattern *.s.fa files
-    add_ph_to_strings "${WDIR}/finding_more_hovis/final_putative_hovis.txt" \
-                        "${WDIR}/${typ}s.fa" \
-                        "${WDIR}/finding_more_hovis/new_output_files"
+    for S in "${strings[@]}"; do
     
-    add_ph_to_strings "${WDIR}/finding_more_hovis/final_putative_hovis.txt" \
-                        "${WDIR}/Detailed_Informational_otu_Table.tsv" \
-                        "${WDIR}/finding_more_hovis/new_output_files"
+        add_ph_to_strings \
+            "${WDIR}/finding_more_hovis/${S}.txt" \
+            "${WDIR}/finding_more_hovis/new_output_files" \
+            "$S" \
+            ${WDIR}/*.txt
+    
+        add_ph_to_strings \
+            "${WDIR}/finding_more_hovis/${S}.txt" \
+            "${WDIR}/finding_more_hovis/new_output_files" \
+            "$S" \
+            "${WDIR}/${typ}s.fa"
+    
+        add_ph_to_strings \
+            "${WDIR}/finding_more_hovis/${S}.txt" \
+            "${WDIR}/finding_more_hovis/new_output_files" \
+            "$S" \
+            "${WDIR}/Detailed_Informational_otu_Table.tsv"
+    
+    done
     
     #source for bash helper functions
     source "qiime_shell_helper_functions.sh"
@@ -283,7 +301,7 @@ for WDIR in "${DIRS[@]}"; do
     # create new version of Detailed file
     # Define the file paths
     input_file="${WDIR}/finding_more_hovis/new_output_files/Detailed_Informational_otu_Table.tsv"  # Input TSV file
-    putative_file="${WDIR}/finding_more_hovis/final_putative_hovis.txt"  # List of putative hovis IDs
+    putative_file="${WDIR}/finding_more_hovis/PH.txt"  # List of putative hovis IDs
     
     # Step 1: Add a new column "putative_hovi" with "no" for all rows except the first two
     awk '
@@ -342,4 +360,6 @@ for WDIR in "${DIRS[@]}"; do
     
     # Cleanup
     rm temp_file.tsv
+
+    echo "Putative Hovi Pipeline Complete"
 done
