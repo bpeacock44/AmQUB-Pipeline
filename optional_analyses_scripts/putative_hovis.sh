@@ -219,8 +219,6 @@ for WDIR in "${DIRS[@]}"; do
     cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.fa "/rhome/bpeacock/shared/mbio_pipeline_files/PH_control_seqs.fa" > "${WDIR}/finding_more_hovis/PH_with_controls.fa"
     cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.txt > "${WDIR}/finding_more_hovis/PH.txt"
     cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PPH.txt > "${WDIR}/finding_more_hovis/PPH.txt"
-    echo mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/PH_with_controls.fa" > "${WDIR}/finding_more_hovis/PH.aln"
-    #mafft --thread ${NUMTHREADS} --auto "${WDIR}/finding_more_hovis/PH_with_controls.fa" > "${WDIR}/finding_more_hovis/PH.aln"
 
     # create new output files with putative hovis annotated
     mkdir -vp "${WDIR}/finding_more_hovis/new_output_files"
