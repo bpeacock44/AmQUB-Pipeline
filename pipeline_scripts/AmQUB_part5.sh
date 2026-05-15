@@ -446,6 +446,15 @@ for DIR in ${DIRS[@]}; do
             echo "${DIR}/Detailed_Informational_${typ}_Table.tsv was not successfully created."
             #exit 1
         fi
+        # Also save as xlsx
+        xlsx_output="${DIR}/Detailed_Informational_${typ}_Table.xlsx"
+        rm -rf "${xlsx_output}"
+        python3 -c "
+import pandas as pd
+df = pd.read_csv('${sum_output}', sep='\t')
+df.to_excel('${xlsx_output}', index=False)
+print('Wrote ${xlsx_output}')
+"
     fi
 done
 

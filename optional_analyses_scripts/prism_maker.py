@@ -30,7 +30,6 @@ def setup_logger(output_dir):
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-
 # ---------------------------
 # Helpers
 # ---------------------------
@@ -45,6 +44,7 @@ def prepare_abundance(df, context=""):
     all_nan_cols = df_num.columns[df_num.isna().all()]
     if len(all_nan_cols) > 0:
         logging.warning(f"{len(all_nan_cols)} columns are entirely NaN after coercion ({context})")
+    df_num = df_num.fillna(0)
     return df_num
 
 def build_row(avg_abundance, taxa_list, treatment_name):

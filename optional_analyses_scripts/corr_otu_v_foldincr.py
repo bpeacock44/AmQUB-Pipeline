@@ -1,219 +1,217 @@
 #!/usr/bin/env python3
+"""
+Per-OTU Spearman correlation between
+  - nematode-sample abundance (Set A)
+  - soil fold-change after/before treatment (Set B) computed across SoilNumbers.
+
+For each OTU we produce:
+  - nem_s   = per-soil nematode abundance:
+                within soil s, mean each --setA group separately,
+                then mean those group-means
+  - fc_s    = per-soil fold change:
+                (mean(--setB_after samples in soil s) + c) /
+                (mean(--setB_before samples in soil s) + c)
+
+Then Spearman(nem_vec, fc_vec) across soils → one rho/p per OTU.
+BH-FDR is applied across all OTUs.
+"""
 
 import argparse
-from scipy.stats import spearmanr, rankdata, norm
-from statsmodels.stats.multitest import multipletests
-import pandas as pd
-import numpy as np
 import os
 import logging
 from datetime import datetime
 
-# Define argument parser
+import numpy as np
+import pandas as pd
+from scipy.stats import spearmanr
+from statsmodels.stats.multitest import multipletests
+
+
+# --------------------------------------------------
+# Arguments
+# --------------------------------------------------
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="TU-TU Correlation Analysis")
-    # Add the arguments you want to be available to the script
-    parser.add_argument('--asv_file', required=True, help='Path to the ASV table file')
-    parser.add_argument('--metadata_file', required=True, help='Path to the metadata file')
-    parser.add_argument('--output_dir', required=True, help='Directory to save the output')
-    parser.add_argument('--corr_threshold_high', required=True, type=float, help='High correlation threshold')
-    parser.add_argument('--corr_threshold_low', required=True, type=float, help='Low correlation threshold')
-    parser.add_argument('--pval_threshold', required=True, type=float, help='P-value threshold')
-    parser.add_argument('--column', required=True, help='Column name in metadata for grouping')
-    parser.add_argument('--treatment_col', required=True, help='Column name in metadata for treatment')
-    parser.add_argument('--setA', required=True, help='Comma-separated list of samples for Set A')
-    parser.add_argument('--setB_before', required=True, help='Comma-separated list of samples for Set B (Before)')
-    parser.add_argument('--setB_after', required=True, help='Comma-separated list of samples for Set B (After)')
-    
+    parser = argparse.ArgumentParser(description="Per-OTU TU-FC correlation across soils")
+    parser.add_argument('--asv_file', required=True)
+    parser.add_argument('--metadata_file', required=True)
+    parser.add_argument('--output_dir', required=True)
+    parser.add_argument('--column', required=True, help='Group column in metadata')
+    parser.add_argument('--treatment_col', required=True, help='Soil/treatment column in metadata')
+    parser.add_argument('--setA', required=True, help='Comma-separated groups for Set A (nematodes)')
+    parser.add_argument('--setB_before', required=True, help='Comma-separated groups for Set B (before)')
+    parser.add_argument('--setB_after', required=True, help='Comma-separated groups for Set B (after)')
+    parser.add_argument('--pseudocount', type=float, default=1.0,
+                        help='Pseudocount added before computing fold change (default 1)')
     return parser.parse_args()
 
-# Setup logger
+
+# --------------------------------------------------
+# Logging
+# --------------------------------------------------
+
 def setup_logger(output_dir, column):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = os.path.join(output_dir, f'corr_otu_v_foldincr_{column}_{current_time}.log')
     logging.basicConfig(
         filename=log_file,
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
+        format='%(asctime)s - %(levelname)s - %(message)s',
     )
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(message)s')
-    console.setFormatter(formatter)
+    console.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     logger = logging.getLogger()
-    if not logger.hasHandlers():
+    if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+               for h in logger.handlers):
         logger.addHandler(console)
 
-# Load ASV table
+# --------------------------------------------------
+# IO
+# --------------------------------------------------
+
 def load_asv_table(asv_file):
     with open(asv_file, 'r') as f:
         first_line = f.readline().strip()
         skiprows = [0] if first_line == "# Constructed from biom file" else []
-    return pd.read_csv(asv_file, sep='\t', index_col=0, skiprows=skiprows)
+    return pd.read_csv(asv_file, sep=' ', index_col=0, skiprows=skiprows)
 
-# Load metadata
 def load_metadata(metadata_file):
     return pd.read_csv(metadata_file, sep='\t', index_col=0)
 
-def average_counts(asv_table, metadata, column, treatment_col):
-    metadata = metadata.dropna(subset=[column])
-    metadata = metadata.loc[metadata.index.intersection(asv_table.columns)]
-    averaged_counts = {}
-    grouped = metadata.groupby([column, treatment_col])
-    for (group, treatment), samples in grouped:        
-        relevant_samples = asv_table[samples.index]
-        # Check if relevant_samples is empty BEFORE computing the mean
-        if relevant_samples.empty:
-            logging.warning(f"No valid samples for group {group}, treatment {treatment}. Skipping.")
+# --------------------------------------------------
+# Aggregation
+# --------------------------------------------------
+
+def aggregate(asv, meta, group_col, treatment_col):
+    """Mean abundance per (Group, SoilNumber) cell. Returns DataFrame
+    indexed by OTU with MultiIndex columns (group, soil)."""
+    meta = meta.dropna(subset=[group_col])
+    meta = meta.loc[meta.index.intersection(asv.columns)]
+    out = {}
+    for (group, soil), samples in meta.groupby([group_col, treatment_col]):
+        sub = asv[samples.index]
+        if sub.empty:
             continue
-        averaged_counts[(group, treatment)] = relevant_samples.mean(axis=1)
-    # If no valid groups were found, return an empty DataFrame
-    if not averaged_counts:
-        logging.error("No valid samples found after filtering. Please check your inputs.")
+        out[(group, soil)] = sub.mean(axis=1)
+    return pd.DataFrame(out)
+
+
+def per_soil_average(agg_df, groups):
+    """Select MultiIndex columns whose group is in `groups`, then mean
+    across groups within each soil. Returns DataFrame indexed by OTU
+    with one column per soil. Realises: mean per group, then mean of means."""
+    sel = agg_df.loc[:, agg_df.columns.get_level_values(0).isin(groups)]
+    if sel.empty:
         return pd.DataFrame()
-    return pd.DataFrame(averaged_counts)
+    return sel.T.groupby(level=1, sort=False).mean().T
 
-def calculate_setB_ratio(setB_before, setB_after, pseudocount=1):
-    # Flatten columns if MultiIndex
-    setB_before.columns = setB_before.columns.get_level_values(1)
-    setB_after.columns = setB_after.columns.get_level_values(1)
 
-    # Keep only common columns
-    common_columns = setB_before.columns.intersection(setB_after.columns)
-    setB_before_common = setB_before[common_columns] + pseudocount
-    setB_after_common = setB_after[common_columns] + pseudocount
+# --------------------------------------------------
+# Per-OTU correlation across soils
+# --------------------------------------------------
 
-    # Simple fold change
-    ratio = setB_after_common / setB_before_common
+def per_otu_correlation(nem_by_soil, fc_by_soil, outdir, column_name):
+    # Align on common soils and OTUs
+    soils = nem_by_soil.columns.intersection(fc_by_soil.columns)
+    if len(soils) == 0:
+        raise ValueError("No SoilNumbers in common between Set A and Set B fold-change")
+    nem_by_soil = nem_by_soil[soils]
+    fc_by_soil = fc_by_soil[soils]
 
-    return ratio
+    otus = nem_by_soil.index.intersection(fc_by_soil.index)
+    nem_by_soil = nem_by_soil.loc[otus]
+    fc_by_soil = fc_by_soil.loc[otus]
 
-def calculate_spearman_matrix(setA_values, setB_values):
-    setA_array = setA_values.to_numpy()
-    setB_array = setB_values.to_numpy()
-    if setA_array.size == 0 or setB_array.size == 0:
-        raise ValueError("Empty input array provided for correlation calculation.")
-    setA_ranks = np.apply_along_axis(rankdata, 1, setA_array)
-    setB_ranks = np.apply_along_axis(rankdata, 1, setB_array)
-    setA_ranks -= np.mean(setA_ranks, axis=1, keepdims=True)
-    setB_ranks -= np.mean(setB_ranks, axis=1, keepdims=True)
-    covariance_matrix = np.dot(setA_ranks, setB_ranks.T)
-    std_A = np.sqrt(np.sum(setA_ranks ** 2, axis=1))
-    std_B = np.sqrt(np.sum(setB_ranks ** 2, axis=1))
-    std_A[std_A == 0] = np.nan
-    std_B[std_B == 0] = np.nan
-    denominator_matrix = np.outer(std_A, std_B)
-    correlation_matrix = covariance_matrix / denominator_matrix
-    correlation_matrix = np.nan_to_num(correlation_matrix)
-    n = setA_array.shape[1]
-    with np.errstate(divide='ignore', invalid='ignore'):
-        t_stat = correlation_matrix * np.sqrt((n - 2) / (1 - correlation_matrix ** 2))
-    p_values = 2 * (1 - norm.cdf(np.abs(t_stat)))
-    return correlation_matrix, p_values
+    n_soils = len(soils)
+    logging.info(f"Per-OTU Spearman across {n_soils} soils: {list(soils)}")
+    if n_soils < 4:
+        logging.warning(
+            f"Only {n_soils} soils — Spearman with n<4 is unreliable "
+            "(ties give NaN; otherwise rho is bounded to a few discrete values "
+            "and p-values are uninformative)."
+        )
 
-def run_analysis(setA_values, setB_values, otu_ids_A, avg_abundance, output_file):
-    setA_numeric_columns = setA_values.columns.get_level_values(1)
-    matching_columns = set(setA_numeric_columns) & set(setB_values.columns)
-    if not matching_columns:
-        raise ValueError("No matching columns found between setA_values and setB_values.")
-    # Subset both datasets to include only matching columns
-    setA_matched = setA_values.loc[:, setA_values.columns.get_level_values(1).isin(matching_columns)]
-    setB_matched = setB_values[list(matching_columns)]
-    # Extract column identifiers (level 1 values)
-    setA_col_ids = setA_matched.columns.get_level_values(1)
-    setB_col_ids = setB_matched.columns
-    # Count occurrences of each unique value in setA_col_ids
-    setA_counts = pd.Series(setA_col_ids).value_counts()
-    # Expand setB_matched by repeating rows to match occurrences in setA
-    expanded_B_rows = []
-    expanded_B_columns = []
-    # Rebuild setB_expanded to match setA_matched
-    setB_expanded = pd.DataFrame(index=setB_matched.index)
-    if isinstance(setA_matched.columns, pd.MultiIndex):
-        for col in setA_matched.columns.get_level_values(1):
-            # Find all matching columns in setB_matched (can be multiple)
-            matching_cols = setB_matched.columns[setB_matched.columns == col]
-            if len(matching_cols) == 0:
-                raise ValueError(f"Column {col} in setA_matched has no match in setB_matched")
-            # Duplicate each matching column to align with setA_matched
-            for i in range((setA_matched.columns.get_level_values(1) == col).sum()):
-                setB_expanded[col] = setB_matched[matching_cols].iloc[:, 0]  # Take first match
-    else:
-        # If no MultiIndex, match directly
-        common_cols = setA_matched.columns.intersection(setB_matched.columns)
-        setB_expanded = setB_matched[common_cols]
-    # Ensure column order matches
-    setB_expanded = setB_expanded[setA_matched.columns.get_level_values(1)]
-    # Check if shapes match
-    assert setA_matched.shape == setB_expanded.shape, f"Shape mismatch: {setA_matched.shape} vs {setB_expanded.shape}"
-    # Perform Spearman correlation
-    correlation_matrix, p_values = calculate_spearman_matrix(setA_matched, setB_expanded)
-    # Ensure p_values is 1D and handle them correctly
-    p_values = p_values.flatten()  # Flatten to ensure it's 1D
-    # Perform FDR correction
-    _, corrected_p_values, _, _ = multipletests(p_values, method='fdr_bh')
-    # Since p_values is 1D, we don't need to reshape it
-    corrected_p_values = corrected_p_values.flatten()
-    # Calculate mean fold increase per TU (across matched columns)
-    fold_increase = setB_values.mean(axis=1)
-    # Results collection
-    results = []
-    for i, otu1_id in enumerate(otu_ids_A):
-        corr = correlation_matrix[i, 0]  # Assuming correlation_matrix is 2D, but with 1 column
-        p_value = p_values[i]  # Use only one index to access p_values
-        fdr = corrected_p_values[i]  # Use only one index to access corrected p-values
-        if not np.isnan(corr):
-            results.append([
-                otu1_id,
-                corr,
-                p_value,
-                fdr,
-                avg_abundance.loc[otu1_id],
-                fold_increase.loc[otu1_id],
-                ','.join(map(str, setA_values.iloc[i])),
-                ','.join(map(str, setB_values.iloc[i])),
-                ','.join(map(str, setA_values.columns.get_level_values(1)))
-            ])
-    # Create DataFrame and write to output
-    results_df = pd.DataFrame(results, columns=['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'Avg_Abun', 'Fold_Increase', 'TU_Counts_SetA', 'TU_Counts_SetB_Ratio', 'Sample_IDs'])
-    # Save TXT (tab-delimited)
-    results_df.to_csv(output_file, sep='\t', index=False)
+    soil_str = ','.join(map(str, soils))
+    rows = []
+    for otu in otus:
+        x = nem_by_soil.loc[otu].to_numpy(dtype=float)
+        y = fc_by_soil.loc[otu].to_numpy(dtype=float)
+        rho, p = spearmanr(x, y, nan_policy="omit")
+        rows.append({
+            'TU': otu,
+            'Correlation Coefficient': rho,
+            'P-Value': p,
+            'Avg_Abun': float(np.mean(x)),
+            'Fold_Increase': float(np.mean(y)),
+            'TU_Counts_SetA': ','.join(f'{v:g}' for v in x),
+            'TU_Counts_SetB_Ratio': ','.join(f'{v:g}' for v in y),
+            'Sample_IDs': soil_str,
+        })
+    df = pd.DataFrame(rows)
 
-    # Save Excel
-    excel_output_file = output_file.replace('.txt', '.xlsx')
-    results_df.to_excel(excel_output_file, index=False)
-    return results_df
+    # BH-FDR across OTUs (skip NaN p-values)
+    pvals = df['P-Value'].to_numpy()
+    fdr = np.full_like(pvals, np.nan, dtype=float)
+    mask = ~np.isnan(pvals)
+    if mask.sum() > 0:
+        _, fdr_corrected, _, _ = multipletests(pvals[mask], method='fdr_bh')
+        fdr[mask] = fdr_corrected
+    df.insert(3, 'FDR', fdr)
 
+    # Write outputs
+    os.makedirs(outdir, exist_ok=True)
+    out_txt = os.path.join(outdir, f"otu_correlation_results_{column_name}.txt")
+    out_xlsx = out_txt.replace('.txt', '.xlsx')
+    df.to_csv(out_txt, sep='\t', index=False)
+    df.to_excel(out_xlsx, index=False)
+    return df
+
+
+# --------------------------------------------------
+# Main
+# --------------------------------------------------
 
 def main():
     args = parse_args()
-    setup_logger(args.output_dir,args.column)
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
-    logging.info("Starting TU-TU correlation analysis.")
-    asv_table = load_asv_table(args.asv_file)
-    metadata = load_metadata(args.metadata_file)
-    logging.info("Loaded ASV table and metadata.")
-    averaged_counts = average_counts(asv_table, metadata, args.column, args.treatment_col)
-    if averaged_counts.empty:
-        logging.error("No valid samples found after filtering. Please check your inputs.")
-        return
-    setA_samples = [x.strip() for x in args.setA.split(',')]
-    setB_before_samples = [x.strip() for x in args.setB_before.split(',')]
-    setB_after_samples = [x.strip() for x in args.setB_after.split(',')]
-    setA_values = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setA_samples)]
-    # calculate average abundance of each TU in Set A
-    avg_abundance = setA_values.mean(axis=1)
-    setB_before = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setB_before_samples)]
-    setB_after = averaged_counts.loc[:, averaged_counts.columns.get_level_values(0).isin(setB_after_samples)]
-    
-    # drop any that aren't the same between before and after
-    setB_values = calculate_setB_ratio(setB_before, setB_after)
-    otu_ids_A = setA_values.index
-    output_file = os.path.join(args.output_dir, f"otu_correlation_results_{args.column}.txt")
-    run_analysis(setA_values, setB_values, otu_ids_A, avg_abundance, output_file)
-    logging.info("Correlation analysis completed.")
+    os.makedirs(args.output_dir, exist_ok=True)
+    setup_logger(args.output_dir, args.column)
+
+    logging.info("Loading data")
+    asv = load_asv_table(args.asv_file)
+    meta = load_metadata(args.metadata_file)
+
+    agg = aggregate(asv, meta, args.column, args.treatment_col)
+    if agg.empty:
+        raise ValueError("No data after aggregation")
+
+    setA_groups = [g.strip() for g in args.setA.split(',')]
+    setB_before_groups = [g.strip() for g in args.setB_before.split(',')]
+    setB_after_groups = [g.strip() for g in args.setB_after.split(',')]
+    logging.info(f"Set A groups:        {setA_groups}")
+    logging.info(f"Set B before groups: {setB_before_groups}")
+    logging.info(f"Set B after groups:  {setB_after_groups}")
+
+    nem_by_soil    = per_soil_average(agg, setA_groups)
+    before_by_soil = per_soil_average(agg, setB_before_groups)
+    after_by_soil  = per_soil_average(agg, setB_after_groups)
+
+    if nem_by_soil.empty:
+        raise ValueError(f"No samples for Set A groups: {setA_groups}")
+    if before_by_soil.empty:
+        raise ValueError(f"No samples for Set B (before) groups: {setB_before_groups}")
+    if after_by_soil.empty:
+        raise ValueError(f"No samples for Set B (after) groups: {setB_after_groups}")
+
+    common_soils = before_by_soil.columns.intersection(after_by_soil.columns)
+    if len(common_soils) == 0:
+        raise ValueError("No SoilNumbers in common between Set B before and after")
+    c = args.pseudocount
+    fc_by_soil = (after_by_soil[common_soils] + c) / (before_by_soil[common_soils] + c)
+
+    per_otu_correlation(nem_by_soil, fc_by_soil, args.output_dir, args.column)
+    logging.info("Done")
+
 
 if __name__ == "__main__":
     main()
-

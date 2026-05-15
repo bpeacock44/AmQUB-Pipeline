@@ -217,10 +217,30 @@ for WDIR in "${DIRS[@]}"; do
 
     # create final_putative_hovis.fa
     cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.fa "/rhome/bpeacock/shared/mbio_pipeline_files/PH_control_seqs.fa" > "${WDIR}/finding_more_hovis/PH_with_controls.fa"
-    cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.txt > "${WDIR}/finding_more_hovis/PH.txt"
-    cat "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PPH.txt > "${WDIR}/finding_more_hovis/PPH.txt"
+
+
+    {
+        first=1
+        for f in "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PH.txt; do
+            (( first )) || printf '\n'
+            cat "$f"
+            first=0
+        done
+    } | sort > "${WDIR}/finding_more_hovis/PH.txt"
+    awk 'NF' "${WDIR}/finding_more_hovis/PH.txt" > tmp && mv tmp "${WDIR}/finding_more_hovis/PH.txt"
+
+    {
+        first=1
+        for f in "${WDIR}/finding_more_hovis/6_matching_otus_chunks/"*_PPH.txt; do
+            (( first )) || printf '\n'
+            cat "$f"
+            first=0
+        done
+    } | sort > "${WDIR}/finding_more_hovis/PPH.txt"
+    awk 'NF' "${WDIR}/finding_more_hovis/PPH.txt" > tmp && mv tmp "${WDIR}/finding_more_hovis/PPH.txt"
 
     # create new output files with putative hovis annotated
+    rm -rf "${WDIR}/finding_more_hovis/new_output_files"
     mkdir -vp "${WDIR}/finding_more_hovis/new_output_files"
     
     add_ph_to_strings() {
@@ -236,9 +256,9 @@ for WDIR in "${DIRS[@]}"; do
         for file in "${target_files[@]}"; do
             local out_file="${output_dir}/$(basename "$file")"
     
-            cp "$file" "$out_file"
+            [[ -f "$out_file" ]] || cp "$file" "$out_file"
     
-            awk -v list="$list_file" -v rep="$string" '
+            awk -F'\t' -v OFS='\t' -v list="$list_file" -v rep="$string" '
             BEGIN {
                 while ((getline otu < list) > 0) {
                     if (otu != "") {
@@ -262,7 +282,6 @@ for WDIR in "${DIRS[@]}"; do
     strings=(PH PPH)
     
     for S in "${strings[@]}"; do
-    
         add_ph_to_strings \
             "${WDIR}/finding_more_hovis/${S}.txt" \
             "${WDIR}/finding_more_hovis/new_output_files" \
@@ -280,7 +299,6 @@ for WDIR in "${DIRS[@]}"; do
             "${WDIR}/finding_more_hovis/new_output_files" \
             "$S" \
             "${WDIR}/Detailed_Informational_otu_Table.tsv"
-    
     done
     
     #source for bash helper functions
