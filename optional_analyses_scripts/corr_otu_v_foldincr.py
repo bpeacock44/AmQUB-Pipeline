@@ -74,7 +74,7 @@ def load_asv_table(asv_file):
     with open(asv_file, 'r') as f:
         first_line = f.readline().strip()
         skiprows = [0] if first_line == "# Constructed from biom file" else []
-    return pd.read_csv(asv_file, sep=' ', index_col=0, skiprows=skiprows)
+    return pd.read_csv(asv_file, sep='\t', index_col=0, skiprows=skiprows)
 
 def load_metadata(metadata_file):
     return pd.read_csv(metadata_file, sep='\t', index_col=0)

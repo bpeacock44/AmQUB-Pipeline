@@ -60,7 +60,7 @@ def main(asv_file, metadata_file, output_dir, column):
         logging.info(f"Removed TUs with constant counts: {', '.join(constant_tus)}")
 
     # Rebuild filtered ASV table without constant TUs
-    filtered_asv_table = pd.DataFrame(filtered_asv_table_no_constant, columns=filtered_samples)
+    filtered_asv_table = filtered_asv_table.drop(index=constant_tus)
 
     results = []
 
