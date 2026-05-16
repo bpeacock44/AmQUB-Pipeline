@@ -48,9 +48,11 @@ def process_data_and_write_summary(norm, raw, tax, tax_c, mixed, output_file):
     sums = rawdf.sum()
 
     if tax_c and tax_c.lower() != 'null':
-        nd_columns = ['nd'] * 9
+        # Order: ID, Sequence, taxonomy, per_ID, per_qcov, c_taxonomy, confidence, avg_abun, mixed
+        nd_columns = ['nd', 'nd', 'nd', 0, 0, 'nd', 0, 0, 'nd']
     else:
-        nd_columns = ['nd'] * 7
+        # Order: ID, Sequence, taxonomy, per_ID, per_qcov, avg_abun, mixed
+        nd_columns = ['nd', 'nd', 'nd', 0, 0, 0, 'nd']
 
     new_vector = pd.Series(nd_columns + sums.tolist(), index=df.columns)
     df = pd.concat([pd.DataFrame([new_vector]), df], ignore_index=True)

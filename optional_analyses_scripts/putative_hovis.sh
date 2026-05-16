@@ -212,7 +212,7 @@ for WDIR in "${DIRS[@]}"; do
     # split into 50-sequence chunks
     seqkit split2 -s 50 -O "${WDIR}/finding_more_hovis/6_matching_otus_chunks" "${matching_fas}"
 
-    ./PH_via_trees.py "${WDIR}/finding_more_hovis/6_matching_otus_chunks" \
+    PH_via_trees.py "${WDIR}/finding_more_hovis/6_matching_otus_chunks" \
         --ref "/rhome/bpeacock/shared/mbio_pipeline_files/PH_control_seqs.fa" 
 
     # create final_putative_hovis.fa
@@ -314,68 +314,16 @@ for WDIR in "${DIRS[@]}"; do
         --output-path "${F%.txt}.qza" 
     done
     
-    # create new version of Detailed file
-    # Define the file paths
-    input_file="${WDIR}/finding_more_hovis/new_output_files/Detailed_Informational_otu_Table.tsv"  # Input TSV file
-    putative_file="${WDIR}/finding_more_hovis/PH.txt"  # List of putative hovis IDs
+    # Created detailed informational otu table xlsx version
+    input_tsv="${WDIR}/finding_more_hovis/new_output_files/Detailed_Informational_otu_Table.tsv"
+    output_xlsx="${WDIR}/finding_more_hovis/new_output_files/Detailed_Informational_otu_Table.xlsx"
     
-    # Step 1: Add a new column "putative_hovi" with "no" for all rows except the first two
-    awk '
-    BEGIN {FS="\t"; OFS="\t"}
-    
-    # First row: Add "putative_hovi" as the second column
-    NR==1 {
-        print $1, "putative_hovi", $0;
-    }
-    
-    # Second row: Add "nd" as the second column
-    NR==2 {
-        print $1, "nd", $0;
-    }
-    
-    # All other rows: Add "no" as the second column
-    NR > 2 {
-        print $1, "no", $0;
-    }
-    ' "$input_file" > temp_file.tsv
-    
-    # Step 2: Read the putative hovis IDs into a hash map and replace "no" with "yes" where appropriate
-    declare -A putative_hovis_ids
-    while read -r id; do
-        if [[ -n "$id" ]]; then  # Check if the id is not empty
-            id_with_prefix="PH-$id"  # Prepend "PH-" to the ID
-            putative_hovis_ids["$id_with_prefix"]=1  # Store ID in the hash map
-        fi
-    done < "$putative_file"
-
-    
-    # Step 3: Update the rows in temp_file.tsv based on the hash map
-    # Convert the associative array keys into a space-separated string
-    putative_hovis_list=$(printf "%s " "${!putative_hovis_ids[@]}")
-    
-    # Use awk with a direct variable
-    awk -v ids="$putative_hovis_list" '
-    BEGIN {
-        FS = OFS = "\t";
-        split(ids, putative_hovis_ids, " ");
-        for (i in putative_hovis_ids) {
-            lookup[putative_hovis_ids[i]] = 1;
-        }
-    }
-    NR == 1 { $2 = "putative_hovi"; print; next }  # First row header change
-    NR == 2 { $2 = "nd"; print; next }             # Second row placeholder
-    NR > 2 { 
-        if ($3 in lookup) {
-            $2 = "yes";
-        } else {
-            $2 = "no";
-        }
-        print;
-    }
-    ' temp_file.tsv > "$input_file"
-    
-    # Cleanup
-    rm temp_file.tsv
+    python3 -c "
+import pandas as pd
+df = pd.read_csv('${input_tsv}', sep='\t')
+df.to_excel('${output_xlsx}', index=False)
+print('Wrote ${output_xlsx}')
+"
 
     echo "Putative Hovi Pipeline Complete"
 done
