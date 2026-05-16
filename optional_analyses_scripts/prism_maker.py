@@ -172,22 +172,6 @@ if merged_df.empty:
     logging.warning("Merged dataframe is empty after join")
 
 # ---------------------------
-# Overall abundance average
-# ---------------------------
-overall_abundance = merged_df.drop(
-    columns=['sampleID', args.treatment_column, args.filter_column]
-)
-
-overall_abundance = prepare_abundance(overall_abundance, context="overall")
-
-overall_avg = (
-    overall_abundance.mean(axis=0)
-    .rename_axis('taxonomy')
-    .reset_index(name='average_abundance')
-    .set_index('taxonomy')
-)
-
-# ---------------------------
 # Compute averages + top taxa
 # ---------------------------
 treatment_avg = {}
@@ -217,12 +201,40 @@ final_top_taxa = sorted(unique_top_taxa)
 logging.info(f"Total unique top taxa: {len(final_top_taxa)}")
 
 # ---------------------------
+# Average of per-treatment averages
+# ---------------------------
+# Each treatment contributes one column of per-taxon means.
+# We then mean across treatments so every treatment carries equal weight,
+# regardless of how many samples it contains. This avoids skew from
+# uneven sample counts or outlier samples in any one treatment.
+per_treatment_means = pd.DataFrame({
+    t: avg_df['average_abundance']
+    for t, avg_df in treatment_avg.items()
+})  # rows = taxa, columns = treatments
+
+if per_treatment_means.empty:
+    logging.warning("No per-treatment averages computed — cannot build average-of-averages")
+    avg_of_avg = pd.DataFrame(columns=['average_abundance'])
+    avg_of_avg.index.name = 'taxonomy'
+else:
+    avg_of_avg = (
+        per_treatment_means.fillna(0).mean(axis=1)
+        .rename_axis('taxonomy')
+        .reset_index(name='average_abundance')
+        .set_index('taxonomy')
+    )
+    logging.info(
+        f"Computed average-of-averages across {per_treatment_means.shape[1]} treatments "
+        f"and {per_treatment_means.shape[0]} taxa"
+    )
+
+# ---------------------------
 # Average output
 # ---------------------------
 if args.mode == 'average':
-    logging.info("Generating global average abundance PRISM file")
+    logging.info("Generating global average abundance PRISM file (average of per-treatment averages)")
     logging.info(f"Output file will be called: average_top{args.num_taxa}_{args.treatment_column}_{args.filter_column}.tsv")
-    row = build_row(overall_avg, final_top_taxa, "average")
+    row = build_row(avg_of_avg, final_top_taxa, "average")
     output_df = pd.DataFrame([row])
     output_df = sort_columns_by_abundance(output_df)
     filename = os.path.join(
