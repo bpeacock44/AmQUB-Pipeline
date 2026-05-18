@@ -237,14 +237,12 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
-# detect if classifier assignments are present and use them in final summary file if generated
-if [ -d "${output_dir}/${typ}s/classifier_output" ]; then
-	CP=true 
-else
-	if [ "$CLA" = true ]; then
-		echo "Classifier-generated taxonomic assignments were not generated in Part 4. You cannot use them a primary assignments."
- 		exit 1
- 	fi
+# Validate --classifier flag against Strategy 1 location only when Strategy 1 will be processed.
+if [ "$CLA" = true ] && [ "$skSTR1" = false ]; then
+    if [ ! -d "${output_dir}/${typ}s/classifier_output" ]; then
+        echo "Classifier-generated taxonomic assignments were not generated in Part 4 for Strategy 1. You cannot use them as primary assignments."
+        exit 1
+    fi
 fi
 
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
@@ -282,7 +280,7 @@ for DIR in ${DIRS[@]}; do
     if [ "$CLA" = true ]; then
     	awk 'NR==1 {gsub("Feature ID", "#OTU ID"); gsub("Taxon", "taxonomy"); print; next} {print}' "${DIR}/classifier_output/taxonomy.tsv" > "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
     	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
-    	tail -n +2 "${DIR}/${typ}s/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
+    	tail -n +2 "${DIR}/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
     else
     	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/blast/tax_assignments.txt"
     	tail -n +2 "${DIR}/blast/tax_assignments.txt" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
@@ -408,6 +406,16 @@ for DIR in ${DIRS[@]}; do
         echo $outfp
         add_sequences_to_asv.py ${otblfp} ${DIR}/${typ}s.fa ${outfp}
     done
+
+    if [ -d "${DIR}/classifier_output" ]; then
+        CP=true
+    else
+        CP=false
+        if [ "$CLA" = true ]; then
+            echo "Error: --classifier was set, but no classifier_output directory found in ${DIR}."
+            exit 1
+        fi
+    fi
     
     if [ "$DET" = true ]; then
         # Set default values for optional arguments
