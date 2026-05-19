@@ -74,7 +74,8 @@ From: ubuntu:22.04
         pandas \
         openpyxl \
         scipy \
-        matplotlib
+        matplotlib \
+        statsmodels
 
     # Install Miniconda
     wget https://repo.anaconda.com/miniconda/Miniconda3-py312_24.3.0-0-Linux-x86_64.sh -O /miniconda.sh
