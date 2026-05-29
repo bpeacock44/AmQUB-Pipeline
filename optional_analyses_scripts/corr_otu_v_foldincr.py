@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 """
 Per-OTU Spearman correlation between
-  - nematode-sample abundance (Set A)
+  - nematode-sample relative abundance (Set A)
   - soil fold-change after/before treatment (Set B) computed across SoilNumbers.
 
-For each OTU we produce:
-  - nem_s   = per-soil nematode abundance:
-                within soil s, mean each --setA group separately,
-                then mean those group-means
-  - fc_s    = per-soil fold change:
-                (mean(--setB_after samples in soil s) + c) /
-                (mean(--setB_before samples in soil s) + c)
+Workflow
+--------
+1.  Load a RAW-COUNTS OTU/ASV table.
+2.  Sanity-check that it really is raw counts (integer values, column sums vary).
+3.  Add a pseudocount (default 1) to every cell.
+4.  Normalize each sample (column) by its column sum -> relative abundance.
+5.  Aggregate to per-(group, soil) means.
+6.  For each OTU:
+       nem_s = per-soil nematode abundance
+                 (mean of Set A groups, then mean of group means within soil)
+       fc_s  = per-soil fold change
+                 mean(Set B after in soil s) / mean(Set B before in soil s)
+       Spearman(nem_vec, fc_vec) across soils -> one rho/p per OTU.
+7.  BH-FDR is applied across all OTUs.
 
-Then Spearman(nem_vec, fc_vec) across soils → one rho/p per OTU.
-BH-FDR is applied across all OTUs.
+Because the pseudocount is added BEFORE normalization, no pseudocount is needed
+in the fold-change ratio (the relative abundances are already strictly positive).
 """
 
 import argparse
@@ -33,7 +40,9 @@ from statsmodels.stats.multitest import multipletests
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Per-OTU TU-FC correlation across soils")
-    parser.add_argument('--asv_file', required=True)
+    parser.add_argument('--asv_file', required=True,
+                        help='RAW-COUNTS OTU/ASV table (tab-separated, OTUs as rows, samples as cols). '
+                             'NOT a relative-abundance, percentage, or CSS/TSS-normalized table.')
     parser.add_argument('--metadata_file', required=True)
     parser.add_argument('--output_dir', required=True)
     parser.add_argument('--column', required=True, help='Group column in metadata')
@@ -42,7 +51,7 @@ def parse_args():
     parser.add_argument('--setB_before', required=True, help='Comma-separated groups for Set B (before)')
     parser.add_argument('--setB_after', required=True, help='Comma-separated groups for Set B (after)')
     parser.add_argument('--pseudocount', type=float, default=1.0,
-                        help='Pseudocount added before computing fold change (default 1)')
+                        help='Pseudocount added to every cell BEFORE normalization (default 1)')
     return parser.parse_args()
 
 
@@ -78,6 +87,80 @@ def load_asv_table(asv_file):
 
 def load_metadata(metadata_file):
     return pd.read_csv(metadata_file, sep='\t', index_col=0)
+
+
+# --------------------------------------------------
+# Raw-counts check + pseudocount + normalization
+# --------------------------------------------------
+
+def restrict_to_sample_columns(asv, meta):
+    """Keep only ASV columns that are sample IDs in the metadata.
+    Drops taxonomy columns and any other non-sample annotations."""
+    sample_cols = asv.columns.intersection(meta.index)
+    dropped = [c for c in asv.columns if c not in sample_cols]
+    if dropped:
+        logging.info(
+            f"Dropping {len(dropped)} non-sample column(s) from ASV table "
+            f"(not present in metadata index): {dropped}"
+        )
+    if len(sample_cols) == 0:
+        raise ValueError(
+            "No ASV-table columns match the metadata index. "
+            "Check that sample IDs in the metadata match column headers in the ASV table."
+        )
+    return asv[sample_cols]
+
+
+def check_raw_counts(asv):
+    """Sanity-check that the ASV table contains raw counts, not normalized values.
+    Raises ValueError if the table looks normalized.
+    Assumes non-sample columns (e.g. taxonomy) have already been removed."""
+    arr = asv.to_numpy(dtype=float)
+
+    if np.any(arr < 0):
+        raise ValueError("ASV table contains negative values; expected non-negative raw counts.")
+
+    non_integer_frac = float(np.mean(np.abs(arr - np.round(arr)) > 1e-9))
+    if non_integer_frac > 0:
+        raise ValueError(
+            f"ASV table contains non-integer values "
+            f"({non_integer_frac:.2%} of cells). This suggests the table is already "
+            "normalized (e.g. relative abundance, CSS, log-transformed). "
+            "Please supply RAW COUNTS."
+        )
+
+    col_sums = asv.sum(axis=0)
+    if np.allclose(col_sums.to_numpy(), 1.0, atol=1e-3):
+        raise ValueError(
+            "All column sums are ~1; table appears normalized to relative abundance. "
+            "Please supply RAW COUNTS."
+        )
+    if np.allclose(col_sums.to_numpy(), 100.0, atol=1e-2):
+        raise ValueError(
+            "All column sums are ~100; table appears normalized to percentages. "
+            "Please supply RAW COUNTS."
+        )
+
+    logging.info(
+        f"Raw-counts check OK: {asv.shape[0]} OTUs x {asv.shape[1]} samples; "
+        f"column sums min={col_sums.min():.0f}, max={col_sums.max():.0f}, "
+        f"median={col_sums.median():.0f}"
+    )
+
+
+def add_pseudocount_and_normalize(asv, pseudocount=1.0):
+    """Add `pseudocount` to every cell, then divide each cell by its column sum.
+    Returns a DataFrame of per-sample relative abundances that sum to 1 per column."""
+    asv_pc = asv.astype(float) + pseudocount
+    col_sums = asv_pc.sum(axis=0)
+    rel = asv_pc.div(col_sums, axis=1)
+    logging.info(
+        f"Added pseudocount={pseudocount} and normalized by column sum. "
+        f"Post-normalization column sums min={rel.sum(axis=0).min():.6f}, "
+        f"max={rel.sum(axis=0).max():.6f} (should be 1.0)."
+    )
+    return rel
+
 
 # --------------------------------------------------
 # Aggregation
@@ -181,6 +264,14 @@ def main():
     asv = load_asv_table(args.asv_file)
     meta = load_metadata(args.metadata_file)
 
+    asv = restrict_to_sample_columns(asv, meta)
+
+    logging.info("Verifying ASV table contains raw counts")
+    check_raw_counts(asv)
+
+    logging.info(f"Adding pseudocount ({args.pseudocount}) and normalizing by column sum")
+    asv = add_pseudocount_and_normalize(asv, pseudocount=args.pseudocount)
+
     agg = aggregate(asv, meta, args.column, args.treatment_col)
     if agg.empty:
         raise ValueError("No data after aggregation")
@@ -206,8 +297,10 @@ def main():
     common_soils = before_by_soil.columns.intersection(after_by_soil.columns)
     if len(common_soils) == 0:
         raise ValueError("No SoilNumbers in common between Set B before and after")
-    c = args.pseudocount
-    fc_by_soil = (after_by_soil[common_soils] + c) / (before_by_soil[common_soils] + c)
+
+    # Pseudocount was already added pre-normalization, so a simple ratio is safe
+    # (denominators are strictly positive).
+    fc_by_soil = after_by_soil[common_soils] / before_by_soil[common_soils]
 
     per_otu_correlation(nem_by_soil, fc_by_soil, args.output_dir, args.column)
     logging.info("Done")

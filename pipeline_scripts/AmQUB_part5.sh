@@ -5,7 +5,7 @@
 # This script accepts two types of input:
 # 1. Direct command-line arguments:
 #    AmQUB_part5.sh -i output_dir
-#    AmQUB_part5.sh -i output_dir -1 to_keep.txt -2 to_keep_S2.txt -3 to_keep_S3.txt -u -c -d -m  
+#    AmQUB_part5.sh -i output_dir -1 to_keep.txt -2 to_keep_S2.txt -3 to_keep_S3.txt -e exclude_taxa.txt -u -c -d -m  
 
 ## Required Flags
 # -i: The output directory generated in part 3 that you also ran part 4 on.
@@ -14,6 +14,8 @@
 # -1: A file of taxonomic units you wish to keep in the final table - one per line.
 # -2: A file of taxonomic units you wish to keep in the final table for STRATEGY 2 - one per line.
 # -3: A file of taxonomic units you wish to keep in the final table for STRATEGY 3 - one per line.
+# -e: A file of taxonomic strings to exclude (case-insensitive). Any TU whose taxonomic assignment
+#    contains any of these strings will be removed from all output tables - one string per line.
 # -u: Universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 # -c: Optionally choose to use the classifier taxonomic assignments instead of BLAST.
 # -d: Creates a specialized "Detailed Informational TU Table" with more detail about the taxonomic assignments.
@@ -34,6 +36,7 @@
 #        Taxonomic Units to Keep File,to_keep.txt
 #        Taxonomic Units to Keep File STRATEGY2,to_keep_S2.txt
 #        Taxonomic Units to Keep File STRATEGY3,to_keep_S3.txt
+#        Exclude Taxa File,exclude_taxa.txt
 #        Universal Assay,true
 #        Classifier Assignments Primary,true
 #        Detailed Informational TU Table,true
@@ -56,6 +59,7 @@ parse_parameter_file() {
             "Taxonomic Units to Keep File,"*) KEEP="${line#*,}" ;;
             "Taxonomic Units to Keep File STRATEGY2,"*) STR2="${line#*,}" ;;
             "Taxonomic Units to Keep File STRATEGY3,"*) STR3="${line#*,}" ;;
+            "Exclude Taxa File,"*) EXCL="${line#*,}" ;;
             "Universal Assay,"*) UNI="${line#*,}" ;;
             "Classifier Assignments Primary,"*) CLA="${line#*,}" ;;
             "Detailed Informational TU Table,"*) DET="${line#*,}" ;;
@@ -74,6 +78,7 @@ STR2_simp=false
 STR3_simp=false
 STR2=false
 STR3=false
+EXCL=false
 UNI=false
 CLA=false
 DET=false
@@ -106,6 +111,7 @@ else
             -1|--keep_file) KEEP="$2"; shift 2 ;;
             -2|--s2_file) STR2="$2"; shift 2 ;;
             -3|--s3_file) STR3="$2"; shift 2 ;;
+            -e|--exclude_taxa) EXCL="$2"; shift 2 ;;
             -u|--universal) UNI=true; shift ;;
             -c|--classifier) CLA=true; shift ;;
             -d|--detailed_summary) DET=true; shift ;;
@@ -120,7 +126,13 @@ fi
 
 # Check for mandatory arguments
 if [ -z "$output_dir" ]; then
-    echo "Usage: $0 -i <output directory from part 3> [-1 -2 -3 -u -c -d -m -y -z]"
+    echo "Usage: $0 -i <output directory from part 3> [-1 -2 -3 -e -u -c -d -m -y -z]"
+    exit 1
+fi
+
+# Validate exclude taxa file if provided
+if [[ "$EXCL" != false && ! -f "$EXCL" ]]; then
+    echo "Error: The taxa exclusion file ($EXCL) does not exist! Exiting."
     exit 1
 fi
 
@@ -219,6 +231,10 @@ if [ "$STR3" != false ]; then
     echo "All taxonomic units not included in ${STR3} are being removed for strategy 3 output."
 fi
 
+if [ "$EXCL" != false ]; then
+    echo "Taxa exclusion list: ${EXCL} - TUs with matching taxonomic assignments will be removed." | tee /dev/tty
+fi
+
 if [ "$UNI" = true ]; then
     echo "The tables will be processed as universal assays and separated into 3 domains." | tee /dev/tty
 fi
@@ -257,36 +273,88 @@ for DIR in ${DIRS[@]}; do
     fi
 
     # remove previous versions of the tables
-    rm -rf "${DIR}/otu_table_02"*
-    rm -rf "${DIR}/otu_table_03"*
-    rm -rf "${DIR}/otu_table_04"*
-    
+    rm -rf "${DIR}/${typ}_table_02"*
+    rm -rf "${DIR}/${typ}_table_03"*
+    rm -rf "${DIR}/${typ}_table_04"*
+
+    # ---------------------------------------------------------------------------
+    # STEP 02: Remove TUs by keep-list (-1/-2/-3) and/or exclude by taxa string (-e)
+    # ---------------------------------------------------------------------------
+    current_biom="${DIR}/${typ}_table_01.biom"
+
+    # Apply taxa string exclusion if requested
+    if [ "$EXCL" != false ]; then
+        echo "Filtering taxa exclusion list against taxonomic assignments..." | tee /dev/tty
+
+        # Determine which taxonomy source to use for filtering
+        if [ "$CLA" = true ]; then
+            tax_source="${DIR}/classifier_output/taxonomy.tsv"
+            tax_col=2
+        else
+            tax_source="${DIR}/blast/tax_assignments.txt"
+            tax_col=2
+        fi
+
+        # Build a case-insensitive pattern from the exclusion file (one string per line)
+        excl_pattern=$(grep -v '^\s*$' "$EXCL" | paste -sd'|' -)
+
+        # Find IDs whose taxonomy matches any exclusion string
+        excluded_ids="${DIR}/excluded_taxa_ids.txt"
+        awk -v col="$tax_col" -v pat="$excl_pattern" '
+            BEGIN { IGNORECASE = 1 }
+            NR == 1 && $1 ~ /^(Feature ID|#)/ { next }
+            {
+                split($0, fields, "\t")
+                if (fields[col] ~ pat) print fields[1]
+            }
+        ' "$tax_source" > "$excluded_ids"
+
+        excl_count=$(wc -l < "$excluded_ids")
+        echo "  ${excl_count} TU(s) matched exclusion strings and will be removed." | tee /dev/tty
+
+        if [ "$excl_count" -gt 0 ]; then
+            keep_ids="${DIR}/keep_after_excl_ids.txt"
+            biom convert -i "${current_biom}" -o "${DIR}/tmp_ids.txt" --to-tsv
+            grep -v '^#' "${DIR}/tmp_ids.txt" | cut -f1 | grep -vFif "$excluded_ids" > "$keep_ids" || true
+            rm -f "${DIR}/tmp_ids.txt"
+            biom subset-table \
+                -i "${current_biom}" \
+                -a observation \
+                -s "$keep_ids" \
+                -o "${DIR}/${typ}_table_02_TUs_removed.biom"
+            rm -f "$keep_ids"
+            current_biom="${DIR}/${typ}_table_02_TUs_removed.biom"
+        else
+            echo "  No matching TUs found." | tee /dev/tty
+        fi
+        rm -f "$excluded_ids"
+    fi
+
+    # Apply keep-list if requested
     if [ "$fi" != false ]; then
-        # Remove taxonomic units as indicated
-        OTBL=${typ}_table_01
         biom subset-table \
-            -i "${DIR}/${OTBL}.biom" \
+            -i "${current_biom}" \
             -a observation \
             -s "$fi" \
             -o "${DIR}/${typ}_table_02_TUs_removed.biom"
-    else
-        OTBL=${typ}_table_01
-        cp "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_02_TUs_removed.biom"
+        current_biom="${DIR}/${typ}_table_02_TUs_removed.biom"
     fi
 
-    #add taxa to ASV table
-    OTBL=${typ}_table_02_TUs_removed
+    # ---------------------------------------------------------------------------
+    # STEP 03: Add taxa to table
+    # ---------------------------------------------------------------------------
+    OTBL=$(basename "${current_biom}" .biom)
     # Use classifier assignments if indicated; otherwise use BLAST.
     if [ "$CLA" = true ]; then
-    	awk 'NR==1 {gsub("Feature ID", "#OTU ID"); gsub("Taxon", "taxonomy"); print; next} {print}' "${DIR}/classifier_output/taxonomy.tsv" > "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
-    	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
-    	tail -n +2 "${DIR}/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
+        awk 'NR==1 {gsub("Feature ID", "#OTU ID"); gsub("Taxon", "taxonomy"); print; next} {print}' "${DIR}/classifier_output/taxonomy.tsv" > "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
+        biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
+        tail -n +2 "${DIR}/classifier_output/taxonomy.tsv" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
     else
-    	biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/blast/tax_assignments.txt"
-    	tail -n +2 "${DIR}/blast/tax_assignments.txt" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
+        biomAddObservations "${DIR}/${OTBL}.biom" "${DIR}/${typ}_table_03_add_taxa.biom" "${DIR}/blast/tax_assignments.txt"
+        tail -n +2 "${DIR}/blast/tax_assignments.txt" | cut -d$'\t' -f1,2 > "${DIR}/temp.txt"
     fi
     
-    # create three additional taxonomic levels of ASV tables
+    # create three additional taxonomic levels of tables
     OTBL="${typ}_table_03_add_taxa"
     
     # first, convert tables to qza format
@@ -338,9 +406,9 @@ for DIR in ${DIRS[@]}; do
     done
     
     if [ "$CLA" = true ]; then
-    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
+        biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/classifier_output/taxonomy.fixed_headers.tsv"
     else
-    	biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/blast/tax_assignments.txt"
+        biomAddObservations "${DIR}/${typ}_table_03_add_taxa.norm.biom" "${DIR}/temp2.txt" "${DIR}/blast/tax_assignments.txt"
     fi
     mv "${DIR}/temp2.txt" "${DIR}/${typ}_table_03_add_taxa.norm.biom"
     
@@ -381,7 +449,9 @@ for DIR in ${DIRS[@]}; do
         fi
     done
     
-    # add seqs to L8 
+    # ---------------------------------------------------------------------------
+    # STEP 04: Add sequences
+    # ---------------------------------------------------------------------------
     otblfp="${DIR}/${typ}_table_03_add_taxa.txt"
     outfp="${DIR}/${typ}_table_04_add_seqs.txt"
     
@@ -419,8 +489,8 @@ for DIR in ${DIRS[@]}; do
     
     if [ "$DET" = true ]; then
         # Set default values for optional arguments
-    	mixed_arg="NULL"
-    	cp_arg="NULL"
+        mixed_arg="NULL"
+        cp_arg="NULL"
     
         source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
     
@@ -429,15 +499,15 @@ for DIR in ${DIRS[@]}; do
 
         echo "Running Mixed Family Checker."
         if [ "$MIX" = true ]; then
-        	mixed_file="${DIR}/blast/mixed_family_output.txt"
-        	mixed_family_checker.py "${DIR}/blast/filtered.blastout" --email "${EMAIL}" --output "${mixed_file}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
-        	mixed_arg="${mixed_file}"
+            mixed_file="${DIR}/blast/mixed_family_output.txt"
+            mixed_family_checker.py "${DIR}/blast/filtered.blastout" --email "${EMAIL}" --output "${mixed_file}" || { echo "Error: mixed_family_checker.py failed"; exit 1; }
+            mixed_arg="${mixed_file}"
         fi
     
         # Define classifier variable if available 
         if [ "$CP" = true ]; then
-      		cp_arg="${DIR}/classifier_output/taxonomy.tsv"
-    	fi 
+            cp_arg="${DIR}/classifier_output/taxonomy.tsv"
+        fi 
     
         # Define file paths
         norm_file="${DIR}/${typ}_table_04_add_seqs.norm.txt"
@@ -447,8 +517,8 @@ for DIR in ${DIRS[@]}; do
         rm -rf "${sum_output}"
 
         echo "Generating summary file."
-    	# Single call to the script
-    	summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} ${cp_arg} ${mixed_arg} ${sum_output}
+        # Single call to the script
+        summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} ${cp_arg} ${mixed_arg} ${sum_output}
         
         if [ ! -f ${sum_output} ]; then
             echo "${DIR}/Detailed_Informational_${typ}_Table.tsv was not successfully created."
