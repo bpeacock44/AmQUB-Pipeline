@@ -196,37 +196,37 @@ Output directory: ${output_dir}
 Email of user: ${EMAIL}
 Threads for BLAST: ${NUMTHREADS}
 BLAST task: ${TASK}
-E-value for BLAST: ${EVAL}" | tee /dev/tty
+E-value for BLAST: ${EVAL}"
 
 if [ "$skip_blast" = true ]; then
-    echo "BLAST will be skipped." | tee /dev/tty
+    echo "BLAST will be skipped."
 fi
 
 if [[ "${CFIER}" ]]; then
-    echo "${CFIER} will also be used to assign taxonomy. These assignments will be saved in ${output_dir}/${typ}s/classifier_output." | tee /dev/tty
+    echo "${CFIER} will also be used to assign taxonomy. These assignments will be saved in ${output_dir}/${typ}s/classifier_output."
 fi
 
 if [[ "${DIS}" ]]; then
-    echo "Confidence will not be used to assign taxonomy via the Qiime2 classifier." | tee /dev/tty
+    echo "Confidence will not be used to assign taxonomy via the Qiime2 classifier."
 fi
 
 if [[ "${CON}" ]]; then
-    echo "${CON} will be used as the minimum confidence level for classifier taxonomic assignments." | tee /dev/tty
+    echo "${CON} will be used as the minimum confidence level for classifier taxonomic assignments."
 fi
 
 if [ "$STR1" = true ]; then
-    echo "Skipping assigning taxonomy to the default taxonomic units created using Strategy 1." | tee /dev/tty
+    echo "Skipping assigning taxonomy to the default taxonomic units created using Strategy 1."
 fi
 
 if [ "$STR2" = true ]; then
-    echo "Also assigning taxonomy to the tables created using Strategy 2." | tee /dev/tty
+    echo "Also assigning taxonomy to the tables created using Strategy 2."
 fi
 
 if [ "$STR3" = true ]; then
-    echo "Also assigning taxonomy to the tables created using Strategy 3." | tee /dev/tty
+    echo "Also assigning taxonomy to the tables created using Strategy 3."
 fi
 
-echo " - -- --- ---- ---- --- -- -" | tee /dev/tty
+echo " - -- --- ---- ---- --- -- -"
 
 echo '#!/bin/bash
 DATABASE_PATH=/database/nt
@@ -434,4 +434,4 @@ your summary.
 
 You must use the summary file to create a file with list of all the taxonomic units you 
 want to KEEP in your final tables before continuing. See tutorial for more guidance.
-" | tee /dev/tty
+"

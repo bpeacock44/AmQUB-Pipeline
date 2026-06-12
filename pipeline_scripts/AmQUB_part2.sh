@@ -37,7 +37,7 @@ set -e  # Exit on error
 # Custom error handler function
 error_handler() {
     local error_message=$1
-    echo "Error: Issue encountered with '$error_message'" | tee /dev/tty
+    echo "Error: Issue encountered with '$error_message'"
 }
 
 # Trap errors and call the error handler
@@ -50,7 +50,7 @@ declare -a OUTF_ARRAY MAPF_ARRAY SUB_ARRAY MMATCH_ARRAY RANGE_ARRAY INTERVAL_ARR
 check_label_present() {
     local label="$1"
     if ! grep -iq "^$label," "$2"; then
-        echo "Error: Missing expected label '$label' in parameter file '$2'." | tee /dev/tty
+        echo "Error: Missing expected label '$label' in parameter file '$2'."
         exit 1
     fi
 }
@@ -120,7 +120,7 @@ check_arrays_length() {
     local interval_len=${#INTERVAL_ARRAY[@]}
 
     if [[ "$outf_len" -ne "$map_len" || "$outf_len" -ne "$mmatch_len" || "$outf_len" -ne "$beg_len" || "$outf_len" -ne "$fin_len" || "$outf_len" -ne "$interval_len" || "$outf_len" -ne "$sub_len" ]]; then
-        echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length." | tee /dev/tty
+        echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length."
         exit 1
     fi
 }
@@ -358,7 +358,7 @@ for i in "${!OUTF_ARRAY[@]}"; do
     # create header for log file
     echo "Processing ${OUTF} with mapping file ${MAPFILE}, allowing ${mmatchnum} mismatches.
 Range and Interval of Stats: ${BEG}-${MAX_LENGTH}, every ${INV} bases.
- - -- --- ---- ---- --- -- -" | tee /dev/tty
+ - -- --- ---- ---- --- -- -"
 
     # Create barcodes.fa file for each JB
     grep -P "^[A-Z]" "${MAPFILE}" | awk '{print ">"$1"\n"$2}' > "${ODIR}/barcodes.fa"
@@ -387,7 +387,7 @@ Final Recommendations
 Stats ready. Please view this file and select your trim length accordingly:
 ${ODIR}/${BASE1}.M${mmatchnum}.eestats.txt
  - -- --- ---- ---- --- -- -
-" | tee /dev/tty
+"
 
 done
 

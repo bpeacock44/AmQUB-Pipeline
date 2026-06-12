@@ -206,7 +206,7 @@ exec 2> >(tee -a "$output_file" >&2)
 # log header
 echo "Log file for Part 5 of the Microbiome Pipeline. Processed the following arguments:
 Output directory to be processed: ${output_dir}
-List of taxonomic units to keep: ${KEEP}" | tee /dev/tty
+List of taxonomic units to keep: ${KEEP}"
 if [ "$skSTR1" != false ]; then 
     echo "Strategy 1 (default) results are not being processed."
 fi
@@ -232,23 +232,23 @@ if [ "$STR3" != false ]; then
 fi
 
 if [ "$EXCL" != false ]; then
-    echo "Taxa exclusion list: ${EXCL} - TUs with matching taxonomic assignments will be removed." | tee /dev/tty
+    echo "Taxa exclusion list: ${EXCL} - TUs with matching taxonomic assignments will be removed."
 fi
 
 if [ "$UNI" = true ]; then
-    echo "The tables will be processed as universal assays and separated into 3 domains." | tee /dev/tty
+    echo "The tables will be processed as universal assays and separated into 3 domains."
 fi
 
 if [ "$CLA" = true ]; then
-    echo "The classifier-generated taxonomic assignments will be used as primary assignments" | tee /dev/tty
+    echo "The classifier-generated taxonomic assignments will be used as primary assignments"
 fi
 
 if [ "$DET" = true ]; then
-    echo "A Detailed Informational TU Table will be generated." | tee /dev/tty
+    echo "A Detailed Informational TU Table will be generated."
 fi
 
 if [ "$MIX" = true ]; then
-    echo "The mixed family analysis will be done." | tee /dev/tty
+    echo "The mixed family analysis will be done."
 fi
 
 echo " - -- --- ---- ---- --- -- -"
@@ -284,7 +284,7 @@ for DIR in ${DIRS[@]}; do
 
     # Apply taxa string exclusion if requested
     if [ "$EXCL" != false ]; then
-        echo "Filtering taxa exclusion list against taxonomic assignments..." | tee /dev/tty
+        echo "Filtering taxa exclusion list against taxonomic assignments..."
 
         # Determine which taxonomy source to use for filtering
         if [ "$CLA" = true ]; then
@@ -310,23 +310,33 @@ for DIR in ${DIRS[@]}; do
         ' "$tax_source" > "$excluded_ids"
 
         excl_count=$(wc -l < "$excluded_ids")
-        echo "  ${excl_count} TU(s) matched exclusion strings and will be removed." | tee /dev/tty
+        echo "  ${excl_count} TU(s) matched exclusion strings and will be removed."
 
         if [ "$excl_count" -gt 0 ]; then
             keep_ids="${DIR}/keep_after_excl_ids.txt"
+        
             biom convert -i "${current_biom}" -o "${DIR}/tmp_ids.txt" --to-tsv
-            grep -v '^#' "${DIR}/tmp_ids.txt" | cut -f1 | grep -vFif "$excluded_ids" > "$keep_ids" || true
+        
+            grep -v '^#' "${DIR}/tmp_ids.txt" \
+                | cut -f1 \
+                | grep -vFxf "$excluded_ids" \
+                > "$keep_ids" || true
+        
             rm -f "${DIR}/tmp_ids.txt"
+        
             biom subset-table \
                 -i "${current_biom}" \
                 -a observation \
                 -s "$keep_ids" \
                 -o "${DIR}/${typ}_table_02_TUs_removed.biom"
+        
             rm -f "$keep_ids"
+        
             current_biom="${DIR}/${typ}_table_02_TUs_removed.biom"
         else
-            echo "  No matching TUs found." | tee /dev/tty
+            echo "  No matching TUs found."
         fi
+        
         rm -f "$excluded_ids"
     fi
 
@@ -412,36 +422,6 @@ for DIR in ${DIRS[@]}; do
     fi
     mv "${DIR}/temp2.txt" "${DIR}/${typ}_table_03_add_taxa.norm.biom"
     
-    # split into 3 domains if indicated and normalize resulting tables
-    if [[ "$UNI" == true ]]; then
-        for F in "${to_process[@]}"; do
-            biom2txt "${F}.biom" "${F}.txt"
-            KDOMS=("d__Archaea" "d__Bacteria" "d__Eukaryota")
-            for K in "${KDOMS[@]}"; do
-                grep -P "(#|$K)" "${F}.txt" > "${F}.${K}.txt"
-                if [[ "$F" =~ _L([0-9]+) ]]; then
-                    # Process files with _L in the name (no taxonomy metadata)
-                    txt2biom_notax "${F}.${K}.txt" "${F}.${K}.biom"
-                else
-                    # Process files without _L in the name (include taxonomy metadata)
-                    txt2biom "${F}.${K}.txt" "${F}.${K}.biom"
-                fi
-                qiime tools import \
-                  --type 'FeatureTable[Frequency]' \
-                  --input-path "${F}.${K}.biom" \
-                  --output-path "${F}.${K}.qza"
-                qiime feature-table relative-frequency \
-                  --i-table "${F}.${K}.qza" \
-                  --o-relative-frequency-table "${F}.${K}.norm.qza"
-                qiime tools export \
-                  --input-path "${F}.${K}.norm.qza" \
-                  --output-path "${DIR}/tmp_dir"
-                mv "${DIR}/tmp_dir/feature-table.biom" "${F}.${K}.norm.biom"
-                rm -rf "${DIR}/tmp_dir"
-            done  
-        done
-    fi
-    
     for F in "${DIR}/"*.biom; do
         txt_file="${F%.biom}.txt"
         if [ ! -f "$txt_file" ]; then
@@ -463,19 +443,22 @@ for DIR in ${DIRS[@]}; do
     
     add_sequences_to_asv.py ${otblfp} ${DIR}/${typ}s.fa ${outfp}
     
-    to_process2=($(find "${DIR}" -maxdepth 1 -type f -name "${typ}_table_03*taxa.k*txt"))
+    # Split sequence-containing tables into domains if indicated
+    if [[ "$UNI" == true ]]; then
+        KDOMS=("d__Archaea" "d__Bacteria" "d__Eukaryota")
     
-    for F in "${to_process2[@]}"; do
-        if [ ! -f "$F" ]; then
-            echo "Error: File $F not found."
-            #exit 1
-        fi
-        FNAME=$(basename "$F" | sed 's|^${typ}_table_03_add_taxa||')
-        otblfp="${F}"
-        outfp="${DIR}/${typ}_table_04_add_seqs${FNAME}"
-        echo $outfp
-        add_sequences_to_asv.py ${otblfp} ${DIR}/${typ}s.fa ${outfp}
-    done
+        for F in \
+            "${DIR}/${typ}_table_04_add_seqs.txt" \
+            "${DIR}/${typ}_table_04_add_seqs.norm.txt"
+        do
+            for K in "${KDOMS[@]}"; do
+                awk -F'\t' -v dom="$K" '
+                    NR==1 { print; next }
+                    $(NF-1) ~ "^" dom
+                ' "$F" > "${F%.txt}.${K}.txt"
+            done
+        done
+    fi
 
     if [ -d "${DIR}/classifier_output" ]; then
         CP=true
@@ -539,4 +522,4 @@ source of contamination, which may be from other samples or even from the indivi
 the library in the first place). Make sure to check your tables for these units - just look at 
 your control columns and see if any of the units are relatively high in them and not present 
 in the regular samples. These units should probably be removed before further analysis.
-" | tee /dev/tty
+"

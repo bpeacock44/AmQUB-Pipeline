@@ -36,7 +36,7 @@ declare -a FQ_ARRAY MAPF_ARRAY MMATCH_ARRAY
 check_label_present() {
     local label="$1"
     if ! grep -q "$label" "$2"; then
-        echo "Error: Missing expected label '$label' in parameter file." | tee /dev/tty
+        echo "Error: Missing expected label '$label' in parameter file." 
         exit 1
     fi
 }
@@ -83,7 +83,7 @@ check_arrays_length() {
     local mmatch_len=${#MMATCH_ARRAY[@]}
 
     if [[ "$fq_len" -ne "$map_len" || "$fq_len" -ne "$mmatch_len" ]]; then
-        echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length." | tee /dev/tty
+        echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length." 
         exit 1
     fi
 }
@@ -189,7 +189,7 @@ for i in "${!FQ_ARRAY[@]}"; do
     exec > "$output_file"
     exec 2> >(tee -a "$output_file" >&2)
     echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
- - -- --- ---- ---- --- -- -" | tee /dev/tty
+ - -- --- ---- ---- --- -- -" 
 
     # Run main pipeline commands
     FQDIR=$(dirname "$FQ")
@@ -231,5 +231,5 @@ samples downstream.
 There is also a file describing the makeup of your reads here:
 ${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt
  - -- --- ---- ---- --- -- -
-"  | tee /dev/tty
+"  
 done

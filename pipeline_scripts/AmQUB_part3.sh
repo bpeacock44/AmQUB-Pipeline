@@ -72,7 +72,7 @@ set -e  # Exit on error
 check_label_present() {
     local label="$1"
     if ! grep -iq "^$label," "$2"; then
-        echo "Error: Missing expected label '$label' in parameter file '$2'." | tee /dev/tty
+        echo "Error: Missing expected label '$label' in parameter file '$2'."
         exit 1
     fi
 }
@@ -230,14 +230,14 @@ exec 2> >(tee -a "$output_file" >&2)
 
 # log header
 echo " - -- --- ---- ---- --- -- -"
-echo "Log file for Part 3 of the Microbiome Pipeline. Processing the following arguments:" | tee /dev/tty
+echo "Log file for Part 3 of the Microbiome Pipeline. Processing the following arguments:"
 
 # Function to conditionally print variables
 print_arg() {
   local label="$1"
   local value="$2"
   if [[ "$value" != "false" ]]; then
-    echo "${label} ---> ${value}" | tee /dev/tty
+    echo "${label} ---> ${value}"
   fi
 }
 
@@ -664,4 +664,4 @@ local BLAST database and optionally by using Qiime2 to classify them.
 Make sure you have an up-to-date NCBI nucleotide database (or other database if preferred) 
 available and bound to your singularity container (see tutorial) as well as sufficient 
 computational power.
-" | tee /dev/tty
+"
