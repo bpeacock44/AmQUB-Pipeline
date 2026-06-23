@@ -40,7 +40,7 @@ def main(file1, file2, output_file):
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python align_otu.py <input_file1> <input_file2> <output_file>")
+        print("Usage: python merge_tables.py <input_file1> <input_file2> <output_file>")
         sys.exit(1)
 
     input_file1 = sys.argv[1]

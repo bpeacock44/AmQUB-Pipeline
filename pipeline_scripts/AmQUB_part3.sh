@@ -64,7 +64,14 @@
 #        TABLE-Generation of Fastq of Unassigned Seqs,true
 #        TABLE-Generation of Read Mapping File,true
 #
-#All optional parameters can be left out of the param file.
+# All optional parameters can be left out of the param file.
+# This script uses the following helper scripts:
+# add_counts_to_fasta.py
+# qiime_table_sorter.py
+# merge_fastas.py
+# merge_tables.py
+# qiime_shell_helper_functions.sh
+
 
 set -e  # Exit on error
 
@@ -225,7 +232,7 @@ fi
 # initiate log
 timestamp="$(date +"%y%m%d_%H:%M")"
 output_file="${OUTDIR}/part3_${timestamp}.log"
-exec > "$output_file"
+exec > >(tee "$output_file")
 exec 2> >(tee -a "$output_file" >&2)
 
 # log header
@@ -289,9 +296,9 @@ for IN in "${INP[@]}"; do
     cat "${FQ_base}_${LEN}bp.phiX_clean.fq" >> "${OUTDIR}/combined.fq"
     #maxee quality filtering of demultiplexed/truncated fq files (*** keep THREADS=1 for repeatability ***)
     CMD=("usearch" "-threads" "1" "-fastq_filter" "${FQ_base}_${LEN}bp.phiX_clean.fq" "-quiet" "-fastq_maxee" "${FM}" "-fastaout" "${FQ_base}_${LEN}bp.filtered.fa")
-    [[ "$FR" == "true" ]] && CMD+=("-fastqout_discarded" "${FQ_base}_${LEN}bp_discarded.fq")
-    [[ "$FE" == "true" ]] && CMD+=("-fastq_eeout")
-    [[ "$FD" == "true" ]] && CMD+=("-fastq_maxns" "${FD}")
+    [[ "$FR" != "false" ]] && CMD+=("-fastqout_discarded" "${FQ_base}_${LEN}bp_discarded.fq")
+    [[ "$FE" != "false" ]] && CMD+=("-fastq_eeout")
+    [[ "$FD" != "false" ]] && CMD+=("-fastq_maxns" "${FD}")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -308,8 +315,8 @@ mv "${OUTDIR}/filteredb.fa" "${OUTDIR}/filtered.fa"
 
 #find unique sequences
 CMD=("usearch" "-fastx_uniques" "${OUTDIR}/filtered.fa" "-quiet" "-fastaout" "${OUTDIR}/uniques.fa" "-sizeout" "-relabel" "Uniq")
-[[ "$UG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")
-[[ "$US" == "true" ]] && CMD+=("-minuniquesize" "${US}")
+[[ "$UG" != "false" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")
+[[ "$US" != "false" ]] && CMD+=("-minuniquesize" "${US}")
 echo " "
 echo " - -- --- ---- ---- --- -- -"
 echo " - RUNNING: ${CMD[@]}"
@@ -326,9 +333,9 @@ mv "${OUTDIR}/temp.fa" "${OUTDIR}/uniques.fa"
 if [[ "$ALGORITHM" == "UNOISE3" ]]; then
     mkdir -vp "${OUTDIR}/asvs"
     CMD=("usearch" "-unoise3" "${OUTDIR}/uniques.fa" "-quiet" "-zotus" "${OUTDIR}/asvs/asvs.fa")
-    [[ "$MIN" == "true" ]] && CMD+=("-minsize" "${MIN}")
-    [[ "$AG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/unoise3_processing_report.txt")
-    [[ "$ALPHA" == "true" ]] && CMD+=("-unoise_alpha" "${ALPHA}")
+    [[ "$MIN" != "false" ]] && CMD+=("-minsize" "${MIN}")
+    [[ "$AG" != "false" ]] && CMD+=("-tabbedout" "${OUTDIR}/unoise3_processing_report.txt")
+    [[ "$ALPHA" != "false" ]] && CMD+=("-unoise_alpha" "${ALPHA}")
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
     "${CMD[@]}"
@@ -337,8 +344,8 @@ if [[ "$ALGORITHM" == "UNOISE3" ]]; then
 else 
     mkdir -vp "${OUTDIR}/otus"
     CMD=("usearch" "-cluster_smallmem" "${OUTDIR}/uniques.fa" "-quiet" "-id" "${UP}" "-sortedby" "size" "-relabel" "Otu" "-centroids" "${OUTDIR}/otus/otus.fa")
-    [[ "$MIN" == "true" ]] && CMD+=("-minsize" "${MIN}")
-    [[ "$AG" == "true" ]] && CMD+=("-uc" "${OUTDIR}/uparse_processing_report.txt")
+    [[ "$MIN" != "false" ]] && CMD+=("-minsize" "${MIN}")
+    [[ "$AG" != "false" ]] && CMD+=("-uc" "${OUTDIR}/uparse_processing_report.txt")
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
     "${CMD[@]}"
@@ -347,9 +354,9 @@ fi
 
 #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
 CMD=("usearch" "--otutab" "${OUTDIR}/combined.fq" "-quiet" "-zotus" "${OUTDIR}/${typ}s/${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/${typ}_table_00.txt")
-[[ "$TBLID" == "true" ]] && CMD+=("-id" "${TBLID}")
-[[ "$UN" == "true" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/unbinned_reads.fq")
-[[ "$RMF" == "true" ]] && CMD+=("-mapout" "${OUTDIR}/read_binning_report.txt")
+[[ "$TBLID" != "false" ]] && CMD+=("-id" "${TBLID}")
+[[ "$UN" != "false" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/unbinned_reads.fq")
+[[ "$RMF" != "false" ]] && CMD+=("-mapout" "${OUTDIR}/read_binning_report.txt")
 echo " "
 echo " - -- --- ---- ---- --- -- -"
 echo " - RUNNING: ${CMD[@]}"
@@ -385,9 +392,6 @@ if [[ "$MAPF" != "false" ]]; then
     mkdir -vp "${OUTDIR}/${typ}s/STRATEGY2"
     mkdir -vp "${OUTDIR}/${typ}s/STRATEGY2/subset_filtered_fastas"
     
-    # Create an associative array to store unique values from $COL and their associated sample IDs
-    declare -A value_to_sampleIDs
-    
     # Extract the index of the column headers for $COL and #SampleID
     col_index=$(head -1 "$MAPF" | tr '\t' '\n' | grep -n "^$COL$" | cut -d: -f1)
     sampleID_index=$(head -1 "$MAPF" | tr '\t' '\n' | grep -n "^#SampleID$" | cut -d: -f1)
@@ -399,7 +403,7 @@ if [[ "$MAPF" != "false" ]]; then
     fi
     
     # Build the associative array with unique values from $COL and associated sample IDs
-    awk -v col="$col_index" -v sid="$sampleID_index" 'NR > 1 { value[$col] = value[$col] ? value[$col] "," $sid : $sid } END { for (v in value) print v "\t" value[v] }' FS='\t' "$MAPF" > tmp_value_to_sampleIDs.txt
+    awk -v col="$col_index" -v sid="$sampleID_index" 'NR > 1 { value[$col] = value[$col] ? value[$col] "," $sid : $sid } END { for (v in value) print v "\t" value[v] }' FS='\t' "$MAPF" > "${OUTDIR}/tmp_value_to_sampleIDs.txt"
     
     # Iterate through each unique value in the tmp file
     while IFS=$'\t' read -r value sampleIDs; do
@@ -412,7 +416,7 @@ if [[ "$MAPF" != "false" ]]; then
     # Loop through each sample ID and extract matching sequences
     for sampleID in "${sampleID_array[@]}"; do
         # Use awk to match the sample ID in the header and collect the entire sequence
-        awk -v sampleID=";sample=${sampleID}" '
+        awk -v sampleID=";sample=${sampleID};" '
         BEGIN {in_sample=0}
         /^>/ { 
             if (index($0, sampleID) > 0) {
@@ -427,10 +431,10 @@ if [[ "$MAPF" != "false" ]]; then
         }
         ' "${OUTDIR}/filtered.fa" # Process the FASTA file
     done | seqkit seq - > "$output_fasta" # Use seqkit to format the sequences
-    done < tmp_value_to_sampleIDs.txt
+    done < "${OUTDIR}/tmp_value_to_sampleIDs.txt"
     
     # Clean up temporary file
-    rm -rf tmp_value_to_sampleIDs.txt
+    rm -rf "${OUTDIR}/tmp_value_to_sampleIDs.txt"
     
     #find unique sequences
     for F in "${OUTDIR}/${typ}s/STRATEGY2/subset_filtered_fastas/"*subset.fa; do
@@ -439,8 +443,8 @@ if [[ "$MAPF" != "false" ]]; then
 
         BASE=$(echo "$F" | sed 's/\.fa$//')
         CMD=("usearch" "-fastx_uniques" "${F}" "-quiet" "-fastaout" "${BASE}.uniques.fa" "-sizeout" "-relabel" "Uniq")
-        [[ "$UG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")
-        [[ "$US" == "true" ]] && CMD+=("-minuniquesize" "${US}")
+        [[ "$UG" != "false" ]] && CMD+=("-tabbedout" "${OUTDIR}/uniques_binning_report.txt")
+        [[ "$US" != "false" ]] && CMD+=("-minuniquesize" "${US}")
         echo
         echo " - -- --- ---- ---- --- -- -"
         echo " - RUNNING: ${CMD[@]}"
@@ -456,9 +460,9 @@ if [[ "$MAPF" != "false" ]]; then
         # create otus/asvs using algorithm of choice
         if [[ "$ALGORITHM" == "UNOISE3" ]]; then
             CMD=("usearch" "-unoise3" "${BASE}.uniques.fa" "-quiet" "-zotus" "${BASE}.asvs.fa")
-            [[ "$MIN" == "true" ]] && CMD+=("-minsize" "${MIN}")
-            [[ "$AG" == "true" ]] && CMD+=("-tabbedout" "${BASE}.unoise3_processing_report.txt")
-            [[ "$ALPHA" == "true" ]] && CMD+=("-unoise_alpha" "${ALPHA}")
+            [[ "$MIN" != "false" ]] && CMD+=("-minsize" "${MIN}")
+            [[ "$AG" != "false" ]] && CMD+=("-tabbedout" "${BASE}.unoise3_processing_report.txt")
+            [[ "$ALPHA" != "false" ]] && CMD+=("-unoise_alpha" "${ALPHA}")
             echo
             echo " - -- --- ---- ---- --- -- -"
             echo " - RUNNING: ${CMD[@]}"
@@ -467,8 +471,8 @@ if [[ "$MAPF" != "false" ]]; then
             typ="asv"
         else 
             CMD=("usearch" "-cluster_smallmem" "${BASE}.uniques.fa" "-quiet" "-id" "${UP}" "-sortedby" "size" "-relabel" "Otu" "-centroids" "${BASE}.otus.fa")
-            [[ "$MIN" == "true" ]] && CMD+=("-minsize" "${MIN}")
-            [[ "$AG" == "true" ]] && CMD+=("-uc" "${BASE}.uparse_processing_report.txt")
+            [[ "$MIN" != "false" ]] && CMD+=("-minsize" "${MIN}")
+            [[ "$AG" != "false" ]] && CMD+=("-uc" "${BASE}.uparse_processing_report.txt")
             echo
             echo " - -- --- ---- ---- --- -- -"
             echo " - RUNNING: ${CMD[@]}"
@@ -489,7 +493,7 @@ if [[ "$MAPF" != "false" ]]; then
     
     #create a table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
     CMD=("usearch" "--otutab" "${OUTDIR}/combined.fq" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt")
-    [[ "$TBLID" == "true" ]] && CMD+=("-id" "${TBLID}")
+    [[ "$TBLID" != "false" ]] && CMD+=("-id" "${TBLID}")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -508,9 +512,9 @@ if [[ "$MAPF" != "false" ]]; then
     mv "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s_counts.fa" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa"
     #create a table AGAIN with correct headers.
     CMD=("usearch" "--otutab" "${OUTDIR}/combined.fq" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/${typ}_table_00.txt")
-    [[ "$TBLID" == "true" ]] && CMD+=("-id" "${TBLID}")
-    [[ "$UN" == "true" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/unbinned_reads.fq")
-    [[ "$RMF" == "true" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/read_binning_report.txt")
+    [[ "$TBLID" != "false" ]] && CMD+=("-id" "${TBLID}")
+    [[ "$UN" != "false" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/unbinned_reads.fq")
+    [[ "$RMF" != "false" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY2/${typ}s/read_binning_report.txt")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -550,8 +554,8 @@ if [[ "$PRE" != "false" ]]; then
     
     # make an otu table using the pre-existing OTUs/ASVs and collect remaining unbinned reads.
     CMD=("usearch" "--otutab" "${OUTDIR}/combined.fq" "-quiet" "-zotus" "${PRE}" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/pre-existing_${typ}_table_00.txt" "-notmatchedfq" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/reads_unbinned_in_pre-exisiting.fq")
-    [[ "$TBLID" == "true" ]] && CMD+=("-id" "${TBLID}")
-    [[ "$RMF" == "true" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/pre-existing_read_binning_report.txt")
+    [[ "$TBLID" != "false" ]] && CMD+=("-id" "${TBLID}")
+    [[ "$RMF" != "false" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/pre-existing_read_binning_report.txt")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -563,9 +567,9 @@ if [[ "$PRE" != "false" ]]; then
     
     # Filter the unbinned reads
     CMD=("usearch" "-threads" "1" "-fastq_filter" "${F}" "-quiet" "-fastq_maxee" "${FM}" "-fastaout" "${FQ_base}.filtered.fa")
-    [[ "$FR" == "true" ]] && CMD+=("-fastqout_discarded" "${FQ_base}_discarded.fq")
-    [[ "$FE" == "true" ]] && CMD+=("-fastq_eeout")
-    [[ "$FD" == "true" ]] && CMD+=("-fastq_maxns" "${FD}")
+    [[ "$FR" != "false" ]] && CMD+=("-fastqout_discarded" "${FQ_base}_discarded.fq")
+    [[ "$FE" != "false" ]] && CMD+=("-fastq_eeout")
+    [[ "$FD" != "false" ]] && CMD+=("-fastq_maxns" "${FD}")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -573,8 +577,8 @@ if [[ "$PRE" != "false" ]]; then
     
     #find unique sequences
     CMD=("usearch" "-fastx_uniques" "${FQ_base}.filtered.fa" "-quiet" "-fastaout" "${FQ_base}.uniques.fa" "-sizeout" "-relabel" "Uniq")
-    [[ "$UG" == "true" ]] && CMD+=("-tabbedout" "${FQ_base}.uniques_binning_report.txt")
-    [[ "$US" == "true" ]] && CMD+=("-minuniquesize" "$US")
+    [[ "$UG" != "false" ]] && CMD+=("-tabbedout" "${FQ_base}.uniques_binning_report.txt")
+    [[ "$US" != "false" ]] && CMD+=("-minuniquesize" "$US")
     echo
     echo " - -- --- ---- ---- --- -- -"
     echo " - RUNNING: ${CMD[@]}"
@@ -583,16 +587,16 @@ if [[ "$PRE" != "false" ]]; then
     # sort by size in preparation for algorithm
     echo
     echo " - -- --- ---- ---- --- -- -"
-    echo " - RUNNING: usearch -sortbysize "${FQ_base}.uniques.fa" "-quiet" -fastaout "${OUTDIR}/temp.fa" -minsize 1"
+    echo " - RUNNING: usearch -sortbysize ${FQ_base}.uniques.fa -quiet -fastaout ${OUTDIR}/temp.fa -minsize 1"
     usearch -sortbysize "${FQ_base}.uniques.fa" -quiet -fastaout "${OUTDIR}/temp.fa" -minsize 1
     mv "${OUTDIR}/temp.fa" "${FQ_base}.uniques.fa"
     
     # create otus/asvs using algorithm of choice
     if [[ "$ALGORITHM" == "UNOISE3" ]]; then
         CMD=("usearch" "-unoise3" "${FQ_base}.uniques.fa" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa")
-        [[ "$MIN" == "true" ]] && CMD+=("-minsize" "$MIN")
-        [[ "$AG" == "true" ]] && CMD+=("-tabbedout" "${OUTDIR}/${typ}s/STRATEGY3/unbinned_unoise3_processing_report.txt")
-        [[ "$ALPHA" == "true" ]] && CMD+=("-unoise_alpha" "$ALPHA")
+        [[ "$MIN" != "false" ]] && CMD+=("-minsize" "$MIN")
+        [[ "$AG" != "false" ]] && CMD+=("-tabbedout" "${OUTDIR}/${typ}s/STRATEGY3/unbinned_unoise3_processing_report.txt")
+        [[ "$ALPHA" != "false" ]] && CMD+=("-unoise_alpha" "$ALPHA")
         echo
         echo " - -- --- ---- ---- --- -- -"
         echo " - RUNNING: ${CMD[@]}"
@@ -602,8 +606,8 @@ if [[ "$PRE" != "false" ]]; then
         typ="asv"
     else 
         CMD=("usearch" "-cluster_smallmem" "${FQ_base}.uniques.fa" "-quiet" "-id" "$UP" "-sortedby" "size" "-relabel" "Otu" "-centroids" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa")
-        [[ "$MIN" == "true" ]] && CMD+=("-minsize" "$MIN")
-        [[ "$AG" == "true" ]] && CMD+=("-uc" "${OUTDIR}/${typ}s/STRATEGY3/unbinned_uparse_processing_report.txt")
+        [[ "$MIN" != "false" ]] && CMD+=("-minsize" "$MIN")
+        [[ "$AG" != "false" ]] && CMD+=("-uc" "${OUTDIR}/${typ}s/STRATEGY3/unbinned_uparse_processing_report.txt")
         echo
         echo " - -- --- ---- ---- --- -- -"
         echo " - RUNNING: ${CMD[@]}"
@@ -617,9 +621,9 @@ if [[ "$PRE" != "false" ]]; then
     
         #create an ASV table ("Input should be reads before quality filtering and before discarding low-abundance unique sequences, e.g. singletons")
         CMD=("usearch" "--otutab" "$F" "-quiet" "-zotus" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}s.fa" "-otutabout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_${typ}_table_00.txt")
-        [[ "$TBLID" == "true" ]] && CMD+=("-id" "$TBLID")
-        [[ "$UN" == "true" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_unbinned_reads.fq")
-        [[ "$RMF" == "true" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_read_binning_report.txt")
+        [[ "$TBLID" != "false" ]] && CMD+=("-id" "$TBLID")
+        [[ "$UN" != "false" ]] && CMD+=("-notmatchedfq" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_unbinned_reads.fq")
+        [[ "$RMF" != "false" ]] && CMD+=("-mapout" "${OUTDIR}/${typ}s/STRATEGY3/${typ}s/unbinned_read_binning_report.txt")
         echo
         echo " - -- --- ---- ---- --- -- -"
         echo " - RUNNING: ${CMD[@]}"

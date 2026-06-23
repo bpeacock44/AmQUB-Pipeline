@@ -24,6 +24,13 @@
 #
 # The "Mismatch Bases" line is optional. Omit it entirely, leave it blank, or set
 # it to DEFAULT to use the default of 0.
+#
+# This script uses the following helper scripts:
+# check_barcode_collisions.pl
+# filter_barcode_noncollisions.py
+# fastq_convert_mm2pm_barcodes.py
+# bc_counter.py
+# extract_barcodes.go
 
 set -e  # Exit on error
 

@@ -7,7 +7,7 @@ This script removes exact duplicate sequences from a FASTA file while preserving
 It merges all sequence IDs for identical sequences into a single header.
 
 Usage:
-    python deduplicate_fasta.py <input_file>
+    python merge_fastas.py <input_file>
 
 Arguments:
     input_file - Path to the input FASTA file.
