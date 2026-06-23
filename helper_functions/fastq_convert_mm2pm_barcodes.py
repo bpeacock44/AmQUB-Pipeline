@@ -138,32 +138,6 @@ def read_convert_save(opts, bcs_d):
     #TODO: count PM barcodes. pct_changed should calculate the % increase in PM barcodes, not all barcodes in the fastq file
 
 
-def get_fastq_type(opts):
-    '''get fastq type (currently detects either Illumina "RAW" or "USEARCH")'''
-
-    #create a parser object
-    parser = ParseFastQ(opts.input_fp)
-
-    #read the first record
-    for rec in parser:
-        #rec is tuple: (seqHeader,seqStr,qualHeader,qualStr)
-        #Example of RAW:
-        #@M02457:244:000000000-BV7KW:1:1102:18589:1920 1:N:0:GTCCTGATGCCT
-        #
-        #Example of USEARCH:
-        #@M02457:244:000000000-BV7KW:1:1102:15655:1826;sample=B023.81;
-        #
-        elems = re.split(':', rec[0])
-        if len(elems) == 10:
-            return "RAW"
-        elif len(elems) == 7:
-            return "USEARCH"
-        else:
-            print ("get_fastq_type: *** Error *** Fastq type not recognized (Illumina RAW or USEARCH")
-            sys.exit(0)
-
-
-
 def get_opts(argv):
     #create an ArgumentParser object
     parser = argparse.ArgumentParser(
@@ -196,25 +170,25 @@ def get_opts(argv):
 def check_opts(opts):
     #verify the given parameters are sane
     if not os.path.isfile(opts.input_fp):
-        print ("** Error ** Input file ["+opts.input_fp+"] does not exist!")
-        sys.exit(0)
+        print ("** Error ** Input file ["+opts.input_fp+"] does not exist!", file=sys.stderr)
+        sys.exit(1)
     if not os.path.isfile(opts.mm2pm_barcodes_fp):
-        print ("** Error ** Input file ["+opts.mm2pm_barcodes_fp+"] does not exist!")
-        sys.exit(0)
+        print ("** Error ** Input file ["+opts.mm2pm_barcodes_fp+"] does not exist!", file=sys.stderr)
+        sys.exit(1)
     if opts.input_fp == opts.output_fp:
-        print ("** Error ** Input and Output filenames must not be identical!")
-        sys.exit(0)
+        print ("** Error ** Input and Output filenames must not be identical!", file=sys.stderr)
+        sys.exit(1)
     if os.path.isfile(opts.output_fp) and not opts.force_overwrite:
         print ("** Warning ** Output file ["+opts.output_fp+"] already exists!")
         sys.exit(0)
     if opts.file_type is None:
-        print ("** Error ** Please supply a value for option [--file_type]!")
-        print ("Choices are 'barcode' or 'read'")
-        sys.exit(0)
+        print ("** Error ** Please supply a value for option [--file_type]!", file=sys.stderr)
+        print ("Choices are 'barcode' or 'read'", file=sys.stderr)
+        sys.exit(1)
     elif opts.file_type not in ['read','barcode']:
-        print ("** Error ** Unknown file_type ["+str(opts.file_type)+"]!")
-        print ("Choices are 'barcode' or 'read' only")
-        sys.exit(0)
+        print ("** Error ** Unknown file_type ["+str(opts.file_type)+"]!", file=sys.stderr)
+        print ("Choices are 'barcode' or 'read' only", file=sys.stderr)
+        sys.exit(1)
 
 
 
@@ -240,5 +214,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
-
-

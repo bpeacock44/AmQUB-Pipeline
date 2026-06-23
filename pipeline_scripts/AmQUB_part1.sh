@@ -5,87 +5,68 @@
 # This script accepts input in two ways:
 # 1. Direct command-line arguments:
 #    AmQUB_part1.sh -f ID1_raw.fq -p ID1_map.txt -m 2
-#    AmQUB_part1.sh -f ID2_raw.fq -p ID2_map.txt
+#    AmQUB_part1.sh -f ID1_raw.fq -p ID1_map.txt
 
 ## Required Flags
 # -f Fastq file for your flowcell
-# -p Mapping file 
+# -p Mapping file
 
 ## Optional Flags:
 # -m The number of allowed mismatches. This can be 1-5. Default is 0.
 
 # 2. A parameter template file:
 #    AmQUB_part1.sh params.csv
-#    Where params.csv contains the following 3 rows, comma delimited.
+#    Where params.csv contains the following rows, comma delimited.
 #    The labels at the beginning of each row should be the same as below.
-#        Raw Fastq File,ID1_raw.fq,ID2_raw.fq
-#        Mapping File,ID1_map.txt,ID2_map.txt
-#        Mismatch Bases,2,DEFAULT (Default is 0)
+#        Raw Fastq File,ID1_raw.fq
+#        Mapping File,ID1_map.txt
+#        Mismatch Bases,2
 #
-# Note that parameter file can contain multiple flowcells - one per column with 
-# associated parameters. If you want to use the default value for all flowcells, you can omit the line.
-# If you want to use the default value for only some of them, indicate with "DEFAULT" as above.
-
+# The "Mismatch Bases" line is optional. Omit it entirely, leave it blank, or set
+# it to DEFAULT to use the default of 0.
 
 set -e  # Exit on error
 
-# Arrays to hold multiple sets of inputs
-declare -a FQ_ARRAY MAPF_ARRAY MMATCH_ARRAY
+# Single-flowcell inputs
+FQ=""
+MAPF=""
+mmatchnum="0"
 
-# Function to check if the label exists in the file
+# Function to check if a label exists in the parameter file
 check_label_present() {
     local label="$1"
     if ! grep -q "$label" "$2"; then
-        echo "Error: Missing expected label '$label' in parameter file." 
+        echo "Error: Missing expected label '$label' in parameter file."
         exit 1
     fi
 }
 
-# Function to parse parameter file and store multiple sets
+# Strip leading/trailing whitespace from a single value
+trim() {
+    printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+# Function to parse the parameter file (one flowcell)
 parse_file_input() {
-    # Check if all labels are present in the file
-    check_label_present "Raw Fastq File," "$1"
-    check_label_present "Mapping File," "$1"
-    check_label_present "Mismatch Bases," "$1"
+    local file="$1" line value
 
-    # Read the file line by line
+    # Required labels
+    check_label_present "Raw Fastq File," "$file"
+    check_label_present "Mapping File," "$file"
+    # "Mismatch Bases," is optional and is therefore not required here.
+
     while IFS= read -r line; do
-        # Check if the line starts with "Raw Fastq File,"
         if [[ "$line" == "Raw Fastq File,"* ]]; then
-            values="${line#Raw Fastq File,}"
-            IFS=',' read -r -a FQ_ARRAY <<< "$values"  # Populate global array for FQ_ARRAY
-
-        # Check if the line starts with "Mapping File,"
+            value="${line#Raw Fastq File,}"
+            FQ="$(trim "${value%%,*}")"        # first field after the label
         elif [[ "$line" == "Mapping File,"* ]]; then
-            values="${line#Mapping File,}"
-            IFS=',' read -r -a MAPF_ARRAY <<< "$values"  # Populate global array for MAPF_ARRAY
-
-        # Check if the line starts with "Mismatch Bases,"
+            value="${line#Mapping File,}"
+            MAPF="$(trim "${value%%,*}")"
         elif [[ "$line" == "Mismatch Bases,"* ]]; then
-            values="${line#Mismatch Bases,}"
-            IFS=',' read -r -a MMATCH_ARRAY <<< "$values"  # Populate global array for MMATCH_ARRAY
-
+            value="${line#Mismatch Bases,}"
+            mmatchnum="$(trim "${value%%,*}")"
         fi
-    done < "$1"
-
-    # Strip leading/trailing whitespace from all arrays
-    for arr in FQ_ARRAY MAPF_ARRAY MMATCH_ARRAY; do
-        for i in "${!arr[@]}"; do
-            arr[$i]=$(echo "${arr[$i]}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-        done
-    done
-}
-
-# Function to check if all arrays have the same length
-check_arrays_length() {
-    local fq_len=${#FQ_ARRAY[@]}
-    local map_len=${#MAPF_ARRAY[@]}
-    local mmatch_len=${#MMATCH_ARRAY[@]}
-
-    if [[ "$fq_len" -ne "$map_len" || "$fq_len" -ne "$mmatch_len" ]]; then
-        echo "Error: The arrays have different lengths. Please ensure all arrays are of equal length." 
-        exit 1
-    fi
+    done < "$file"
 }
 
 
@@ -100,122 +81,105 @@ echo "
 
 Part 1: Pre-Processing
 
- - -- --- ---- ---- --- -- -" 
+ - -- --- ---- ---- --- -- -"
+
 # Check if the first argument is a file (parameter template)
 if [[ -f "$1" ]]; then
     echo "Reading parameters from file: $1
  - -- --- ---- ---- --- -- -"
     parse_file_input "$1"
-    check_arrays_length
 else
-    # Process single command-line arguments (overrides parameter file if provided)
-    MMATCH_ARRAY=("0")  
-
+    # Process command-line arguments
     while getopts ":f:p:m:" opt; do
         case $opt in
-            f) FQ_ARRAY=("$OPTARG") ;;
-            p) MAPF_ARRAY=("$OPTARG") ;;
-            m) MMATCH_ARRAY=("$OPTARG") ;;
+            f) FQ="$OPTARG" ;;
+            p) MAPF="$OPTARG" ;;
+            m) mmatchnum="$OPTARG" ;;
+            :)  echo "Error: Option -$OPTARG requires an argument." >&2; exit 1 ;;
             \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
         esac
     done
-
-    # Check if the arrays have the same length (after command-line input)
-    check_arrays_length
 fi
 
+# Normalize the mismatch default (handles blank or DEFAULT)
+if [[ -z "$mmatchnum" || "$mmatchnum" == "DEFAULT" ]]; then
+    mmatchnum="0"
+fi
 
-# Ensure at least one dataset is provided
-if [[ ${#FQ_ARRAY[@]} -eq 0 || ${#MAPF_ARRAY[@]} -eq 0 ]]; then
+# Ensure the required inputs are present
+if [[ -z "$FQ" || -z "$MAPF" ]]; then
     echo "Error: No valid input provided."
     echo "Usage: AmQUB_part1.sh -f <raw fastq file> -p <mapping file> [-m <mismatches>]"
     echo "OR use a parameter file: AmQUB_part1.sh params.csv"
     exit 1
 fi
 
-# Iterate over each set of parameters
-for i in "${!FQ_ARRAY[@]}"; do
-    FQ="${FQ_ARRAY[$i]}"
-    MAPF="${MAPF_ARRAY[$i]}"
+# Check that the input files exist
+[[ -e "$FQ" ]]   || { echo "Error: Required file '$FQ' not found!"; exit 1; }
+[[ -e "$MAPF" ]] || { echo "Error: Required file '$MAPF' not found!"; exit 1; }
 
-    # Check if the value in MMATCH_ARRAY is "DEFAULT" and default to 0
-    mmatchnum="${MMATCH_ARRAY[$i]}"
-    if [[ "$mmatchnum" == "DEFAULT" ]]; then
-        mmatchnum="0"
-    fi
-
-    # Validate required parameters
-    if [[ -z "$FQ" || -z "$MAPF" ]]; then
-        echo "Error: Missing required parameters for dataset $((i+1))."
+# Validate that the mapping file has the columns the pipeline needs (fail fast,
+# before any tool runs, since step 1 and the read counter both rely on these).
+maphdr=$(head -n 1 "$MAPF" | tr -d '\r')
+for col in "#SampleID" "BarcodeSequence"; do
+    printf '%s' "$maphdr" | tr '\t' '\n' | grep -qxF -- "$col" || {
+        echo "Error: Mapping file '$MAPF' is missing required column '$col'."
         exit 1
-    fi
-
-    # Check if files exist
-    [[ -e "$FQ" ]] || { echo "Error: Required file '$FQ' not found!"; exit 1; }
-    [[ -e "$MAPF" ]] || { echo "Error: Required file '$MAPF' not found!"; exit 1; }
-
-    # Set mismatch option
-    case $mmatchnum in
-        0) VAR="-m0" ;;
-        1) VAR="-m1" ;;
-        2) VAR="-m12" ;;
-        3) VAR="-m123" ;;
-        4) VAR="-m1234" ;;
-        5) VAR="-m12345" ;;
-        *) echo "Error: Invalid mismatch value: $mmatchnum"; exit 1 ;;
-    esac
+    }
 done
 
-for i in "${!FQ_ARRAY[@]}"; do
-    FQ="${FQ_ARRAY[$i]}"
-    MAPF="${MAPF_ARRAY[$i]}"
-    
-    # Check if the value in MMATCH_ARRAY is "DEFAULT" and default to 0
-    mmatchnum="${MMATCH_ARRAY[$i]}"
-    if [[ "$mmatchnum" == "DEFAULT" ]]; then
-        mmatchnum="0"
-    fi
+# Validate the mismatch value and set the corresponding option
+case "$mmatchnum" in
+    0) VAR="-m0" ;;
+    1) VAR="-m1" ;;
+    2) VAR="-m12" ;;
+    3) VAR="-m123" ;;
+    4) VAR="-m1234" ;;
+    5) VAR="-m12345" ;;
+    *) echo "Error: Invalid mismatch value: $mmatchnum"; exit 1 ;;
+esac
 
-    # Prepare output directory
-    BASE=$(basename "$FQ" .fastq)
-    NDIR=$(dirname "$FQ")
-    BASE=$(basename "$BASE" .fq)
-    OUTDIR="part1_${BASE}_output"
-    mkdir -p "$OUTDIR"
+# Prepare output directory
+BASE=$(basename "$FQ" .fastq)
+BASE=$(basename "$BASE" .fq)
+NDIR=$(dirname "$FQ")
+OUTDIR="part1_${BASE}_output"
+mkdir -p "$OUTDIR"
 
-    # Log initialization
-    timestamp="$(date +"%y%m%d_%H:%M")"
-    output_file="${OUTDIR}/part1_${timestamp}.log"
-    exec > "$output_file"
-    exec 2> >(tee -a "$output_file" >&2)
-    echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
- - -- --- ---- ---- --- -- -" 
+# Log initialization. Output goes to the terminal AND the log file.
+timestamp="$(date +"%y%m%d_%H:%M")"
+output_file="${OUTDIR}/part1_${timestamp}.log"
+exec > >(tee "$output_file")
+exec 2> >(tee -a "$output_file" >&2)
 
-    # Run main pipeline commands
-    FQDIR=$(dirname "$FQ")
-    if [ "$mmatchnum" -ne 0 ]; then
-        echo "Processing barcode mismatches..."
+echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatches
+ - -- --- ---- ---- --- -- -"
 
-        _BC_=$(grep -cP "^[A-Z]" "${MAPF}")
-        check_barcode_collisions.pl -i "${FQ}" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
-        filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
-        fastq_convert_mm2pm_barcodes.py -t read -i "${FQ}" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
-        extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+# Run main pipeline commands
+if [ "$mmatchnum" -ne 0 ]; then
+    echo "Processing barcode mismatches..."
 
-        # Check if files were generated
-        [[ -e "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}.M${mmatchnum}.fq was not generated!"; exit 1; }
-        [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
+    # '|| true' keeps a zero-match grep (exit status 1) from tripping 'set -e'
+    _BC_=$(grep -cP "^[A-Z]" "${MAPF}" || true)
+    check_barcode_collisions.pl -i "${FQ}" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
+    filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
+    fastq_convert_mm2pm_barcodes.py -t read -i "${FQ}" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+    extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
 
-    else
-        extract_barcodes.go -f "${FQ}" && mv -v "${NDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
-        ln -sf "$(realpath "$FQ")" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
-    fi
+    # Check if files were generated
+    [[ -e "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]]    || { echo "Error: File ${OUTDIR}/${BASE}.M${mmatchnum}.fq was not generated!"; exit 1; }
+    [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
 
-    echo "Generating fastq info file..."
-    usearch -fastx_info "${OUTDIR}/${BASE}.M${mmatchnum}.fq" -quiet -secs 300 -output "${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt"
+else
+    extract_barcodes.go -f "${FQ}" && mv -v "${NDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+    ln -sf "$(realpath "$FQ")" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+fi
 
-    echo "Counting reads per barcode..."
-    bc_counter.py "${MAPF}" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt"
+echo "Generating fastq info file..."
+usearch -fastx_info "${OUTDIR}/${BASE}.M${mmatchnum}.fq" -quiet -secs 300 -output "${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt"
+
+echo "Counting reads per barcode..."
+bc_counter.py "${MAPF}" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" "${OUTDIR}/${BASE}.M${mmatchnum}.read_counts.txt"
 
 echo " - -- --- ---- ---- --- -- -
 Final Recommendations
@@ -231,5 +195,4 @@ samples downstream.
 There is also a file describing the makeup of your reads here:
 ${OUTDIR}/${BASE}.M${mmatchnum}.fastq_info.txt
  - -- --- ---- ---- --- -- -
-"  
-done
+"

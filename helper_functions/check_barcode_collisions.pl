@@ -10,6 +10,7 @@
 # 3) fastq_convert_mm2pm_barcodes.py
 
 use strict;
+use warnings;
 use Getopt::Std;
 use lib '/helper_functions';
 
@@ -18,7 +19,7 @@ $0 =~ s/.*\/// if $0 =~ /\//;
 
 #get options from command line
 my $opt = {};
-getopts('i:m:o:t:M:Cfh', $opt);
+getopts('i:m:o:t:M:Ch', $opt);
 
 sub usage
 {
@@ -37,7 +38,6 @@ Usage: $0 [options]
    -M <integer>      # Mismatches to check (default=2)
    -t <integer>      # Terminate after this many barcodes have been loaded (for quick checks)
    -C                # Print mismatch Collisions (fastq barcodes with >= 1 bp mismatch to multiple mapping file barcodes)
-   -f                # Force overwrite of output file
    -h                # This help
 
 NOTE: Read fastq ID lines must end with a ':' and a barcode (eg., \":CTCGACTACTGA\")
@@ -70,7 +70,6 @@ my $mapBCcount = scalar @$BCs;
 
 #create an output filename, saving in the same directory as the fastq file
 $$opt{o} = "${fasqdir}uFQBC_${fastqfile}_BC${mapBCcount}_M$$opt{M}.txt" unless $$opt{o};
-#die "** Warning ** Output file [$$opt{o}] already exists!\n" if -e $$opt{o} && ! $$opt{f};
 
 
 #make a barcode->SampleID lookup
@@ -108,8 +107,11 @@ if ($fqtype eq "sequence") {
 		if ($. % 4 == 1) {
 			#@M02457:252:000000000-BV354:1:1102:15647:1855 1:N:0:TATTCTGCGAGC
 			chomp;
-			/.+:(\w+)$/;
-			$Fq{$1}++;
+			if (/.+:(\w+)$/) {
+				$Fq{$1}++;
+			} else {
+				warn "** Warning ** No barcode found at end of header (line $.): [$_]\n";
+			}
 		}
 		last if $$opt{t} && $. >= 4 * $$opt{t};
 	}
@@ -183,7 +185,7 @@ foreach my $bc (@$BCs)
 			my $alreadyprinted = 0;
 			foreach my $dee(@dees)
 			{
-				$alreadyprinted = 1 if exists $C{multibc}{$fqbc} && exists $C{multibc}{$fqbc}{$de};
+				$alreadyprinted = 1 if exists $C{multibc}{$fqbc} && exists $C{multibc}{$fqbc}{$dee};
 			}
 			
 			#skip if it's already been printed
@@ -268,9 +270,12 @@ sub sortSub
 #$unsorted = \%{$C{$pmmm}{BC}{$bc}{FQ}} = $href{$fqbc}->\@diffpos
 	my ($unsorted, $Fq) = @_;
 	
-	#create an array of indexes for the barcodes to be sorted
-	my $bcs = keys %$unsorted;#the number of barcodes with $pmmm mismatches to the current barcode
-	my @idxs2sort = (0 .. --$bcs);
+	#all barcodes in this bucket share the same mismatch count ($d), so the number
+	#of positions to sort on is the length of any one of the @diffpos arrays
+	my @ks = keys %$unsorted;
+	return () unless @ks;
+	my $npos = scalar @{$$unsorted{$ks[0]}};
+	my @idxs2sort = (0 .. $npos - 1);
 	
 	#sort
 	my @sorted = sort
@@ -313,6 +318,7 @@ sub get_mapping_file
     
     my $headers = <$MAP>;
     chomp $headers;
+    $headers =~ s/\r//g;#strip stray carriage returns (CRLF / Excel-saved files)
     my @headers = split /\t/, $headers;
     $$map{HEADERLIST} = \@headers;
     
@@ -321,6 +327,7 @@ sub get_mapping_file
     {
         next unless $line =~ /\S/;#skip blank lines
         chomp $line;
+        $line =~ s/\r//g;#strip stray carriage returns (CRLF / Excel-saved files)
         my @vals = split( /\t/, $line );
         
         #access column data by column header names

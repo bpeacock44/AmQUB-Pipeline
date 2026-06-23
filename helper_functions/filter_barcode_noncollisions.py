@@ -106,15 +106,15 @@ def read_uFQBC_file(opts):
         for line in infile:
 
             #Format example of the input file (output of [check_barcode_collisions.pl]):
-            # bc	CACACT	239	[F01]
-            # m1	AACACT	448	0
-            # *1	GACACT	181	0	[ F88:GAAACT F01:CACACT ]
-            # m1	TACACT	90	0
-            # *1	CTCACT	81	1	[ F27:CTCAAT F01:CACACT ]
-            # m1	CCCACT	64	1
+            # bc    CACACT  239 [F01]
+            # m1    AACACT  448 0
+            # *1    GACACT  181 0   [ F88:GAAACT F01:CACACT ]
+            # m1    TACACT  90  0
+            # *1    CTCACT  81  1   [ F27:CTCAAT F01:CACACT ]
+            # m1    CCCACT  64  1
 
             #capture values in the first three columns of (some) lines
-            searchObj = re.search(r'^(bc|m['+str(opts.mismatches)+'])\t(\w+)\t(\d+)', line, re.M)
+            searchObj = re.search(r'^(bc|m['+str(opts.mismatches)+r'])\t(\w+)\t(\d+)', line, re.M)
 
             #keep matched info
             if searchObj and len(searchObj.groups()) == 3:
@@ -188,7 +188,10 @@ def print_for_fastq_convert(opts, pm_Barcodes):
         pm_and_mm_counts += pmbc.get_fastq_count_with_mm_barcodes()
     
     #calc percent
-    pct = "{0:.1f}%".format((pm_and_mm_counts / all_pm_counts - 1) * 100)
+    if all_pm_counts > 0:
+        pct = "{0:.1f}%".format((pm_and_mm_counts / all_pm_counts - 1) * 100)
+    else:
+        pct = "n/a (no perfect-match reads)"
     
 
     #print header info
@@ -312,8 +315,8 @@ def main(argv):
 
     #verify that input file exists
     if not os.path.isfile(opts.input_fp):
-        print ("** Error ** Input file ["+opts.input_fp+"] does not exist!")
-        sys.exit(0)
+        print ("** Error ** Input file ["+opts.input_fp+"] does not exist!", file=sys.stderr)
+        sys.exit(1)
 
     # #check for exclusive options (argparser checks this via 'add_mutually_exclusive_group')
     # if opts.output_for_viewing and opts.output_for_fastq_convert:
