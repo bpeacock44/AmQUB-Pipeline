@@ -49,6 +49,6 @@ singularity exec \\
     --bind ${programs}:/home/programs/ \\
     --bind \${NCBI_DB}:/database/ \\
     --bind \$(pwd):/home/analysis/ \\
-    ${programs}/testing.sif \\
+    ${programs}/latest.sif \\
     AmQUB_part${STEP}.sh $@
 EOF

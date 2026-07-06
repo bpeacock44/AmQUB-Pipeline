@@ -37,7 +37,17 @@ def main(asv_file, metadata_file, output_dir, column):
     setup_logger(output_dir, column)
     logging.info("Starting TU-Correlation analysis.")
 
-    asv_table = load_asv_table(asv_file)
+    asv_table_og = load_asv_table(asv_file)
+
+    asv_table = asv_table_og.copy()
+
+    drop_cols = ["taxonomy", "Taxonomy", "sequence", "Sequence"]
+
+    asv_table = asv_table.drop(
+        columns=[c for c in drop_cols if c in filtered_asv_table.columns],
+        errors="ignore"
+    )
+
     metadata = load_metadata(metadata_file)
 
     common_samples = asv_table.columns.intersection(metadata.index)
