@@ -163,23 +163,97 @@ echo "Processing ${FQ} with mapping file ${MAPF}, allowing ${mmatchnum} mismatch
  - -- --- ---- ---- --- -- -"
 
 # Run main pipeline commands
+# Run main pipeline commands
 if [ "$mmatchnum" -ne 0 ]; then
     echo "Processing barcode mismatches..."
 
     # '|| true' keeps a zero-match grep (exit status 1) from tripping 'set -e'
     _BC_=$(grep -cP "^[A-Z]" "${MAPF}" || true)
-    check_barcode_collisions.pl -i "${FQ}" -m "${MAPF}" -M${mmatchnum} -C -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
-    filter_barcode_noncollisions.py -k -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" $VAR --output_for_fastq_convert > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
-    fastq_convert_mm2pm_barcodes.py -t read -i "${FQ}" -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
-    extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq" && mv -v "${OUTDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
 
-    # Check if files were generated
-    [[ -e "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]]    || { echo "Error: File ${OUTDIR}/${BASE}.M${mmatchnum}.fq was not generated!"; exit 1; }
-    [[ -e "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]] || { echo "Error: File ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq was not generated!"; exit 1; }
+    check_barcode_collisions.pl \
+        -i "${FQ}" \
+        -m "${MAPF}" \
+        -M${mmatchnum} \
+        -C \
+        -o "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt"
+
+    filter_barcode_noncollisions.py \
+        -k \
+        -i "${OUTDIR}/${BASE}.BC${_BC_}_M${mmatchnum}.collisions.txt" \
+        $VAR \
+        --output_for_fastq_convert \
+        > "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs"
+
+    fastq_convert_mm2pm_barcodes.py \
+        -t read \
+        -i "${FQ}" \
+        -m "${OUTDIR}/${BASE}_M${mmatchnum}.fbncs" \
+        -o "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+
+    # Make sure the mismatch-corrected FASTQ was generated before
+    # attempting barcode extraction.
+    if [[ ! -s "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]]; then
+        echo "Error: Mismatch-corrected FASTQ was not generated or is empty." >&2
+        echo "Expected: ${OUTDIR}/${BASE}.M${mmatchnum}.fq" >&2
+        exit 1
+    fi
+
+    echo "Extracting barcodes..."
+
+    # The input FASTQ is already inside this run's OUTDIR, so
+    # extract_barcodes.go will create OUTDIR/barcodes.fastq.
+    if ! extract_barcodes.go -f "${OUTDIR}/${BASE}.M${mmatchnum}.fq"; then
+        echo "Error: extract_barcodes.go failed for ${BASE}." >&2
+        echo "Input: ${OUTDIR}/${BASE}.M${mmatchnum}.fq" >&2
+        exit 1
+    fi
 
 else
-    extract_barcodes.go -f "${FQ}" && mv -v "${NDIR}/barcodes.fastq" "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
-    ln -sf "$(realpath "$FQ")" "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+    # For zero mismatches the original FASTQ may be in a shared directory.
+    # Create a symlink inside this run's OUTDIR so extract_barcodes.go
+    # writes barcodes.fastq into the run-specific output directory.
+    RUN_FQ="${OUTDIR}/${BASE}.input.fq"
+    ln -sf "$(realpath "$FQ")" "${RUN_FQ}"
+
+    echo "Extracting barcodes..."
+
+    if ! extract_barcodes.go -f "${RUN_FQ}"; then
+        echo "Error: extract_barcodes.go failed for ${BASE}." >&2
+        echo "Input: ${FQ}" >&2
+        rm -f "${RUN_FQ}"
+        exit 1
+    fi
+
+    # Keep the original FASTQ as the downstream M0 FASTQ.
+    ln -sf "$(realpath "$FQ")" \
+        "${OUTDIR}/${BASE}.M${mmatchnum}.fq"
+
+    rm -f "${RUN_FQ}"
+fi
+
+# Both branches should now have generated their barcode file here.
+if [[ ! -s "${OUTDIR}/barcodes.fastq" ]]; then
+    echo "Error: Barcode extraction for ${BASE} did not produce a non-empty file." >&2
+    echo "Expected: ${OUTDIR}/barcodes.fastq" >&2
+    exit 1
+fi
+
+# Give the barcode FASTQ its permanent run-specific name.
+mv -v \
+    "${OUTDIR}/barcodes.fastq" \
+    "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq"
+
+# Final sanity checks before continuing.
+if [[ ! -s "${OUTDIR}/${BASE}.M${mmatchnum}.fq" ]]; then
+    echo "Error: FASTQ file is missing or empty:" >&2
+    echo "  ${OUTDIR}/${BASE}.M${mmatchnum}.fq" >&2
+    exit 1
+fi
+
+if [[ ! -s "${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" ]]; then
+    echo "Error: Barcode FASTQ is missing or empty:" >&2
+    echo "  ${OUTDIR}/${BASE}_BC.M${mmatchnum}.fq" >&2
+    exit 1
 fi
 
 echo "Generating fastq info file..."

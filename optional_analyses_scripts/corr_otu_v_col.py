@@ -37,17 +37,7 @@ def main(asv_file, metadata_file, output_dir, column):
     setup_logger(output_dir, column)
     logging.info("Starting TU-Correlation analysis.")
 
-    asv_table_og = load_asv_table(asv_file)
-
-    asv_table = asv_table_og.copy()
-
-    drop_cols = ["taxonomy", "Taxonomy", "sequence", "Sequence"]
-
-    asv_table = asv_table.drop(
-        columns=[c for c in drop_cols if c in filtered_asv_table.columns],
-        errors="ignore"
-    )
-
+    asv_table = load_asv_table(asv_file)
     metadata = load_metadata(metadata_file)
 
     common_samples = asv_table.columns.intersection(metadata.index)
@@ -110,15 +100,15 @@ def main(asv_file, metadata_file, output_dir, column):
         results_df['FDR'] = []
 
     results_df = results_df[['TU', 'Correlation Coefficient', 'P-Value', 'FDR', 'Avg_Abun', 'Suppression', 'TU_Counts', 'Sample_IDs']]
-    
+
     # Save TXT (tab-delimited)
     txt_output_file = os.path.join(output_dir, f"correlation_results_{column}.txt")
     results_df.to_csv(txt_output_file, sep='\t', index=False)
-    
+
     # Save Excel
     excel_output_file = os.path.join(output_dir, f"correlation_results_{column}.xlsx")
     results_df.to_excel(excel_output_file, index=False)
-    
+
     logging.info(f"Results saved to {txt_output_file}.")
     logging.info(f"Excel version saved to {excel_output_file}.")
     logging.info("Correlation analysis completed.")
@@ -132,4 +122,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args.asv_file, args.metadata_file, args.output_dir, args.column)
-
