@@ -18,6 +18,7 @@
 #    contains any of these strings will be removed from all output tables - one string per line.
 # -u: Universal assay - causes final ASV tables to be split into taxonomic groups prior to normalizing
 # -c: Optionally choose to use the classifier taxonomic assignments instead of BLAST.
+# Classifier-only Part 4 outputs are automatically detected; -c is required for them.
 # -d: Creates a specialized "Detailed Informational TU Table" with more detail about the taxonomic assignments.
 # -m: Will run an optional analysis checking whether the top 10 BLAST results for each taxonomic unit 
 #    had more than one family present. This can be an indicator that the BLAST results should be examined
@@ -253,6 +254,11 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
+if [[ "$MIX" == true && "$DET" != true ]]; then
+    echo "Error: -m requires -d." >&2
+    exit 1
+fi
+
 # Validate --classifier flag against Strategy 1 location only when Strategy 1 will be processed.
 if [ "$CLA" = true ] && [ "$skSTR1" = false ]; then
     if [ ! -d "${output_dir}/${typ}s/classifier_output" ]; then
@@ -263,13 +269,29 @@ fi
 
 source qiime_shell_helper_functions.sh || { echo "Error: Unable to source Qiime shell helper functions"; exit 1; }
 
-for DIR in ${DIRS[@]}; do
+for DIR in "${DIRS[@]}"; do
     if [[ "$DIR" == *"STRATEGY2"* ]]; then
         fi=${STR2}
     elif [[ "$DIR" == *"STRATEGY3"* ]]; then
         fi=${STR3}
     else
         fi=${KEEP}
+    fi
+
+    # Check selected taxonomy source before modifying any tables.
+    if [[ -f "${DIR}/taxonomy_source_mode.txt" ]] && \
+       [[ "$(cat "${DIR}/taxonomy_source_mode.txt")" == "classifier-only" ]] && \
+       [[ "$CLA" != true ]]; then
+        echo "Error: ${DIR} was generated in classifier-only mode. Run Part 5 with -c." >&2
+        exit 1
+    fi
+    if [[ "$CLA" == true && ! -s "${DIR}/classifier_output/taxonomy.tsv" ]]; then
+        echo "Error: Classifier taxonomy missing for ${DIR}." >&2
+        exit 1
+    fi
+    if [[ "$CLA" != true && ! -s "${DIR}/blast/tax_assignments.txt" ]]; then
+        echo "Error: BLAST taxonomy missing for ${DIR}; use -c if classifier taxonomy exists." >&2
+        exit 1
     fi
 
     # remove previous versions of the tables
@@ -342,12 +364,14 @@ for DIR in ${DIRS[@]}; do
 
     # Apply keep-list if requested
     if [ "$fi" != false ]; then
+        # Never read and write the same BIOM path when exclusion filtering ran.
+        keep_output="${DIR}/${typ}_table_02_keep_filtered.biom"
         biom subset-table \
             -i "${current_biom}" \
             -a observation \
             -s "$fi" \
-            -o "${DIR}/${typ}_table_02_TUs_removed.biom"
-        current_biom="${DIR}/${typ}_table_02_TUs_removed.biom"
+            -o "$keep_output"
+        current_biom="$keep_output"
     fi
 
     # ---------------------------------------------------------------------------
@@ -477,7 +501,11 @@ for DIR in ${DIRS[@]}; do
     
         source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
     
-        rm -rf "${DIR}/blast/mixed_family_output.txt"
+        if [[ "$MIX" == true && ! -s "${DIR}/blast/filtered.blastout" ]]; then
+            echo "Error: -m requires existing filtered BLAST results for ${DIR}." >&2
+            exit 1
+        fi
+        rm -f "${DIR}/blast/mixed_family_output.txt"
         # Run the mixed_family_checker.py script with error checking
 
         echo "Running Mixed Family Checker."
@@ -495,13 +523,18 @@ for DIR in ${DIRS[@]}; do
         # Define file paths
         norm_file="${DIR}/${typ}_table_04_add_seqs.norm.txt"
         raw_file="${DIR}/${typ}_table_04_add_seqs.txt"
-        tax_file="${DIR}/blast/tax_assignments.txt"
+        tax_file="NULL"
+        if [[ -s "${DIR}/blast/tax_assignments.txt" ]] && \
+           ! { [[ -f "${DIR}/taxonomy_source_mode.txt" ]] && \
+               [[ "$(cat "${DIR}/taxonomy_source_mode.txt")" == "classifier-only" ]]; }; then
+            tax_file="${DIR}/blast/tax_assignments.txt"
+        fi
         sum_output="${DIR}/Detailed_Informational_${typ}_Table.tsv"
         rm -rf "${sum_output}"
 
         echo "Generating summary file."
         # Single call to the script
-        summary_file_generator.py ${norm_file} ${raw_file} ${tax_file} ${cp_arg} ${mixed_arg} ${sum_output}
+        summary_file_generator.py "$norm_file" "$raw_file" "$tax_file" "$cp_arg" "$mixed_arg" "$sum_output"
         
         if [ ! -f ${sum_output} ]; then
             echo "${DIR}/Detailed_Informational_${typ}_Table.tsv was not successfully created."

@@ -18,6 +18,7 @@
 ## Optional Flags:
 # -b The type of BLAST you want to do (discontiguous megablast or mega-blast; blastn is default)
 # -v Set the expect threshold for BLAST (0.001 is default)
+# --classifier-only Run classifier taxonomy only, without any BLAST inputs or processing.
 # -s Skip blast (useful for troubleshooting the rest of the script to avoid waiting for blast to run if it's already been completed)
 # -c Assign taxonomy via a classifier in addition to BLAST 
 # -f Set confidence interval for classifier (default is 0.7) (you can put "disable" to ignore confidence)
@@ -36,6 +37,7 @@
 #        Email,email@email.com
 #        Type of BLAST,megablast
 #        Expect Threshold for BLAST,0.005
+#        Classifier Only,true
 #        Skip BLAST,true
 #        Classifier,classifier.qza
 #        Confidence Interval,disable
@@ -64,6 +66,7 @@ parse_parameter_file() {
             "Assign Taxonomy for Strategy 2,"*) STR2="${line#*,}" ;;
             "Assign Taxonomy for Strategy 3,"*) STR3="${line#*,}" ;;
             "Skip BLAST,"*) skip_blast="${line#*,}" ;;
+            "Classifier Only,"*) classifier_only="${line#*,}" ;;
         esac
     done < "$param_file"
 }
@@ -75,6 +78,7 @@ STR1=false
 STR2=false
 STR3=false
 skip_blast=false
+classifier_only=false
 
 echo "
         ┌── ===
@@ -110,13 +114,23 @@ else
             --strategy2) STR2=true; shift ;;
             --strategy3) STR3=true; shift ;;
             -s|--skip-blast) skip_blast=true; shift ;;
+            --classifier-only) classifier_only=true; skip_blast=true; shift ;;
             *) echo "Unknown option: $1" >&2; exit 1 ;;
         esac
     done
 fi
 
+# Classifier-only means neither BLAST execution nor processing existing BLAST results.
+if [[ "$classifier_only" == true ]]; then
+    skip_blast=true
+    if [[ -z "${CFIER:-}" ]]; then
+        echo "Error: --classifier-only requires -c <classifier.qza>." >&2
+        exit 1
+    fi
+fi
+
 # Check for mandatory arguments
-if [ -z "$output_dir" ] || [ -z "$NUMTHREADS" ] || [ -z "$EMAIL" ]; then
+if [ -z "$output_dir" ] || [ -z "$NUMTHREADS" ] || { [ "$classifier_only" != true ] && [ -z "${EMAIL:-}" ]; }; then
     echo "Usage: $0 -i <output directory from part 3> -t <number of threads for BLAST> -e <email@email.com> [-s -j]"
     exit 1
 fi
@@ -137,7 +151,7 @@ if [[ -z "${CFIER}" && ("${CON}" != "") ]]; then
 fi
 
 # Check if email is in correct format
-if ! [[ "${EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+if [[ "$classifier_only" != true ]] && ! [[ "${EMAIL}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     echo "Email is not valid."
     exit 1
 fi
@@ -173,12 +187,13 @@ fi
 # make sure that at least 1 strategy is true
 if [ "$STR1" = true ] && [ "$STR2" = false ] && [ "$STR3" = false ]; then
     echo "Error: If you skip assigning taxonomy for strategy 1 (default), you should be assigning taxonomy to either strategy 2 or 3."
+    exit 1
 fi
 
 # Define run_type variable.
 run_type=local
 
-if [ ! -e "${output_dir}/${typ}s/blast/${typ}s_counts.fa" ]; then
+if [[ "$classifier_only" != true && ! -e "${output_dir}/${typ}s/blast/${typ}s_counts.fa" ]]; then
     echo "${output_dir}/${typ}s/blast/${typ}s_counts.fa not found! Part 3 was not completed."
     exit 1
 fi
@@ -228,6 +243,7 @@ fi
 
 echo " - -- --- ---- ---- --- -- -"
 
+if [[ "$classifier_only" != true ]]; then
 echo '#!/bin/bash
 DATABASE_PATH=/database/nt
 OPTS="qseqid sseqid pident length mismatch evalue bitscore staxids stitle qcovs"
@@ -237,6 +253,7 @@ blastn -task $TASK -db $DATABASE_PATH -query $INFASTA -max_target_seqs $MAXTSEQS
 
 # Make the script executable
 chmod +x blast.sh
+fi
 
 if [ "$skip_blast" = false ]; then
     if [ "$STR1" = false ]; then
@@ -305,10 +322,16 @@ fi
 
 process_output_dir() {
     local output_dir=$1
+    if [[ "$classifier_only" == true ]]; then
+        printf "classifier-only\n" > "${output_dir}/${typ}s/taxonomy_source_mode.txt"
+    else
+        printf "blast-enabled\n" > "${output_dir}/${typ}s/taxonomy_source_mode.txt"
+    fi
 
     # Activate the virtual environment containing necessary pip modules
     source pymods.sh || { echo "Error: Unable to activate python-pip-modules environment"; exit 1; }
 
+    if [[ "$classifier_only" != true ]]; then
     # Generate a list of likely environmental taxonomic IDs to exclude from the blast file and filter
     likely_env_remove.py "${EMAIL}" "${output_dir}/${typ}s/blast/final.blastout" "${output_dir}/${typ}s/blast/filtered.blastout"
 
@@ -341,6 +364,8 @@ process_output_dir() {
 
     # Step 9: Run count_taxa_levels command
     count_taxa_levels "${output_dir}/${typ}s/blast/tax_assignments.txt" > "${output_dir}/${typ}s/blast/taxa_levels.txt" || { echo "Error: count_taxa_levels command failed"; exit 1; }
+
+    fi # end BLAST taxonomy processing
 
     # Step 10: Conduct taxonomic classification with Qiime2 if classifier is selected
     if [[ "${CFIER}" ]]; then
@@ -389,19 +414,22 @@ process_output_dir() {
     norm_file="${output_dir}/${typ}s/${typ}_table_01.norm.txt"
     fasta_file="${output_dir}/${typ}s/${typ}s.fa"
     tax_file="${output_dir}/${typ}s/blast/tax_assignments.txt"
+    if [[ "$classifier_only" == true ]]; then
+        tax_file="NULL"
+    fi
     tax_c_file="${output_dir}/${typ}s/classifier_output/taxonomy.tsv"
     sum_output="${output_dir}/${typ}s/taxonomy_summary_table.tsv"
 
     rm -rf "${sum_output}"
     if [[ "${CFIER}" ]]; then
-        # Run the R script with all arguments (### REMOVE output_dir here!)
-        mini_summary_file_generator.py ${norm_file} ${fasta_file} ${tax_file} ${tax_c_file} ${sum_output}
+        # Generate summary using either both taxonomy sources or classifier only
+        mini_summary_file_generator.py "$norm_file" "$fasta_file" "$tax_file" "$tax_c_file" "$sum_output"
     else 
-        mini_summary_file_generator.py ${norm_file} ${fasta_file} ${tax_file} NULL ${sum_output}
+        mini_summary_file_generator.py "$norm_file" "$fasta_file" "$tax_file" NULL "$sum_output"
     fi
     if [ ! -f ${sum_output} ]; then
         echo "'taxonomy_summary_table.tsv' was not successfully created."
-        #exit 1
+        exit 1
     fi
 
 }

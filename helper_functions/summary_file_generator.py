@@ -4,83 +4,168 @@ import pandas as pd
 import numpy as np
 import argparse
 
+
+def provided(path):
+    return bool(path) and path.lower() != "null"
+
+
 def process_data_and_write_summary(norm, raw, tax, tax_c, mixed, output_file):
-    # Read the main data file without recognizing any comment characters
-    df = pd.read_csv(norm, sep='\t', comment=None, header=0)
-    df.rename(columns={df.columns[0]: 'ID'}, inplace=True)
-    if 'taxonomy' in df.columns:
-        df.drop(columns=['taxonomy'], inplace=True)
 
-    # Read primary taxonomy file
-    tax_df = pd.read_csv(tax, sep='\t', comment=None, header=0)
-    tax_df.columns = ['ID', 'taxonomy', 'bitscore', 'per_ID', 'per_qcov']
-    df = pd.merge(df, tax_df[['ID', 'taxonomy', 'per_ID', 'per_qcov']], on='ID', how='left')
+    use_blast = provided(tax)
+    use_classifier = provided(tax_c)
+    use_mixed = provided(mixed)
 
-    # Check if tax_c is provided and process it if available
-    if tax_c and tax_c.lower() != 'null':
-        tax_df_C = pd.read_csv(tax_c, sep='\t', comment=None, header=0)
-        tax_df_C.columns = ['ID', 'c_taxonomy', 'confidence']
-        df = pd.merge(df, tax_df_C, on='ID', how='left')
-        excluded_columns = ['ID', 'taxonomy', 'per_ID', 'per_qcov', 'c_taxonomy', 'confidence', 'sequence']
+    if not use_blast and not use_classifier:
+        raise ValueError(
+            "At least one taxonomy source must be provided."
+        )
+
+    # Read normalized abundance table
+    df = pd.read_csv(norm, sep="\t", comment=None, header=0)
+    df.rename(columns={df.columns[0]: "ID"}, inplace=True)
+
+    # Remove taxonomy already embedded in the table
+    df.drop(columns=["taxonomy"], inplace=True, errors="ignore")
+
+    # Identify abundance columns before adding metadata
+    metadata_cols = {"ID", "Sequence", "sequence"}
+    abundance_cols = [
+        col for col in df.columns
+        if col not in metadata_cols
+        and pd.api.types.is_numeric_dtype(df[col])
+    ]
+
+    # BLAST taxonomy
+    if use_blast:
+        tax_df = pd.read_csv(tax, sep="\t", header=0)
+        tax_df.columns = [
+            "ID", "taxonomy", "bitscore", "per_ID", "per_qcov"
+        ]
+        df = df.merge(
+            tax_df[["ID", "taxonomy", "per_ID", "per_qcov"]],
+            on="ID",
+            how="left",
+            validate="many_to_one"
+        )
     else:
-        excluded_columns = ['ID', 'taxonomy', 'per_ID', 'per_qcov', 'sequence']
+        df["taxonomy"] = np.nan
+        df["per_ID"] = np.nan
+        df["per_qcov"] = np.nan
 
-    # Calculate mean abundance using only numeric columns
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.difference(excluded_columns)
-    df['avg_abun'] = df[numeric_cols].mean(axis=1, skipna=True)
+    # Classifier taxonomy
+    if use_classifier:
+        classifier_df = pd.read_csv(tax_c, sep="\t", header=0)
+        classifier_df.columns = [
+            "ID", "c_taxonomy", "confidence"
+        ]
+        df = df.merge(
+            classifier_df,
+            on="ID",
+            how="left",
+            validate="many_to_one"
+        )
 
-    # Check if mixed is provided and process it if available
-    if mixed and mixed.lower() != 'null':
-        top10_df = pd.read_csv(mixed, sep='\t', comment=None, header=None)
-        df['mixed'] = np.where(df['ID'].isin(top10_df.iloc[:, 0]), 'yes', 'no')
-    else:
-        df['mixed'] = 'no'  # Default value if no mixed file is provided
+    # Mean relative abundance
+    df["avg_abun"] = df[abundance_cols].mean(
+        axis=1, skipna=True
+    )
 
-    # Reorder columns
-    if tax_c and tax_c.lower() != 'null':
-        df = df.iloc[:, [0] + list(range(len(df.columns) - 8, len(df.columns))) + list(range(1, len(df.columns) - 8))]
-    else:
-        df = df.iloc[:, [0] + list(range(len(df.columns) - 6, len(df.columns))) + list(range(1, len(df.columns) - 6))]
+    # Mixed-family analysis
+    if use_mixed:
+        top10_df = pd.read_csv(
+            mixed, sep="\t", comment=None, header=None
+        )
+        df["mixed"] = np.where(
+            df["ID"].isin(top10_df.iloc[:, 0]),
+            "yes", "no"
+        )
 
-    # Add row with total raw counts
-    rawdf = pd.read_csv(raw, sep='\t', comment=None, header=0)
-    rawdf.drop(columns=[rawdf.columns[0], 'taxonomy', 'Sequence'], inplace=True, errors='ignore')
-    sums = rawdf.sum()
+    # Explicit column ordering
+    metadata_order = [
+        "ID", "Sequence", "taxonomy", "per_ID", "per_qcov"
+    ]
 
-    if tax_c and tax_c.lower() != 'null':
-        # Order: ID, Sequence, taxonomy, per_ID, per_qcov, c_taxonomy, confidence, avg_abun, mixed
-        nd_columns = ['nd', 'nd', 'nd', 0, 0, 'nd', 0, 0, 'nd']
-    else:
-        # Order: ID, Sequence, taxonomy, per_ID, per_qcov, avg_abun, mixed
-        nd_columns = ['nd', 'nd', 'nd', 0, 0, 0, 'nd']
+    if use_classifier:
+        metadata_order += ["c_taxonomy", "confidence"]
 
-    new_vector = pd.Series(nd_columns + sums.tolist(), index=df.columns)
-    df = pd.concat([pd.DataFrame([new_vector]), df], ignore_index=True)
+    metadata_order.append("avg_abun")
 
-    # Drop the 'mixed' column only if mixed was not provided
-    if not mixed or mixed.lower() == 'null':
-        df.drop(columns=['mixed'], inplace=True)
+    if use_mixed:
+        metadata_order.append("mixed")
 
-    # Write dataframe to the specified output file
-    df.to_csv(output_file, sep='\t', index=False, quoting=False)
+    # Preserve other columns, including abundance data
+    remaining_cols = [
+        col for col in df.columns
+        if col not in metadata_order
+    ]
+
+    df = df[metadata_order + remaining_cols]
+
+    # Read raw counts
+    rawdf = pd.read_csv(raw, sep="\t", comment=None, header=0)
+
+    rawdf.drop(
+        columns=[
+            rawdf.columns[0],
+            "taxonomy",
+            "Sequence",
+            "sequence"
+        ],
+        inplace=True,
+        errors="ignore"
+    )
+
+    # Calculate raw count totals
+    sums = rawdf.sum(numeric_only=True)
+
+    # Construct total-count row by column name
+    total_row = {col: "nd" for col in df.columns}
+
+    for col in ["per_ID", "per_qcov", "confidence", "avg_abun"]:
+        if col in total_row:
+            total_row[col] = 0
+
+    for col, value in sums.items():
+        if col in total_row:
+            total_row[col] = value
+
+    df = pd.concat(
+        [pd.DataFrame([total_row]), df],
+        ignore_index=True
+    )
+
+    # Save summary
+    df.to_csv(
+        output_file,
+        sep="\t",
+        index=False,
+        quoting=False
+    )
+
 
 def main():
-    # Create an argument parser
-    parser = argparse.ArgumentParser(description='Process data and write summary to file.')
+    parser = argparse.ArgumentParser(
+        description="Generate detailed informational TU table."
+    )
 
-    # Define command-line arguments
-    parser.add_argument('norm', type=str, help='Path to the normalized data file')
-    parser.add_argument('raw', type=str, help='Path to the raw data file')
-    parser.add_argument('tax', type=str, help='Path to the primary taxonomy file')
-    parser.add_argument('tax_c', type=str, nargs='?', default=None, help='Path to the classifier taxonomy file (optional, use "NULL" to skip)')
-    parser.add_argument('mixed', type=str, nargs='?', default=None, help='Path to the top 10 mixed families file (optional, use "NULL" to skip)')
-    parser.add_argument('output_file', type=str, help='Path to the output file')
+    parser.add_argument("norm")
+    parser.add_argument("raw")
+    parser.add_argument("tax")
+    parser.add_argument("tax_c")
+    parser.add_argument("mixed")
+    parser.add_argument("output_file")
 
-    # Parse command-line arguments
     args = parser.parse_args()
 
-    # Call the function with the arguments
-    process_data_and_write_summary(args.norm, args.raw, args.tax, args.tax_c, args.mixed, args.output_file)
+    process_data_and_write_summary(
+        args.norm,
+        args.raw,
+        args.tax,
+        args.tax_c,
+        args.mixed,
+        args.output_file
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
