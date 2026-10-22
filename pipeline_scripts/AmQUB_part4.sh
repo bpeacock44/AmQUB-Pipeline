@@ -322,6 +322,11 @@ fi
 
 process_output_dir() {
     local output_dir=$1
+    # Load QIIME shell helper functions regardless of taxonomy method
+    source qiime_shell_helper_functions.sh || {
+        echo "Error: Unable to source QIIME shell helper functions."
+        exit 1
+    }
     if [[ "$classifier_only" == true ]]; then
         printf "classifier-only\n" > "${output_dir}/${typ}s/taxonomy_source_mode.txt"
     else
