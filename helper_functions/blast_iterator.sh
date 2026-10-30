@@ -27,6 +27,8 @@ DIR=$1
 BLAST_FILE=$2
 RUN_TYPE=$3
 TAX_TYPE=$4
+NEW_ONLY_FASTA=${5:-}
+REUSED_BLAST=${6:-}
 
 timestamp="$(date +"%y%m%d_%H:%M")"
 output_file="${DIR}/blast.${timestamp}.log"
@@ -59,43 +61,39 @@ while criteria_met; do
     echo "Starting first batch of jobs..."
 
     if "$first_run"; then
-        input_file="${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa"
+        input_file="${NEW_ONLY_FASTA:-${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa}"
     else
         input_file="${DIR}/${TAX_TYPE}s/blast/${reblast_iteration}.fasta"
     fi
 
     if [[ "$RUN_TYPE" == local ]]; then
         # Run locally
-        ${BLAST_FILE} "${input_file}" "${maxseqs}" > "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout"
+        if [[ -n "$NEW_ONLY_FASTA" && ! -s "$input_file" ]]; then
+            : > "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout"
+        else
+            ${BLAST_FILE} "${input_file}" "${maxseqs}" > "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout"
+        fi
         echo "BLAST completed locally for $input_file"
     else
         # Submit as sbatch job
+        if [[ -n "$NEW_ONLY_FASTA" && ! -s "$input_file" ]]; then
+            : > "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout"
+        else
         echo sbatch -o "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout" ${BLAST_FILE} "${input_file}" "${maxseqs}" 
         job_id=$(sbatch -o "${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout" ${BLAST_FILE} "${input_file}" "${maxseqs}" | awk '{print $NF}')
         echo "Blast job submitted with ID: $job_id for $input_file"
         job_ids+=("$job_id")
 
-        # Wait until the job starts running
-        while true; do
-            # Check the job status
-            job_status=$(squeue -j "$job_id" -h -o "%t" 2>/dev/null)
-
-            # Break the loop if the job is in the "running" state
-            if [ "$job_status" == "R" ]; then
-                echo "Job $job_id is now running."
-                break
-            fi
-
-            # Sleep for a short interval before checking again
+        # Wait for completion; use sacct for final exit status when available.
+        while [[ -n "$(squeue -j "$job_id" -h -o '%i' 2>/dev/null)" ]]; do
             sleep 10
         done
-
-        # Wait for the submitted job to finish
-        while squeue -j "$job_id" -h &>/dev/null; do
-            sleep 10
-        done
-
+        if command -v sacct >/dev/null 2>&1; then
+            state=$(sacct -j "$job_id" -n -X -o State | head -1 | xargs)
+            [[ "$state" == COMPLETED* ]] || { echo "SLURM BLAST job $job_id failed: $state"; exit 1; }
+        fi
         echo "Job $job_id has completed."
+        fi
     fi
 
     next_reblast_value() {
@@ -111,7 +109,7 @@ while criteria_met; do
     echo $next_value
     if [[ "$next_value" == "completed" ]]; then
         echo "All reblast iterations have been completed."
-        exit 0
+        break
     elif [[ "$next_value" == "error" ]]; then
         echo "Unknown reblast iteration value: $reblast_iteration"
         exit 1
@@ -119,11 +117,15 @@ while criteria_met; do
 
     bout="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout"
     outfile="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
-    reblast_check.pl ${bout} ${outfile}
+    if [[ "$first_run" == true && -n "$REUSED_BLAST" ]]; then
+        cat "$REUSED_BLAST" "$bout" > "${bout}.combined"
+        bout="${bout}.combined"
+    fi
+    "$(dirname "$(readlink -f "$0")")/reblast_check.pl" "$bout" "$outfile" 1000
 
     # Get the number of reads contributing to the biggest ASV. 
     # Only ASVs that are at least 1% of the largest ASV will be re-blasted if they need it. 
-    total=$(awk 'NR==1{print $NF}' ${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa)
+    total=$(awk '/^>/{n=split($1,a,"_"); if (a[n]+0>max) max=a[n]+0} END{print max+0}' "${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa")
     echo "Determining which taxonomic units are worth re-blasting."
 
     not_enough_hits_file="${DIR}/${TAX_TYPE}s/blast/${maxseqs}.${reblast_iteration}.blastout.not_enough_hits.txt"
@@ -133,35 +135,27 @@ while criteria_met; do
     # Check if the not_enough_hits_file is empty
     if [ -s "$not_enough_hits_file" ]; then
         # Proceed with grep and subsequent commands
-        grep -w -f "$not_enough_hits_file" ${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa | \
-        awk -v total="$total" '{
-            # Remove ">" from the first column
-            gsub(">", "", $1)
-    
-            # Calculate the ratio and store the result after the white space
-            ratio = $2 / total
-    
-            # Print lines where the ratio is 0.01 or less
-            if (ratio <= 0.01) {
-                print $1, $2, ratio
-            }
-        }' | \
-        awk '$3 > 0.01' > "$big_ASVs_file"
-    
-        # Additional commands
-        awk '/^>/{sub(/ .*/, "");}1' "${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa" > ${DIR}/${TAX_TYPE}s/blast/modified_seqs.fasta
-    
+        # Counts are encoded in FASTA IDs as ASV_12345; use the last underscore.
+        # Compare only identifiers flagged by reblast_check.pl.
+        awk -v total="$total" 'NR==FNR {wanted[$1]=1; next}
+            /^>/ {id=substr($1,2); n=split(id,a,"_"); count=a[n]+0;
+                   if (id in wanted && total>0 && count/total>=0.01) print id}' \
+            "$not_enough_hits_file" "${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa" > "$big_ASVs_file"
+
         echo "Extracting reblast seqs."
-        # Extract the fasta sequences needing a reblast
-        seqkit grep -n -f "$big_ASVs_file" ${DIR}/${TAX_TYPE}s/blast/modified_seqs.fasta -o "$reblast_seqs_file"
+        if [[ -s "$big_ASVs_file" ]]; then
+            seqkit grep -n -f "$big_ASVs_file" "${DIR}/${TAX_TYPE}s/blast/${TAX_TYPE}s_counts.fa" -o "$reblast_seqs_file"
+        else
+            : > "$reblast_seqs_file"
+        fi
     else
         # If the not_enough_hits_file is empty, create an empty file for reblast_seqs
-        touch "$reblast_seqs_file"
+        : > "$reblast_seqs_file"
     fi
 
     case $reblast_iteration in
         "rb0") maxseqs=30000; reblast_iteration="rb1" ;;
-        "rb1") echo "Completed all reblast iterations. Any taxonomic units that may require further reBLASTing are stored in ${DIR}/${TAX_TYPE}s/blast/${next_value}.fasta"; exit 0 ;;
+        "rb1") break ;;
     esac
 
     first_run=false
@@ -170,13 +164,15 @@ done
 
 echo "Merging all blastout files."
 
-rm -f ${DIR}/${TAX_TYPE}s/blast/final.blastout
-cat ${DIR}/${TAX_TYPE}s/blast/1000.rb0.blastout | grep -v "# BLAST processed" >> ${DIR}/${TAX_TYPE}s/blast/final.blastout 
-if [ -e "${DIR}/${TAX_TYPE}s/blast/30000.rb1.blastout" ]; then
-    cat "${DIR}/${TAX_TYPE}s/blast/30000.rb1.blastout" | grep -v "# BLAST processed" >> "${DIR}/${TAX_TYPE}s/blast/final.blastout"
+blast_dir="${DIR}/${TAX_TYPE}s/blast"
+initial=("${blast_dir}/1000.rb0.blastout")
+if [[ -n "$REUSED_BLAST" ]]; then
+    initial=("$REUSED_BLAST" "${initial[@]}")
 fi
-
-echo "# BLAST processed" >> ${DIR}/${TAX_TYPE}s/blast/final.blastout 
+python3 "$(dirname "$(readlink -f "$0")")/merge_blast.py" \
+    --initial "${initial[@]}" \
+    --expanded "${blast_dir}/30000.rb1.blastout" \
+    --output "${blast_dir}/final.blastout"
 
 rm -f ${DIR}/${TAX_TYPE}s/blast/1000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/30000.rb0.blastout* ${DIR}/${TAX_TYPE}s/blast/rb1.fasta  
 

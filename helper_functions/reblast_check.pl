@@ -1,51 +1,26 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
-
-# Check for correct number of arguments
-die "Usage: $0 my.blastout output_file.txt
-
-This script loads a BLAST output file and reports which ASVs still 'need' reblasting.
-" unless @ARGV == 2;
-
-# Initialize variables
-my (%O, %G, %I, %L, @U);
-
-my ($input_file, $output_file) = @ARGV;
-
-# Open the input file
-open(my $fh, '<', $input_file) or die "Could not open file '$input_file' $!";
-
-# Open the output file
-open(my $out, '>', $output_file) or die "Could not open file '$output_file' $!";
-
-while (my $line = <$fh>) {
+# Format 7, expected fields: qseqid sseqid pident length mismatch evalue bitscore ...
+my ($input, $output, $limit) = @ARGV;
+die "Usage: $0 input.blastout output.txt [max_target_seqs]\n" unless defined $input && defined $output;
+$limit //= 1000;
+open my $in, '<', $input or die "$input: $!";
+open my $out, '>', $output or die "$output: $!";
+my (%n, %best, %worst, @order);
+while (my $line = <$in>) {
+    next if $line =~ /^#/ || $line =~ /^\s*$/;
     chomp $line;
-    next if $. < 2; # Skip the first line
-
-    # Processing lines that match your criteria
-    if ($line =~ /^(# Q|Otu)/) {
-        if ($line !~ /^#/) {
-            my @A = split /\t/, $line;
-            next if exists $G{$A[1]};
-            $O{$A[0]}++;
-            $G{$A[1]}++;
-            $I{$A[2]}++;
-            $L{$A[4]}++;
-        } elsif ($line =~ /^# Query/) {
-            my @o = keys %O;
-            my @i = keys %I;
-            my @l = keys %L;
-            if (@i == 1 || @l == 1) {
-                print $out "$o[0]\n";
-            }
-            %O = ();
-            %G = ();
-            %I = ();
-            %L = ();
-        }
-    }
+    my @f = split /\t/, $line;
+    die "Invalid BLAST row (expected 10 fields): $line\n" unless @f == 10;
+    my ($id, $score) = ($f[0], $f[6]);
+    die "Invalid bitscore '$score' for $id\n" unless $score =~ /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+    push @order, $id unless exists $n{$id};
+    ++$n{$id};
+    $best{$id} = $score if !exists($best{$id}) || $score > $best{$id};
+    $worst{$id} = $score if !exists($worst{$id}) || $score < $worst{$id};
 }
-
-close $fh;
-close $out;
+for my $id (@order) {
+    print {$out} "$id\n" if $n{$id} >= $limit && $worst{$id} == $best{$id};
+}
+close $out or die "Cannot close $output: $!";
