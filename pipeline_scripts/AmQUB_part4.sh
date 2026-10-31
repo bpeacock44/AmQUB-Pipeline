@@ -245,17 +245,17 @@ if [ "$skip_blast" = false ]; then
     if [ "$STR1" = false ]; then
         # Run BLAST script in the background
         if [[ -n "$REUSE_BLAST_DIR" ]]; then
-            python3 "$(dirname "$(readlink -f "$0")")/reuse_blast.py" \
+            reuse_blast.py \
                 --old-fasta "${REUSE_BLAST_DIR}/${typ}s/blast/${typ}s_counts.fa" \
                 --new-fasta "${output_dir}/${typ}s/blast/${typ}s_counts.fa" \
                 --old-blast "${REUSE_BLAST_DIR}/${typ}s/blast/final.blastout" \
                 --new-only "${output_dir}/${typ}s/blast/new_only.fasta" \
                 --reused-blast "${output_dir}/${typ}s/blast/reused.blastout"
-            "$(dirname "$(readlink -f "$0")")/blast_iterator.sh" "${output_dir}" blast.sh "${run_type}" "${typ}" \
+            blast_iterator.sh "${output_dir}" blast.sh "${run_type}" "${typ}" \
                 "${output_dir}/${typ}s/blast/new_only.fasta" \
                 "${output_dir}/${typ}s/blast/reused.blastout" &
         else
-            "$(dirname "$(readlink -f "$0")")/blast_iterator.sh" "${output_dir}" blast.sh "${run_type}" "${typ}" &
+            blast_iterator.sh "${output_dir}" blast.sh "${run_type}" "${typ}" &
         fi
         
         # Get the process ID of the last background command
@@ -274,7 +274,7 @@ if [ "$skip_blast" = false ]; then
     fi
     if [ "$STR2" = true ]; then
         # Run BLAST script in the background
-        "$(dirname "$(readlink -f "$0")")/blast_iterator.sh" "${output_dir}/${typ}s/STRATEGY2" blast.sh ${run_type} ${typ} &
+        blast_iterator.sh "${output_dir}/${typ}s/STRATEGY2" blast.sh ${run_type} ${typ} &
     
         # Get the process ID of the last background command
         blast_pid=$!
@@ -292,7 +292,7 @@ if [ "$skip_blast" = false ]; then
     fi
     if [ "$STR3" = true ]; then
         # Run BLAST script in the background
-        "$(dirname "$(readlink -f "$0")")/blast_iterator.sh" "${output_dir}/${typ}s/STRATEGY3" blast.sh ${run_type} ${typ} &
+        blast_iterator.sh "${output_dir}/${typ}s/STRATEGY3" blast.sh ${run_type} ${typ} &
     
         # Get the process ID of the last background command
         blast_pid=$!

@@ -121,7 +121,7 @@ while criteria_met; do
         cat "$REUSED_BLAST" "$bout" > "${bout}.combined"
         bout="${bout}.combined"
     fi
-    "$(dirname "$(readlink -f "$0")")/reblast_check.pl" "$bout" "$outfile" 1000
+    reblast_check.pl "$bout" "$outfile" 1000
 
     # Get the number of reads contributing to the biggest ASV. 
     # Only ASVs that are at least 1% of the largest ASV will be re-blasted if they need it. 
@@ -169,7 +169,7 @@ initial=("${blast_dir}/1000.rb0.blastout")
 if [[ -n "$REUSED_BLAST" ]]; then
     initial=("$REUSED_BLAST" "${initial[@]}")
 fi
-python3 "$(dirname "$(readlink -f "$0")")/merge_blast.py" \
+merge_blast.py \
     --initial "${initial[@]}" \
     --expanded "${blast_dir}/30000.rb1.blastout" \
     --output "${blast_dir}/final.blastout"
